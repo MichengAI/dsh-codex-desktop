@@ -39,3 +39,20 @@ export function resolveRasterIconPath(options: IconResolutionOptions): string | 
 }
 
 export const TRAY_ICON_SIZE = 32
+
+/**
+ * 应用图标四周留白适合大图展示，但缩进 Windows 托盘或任务栏后会显得偏小。
+ * 小尺寸渲染前仅裁掉大部分外层透明区，仍保留少量安全边距，避免圆角贴边。
+ */
+export function resolveCompactIconCrop(size: { width: number; height: number }): { x: number; y: number; width: number; height: number } {
+  const side = Math.min(size.width, size.height)
+  const inset = Math.round(side * 0.055)
+  const croppedSide = Math.max(1, side - inset * 2)
+
+  return {
+    x: Math.floor((size.width - croppedSide) / 2),
+    y: Math.floor((size.height - croppedSide) / 2),
+    width: croppedSide,
+    height: croppedSide,
+  }
+}

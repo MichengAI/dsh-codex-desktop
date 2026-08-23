@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { DESKTOP_APP_NAME, DESKTOP_APP_USER_MODEL_ID, resolveDesktopRuntimeDir, resolveDesktopUserDataDir } from './app-identity.js'
-import { resolveAppIconPath, resolveRasterIconPath, TRAY_ICON_SIZE } from './app-icon.js'
+import { resolveAppIconPath, resolveCompactIconCrop, resolveRasterIconPath, TRAY_ICON_SIZE } from './app-icon.js'
 import { WINDOW_ICON_PIXEL_SIZES, isLoopbackFaviconRequest } from './window-icon.js'
 import { quitDesktopApp, shouldHideInsteadOfClose } from './app-lifecycle.js'
 import type { DshServer, StartDshOptions } from './dsh-process.js'
@@ -212,9 +212,10 @@ function resolveWindowIconImage(): Electron.NativeImage | undefined {
   if (iconPath === undefined) return undefined
   const source = nativeImage.createFromPath(iconPath)
   if (source.isEmpty()) return undefined
+  const compactSource = source.crop(resolveCompactIconCrop(source.getSize()))
   const icon = nativeImage.createEmpty()
   for (const size of WINDOW_ICON_PIXEL_SIZES) {
-    const resized = source.resize({ width: size, height: size, quality: 'best' })
+    const resized = compactSource.resize({ width: size, height: size, quality: 'best' })
     icon.addRepresentation({
       width: size,
       height: size,
@@ -418,7 +419,9 @@ function createTray(): void {
   const source = rasterPath === undefined ? nativeImage.createEmpty() : nativeImage.createFromPath(rasterPath)
   const icon = source.isEmpty()
     ? nativeImage.createEmpty()
-    : source.resize({ width: TRAY_ICON_SIZE, height: TRAY_ICON_SIZE, quality: 'best' })
+    : source
+        .crop(resolveCompactIconCrop(source.getSize()))
+        .resize({ width: TRAY_ICON_SIZE, height: TRAY_ICON_SIZE, quality: 'best' })
   try {
     tray = new Tray(icon)
   } catch {

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { resolveAppIconPath, resolveRasterIconPath } from '../src/app-icon.js'
+import { resolveAppIconPath, resolveCompactIconCrop, resolveRasterIconPath } from '../src/app-icon.js'
 
 test('打包态优先使用 extraResources 中的 ico', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-icon-'))
@@ -41,4 +41,19 @@ test('托盘优先使用 PNG，避免任务栏拿到过小的 ICO 帧', async ()
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+test('托盘和任务栏裁掉应用图标的大部分透明边距，并保持居中正方形', () => {
+  assert.deepEqual(resolveCompactIconCrop({ width: 512, height: 512 }), {
+    x: 28,
+    y: 28,
+    width: 456,
+    height: 456,
+  })
+  assert.deepEqual(resolveCompactIconCrop({ width: 600, height: 512 }), {
+    x: 72,
+    y: 28,
+    width: 456,
+    height: 456,
+  })
 })
