@@ -197,6 +197,23 @@ test('官方运行时仅以 DSH 入口包作为 npm 顶层依赖', () => {
   })
 })
 
+test('桌面装配阶段给 rc.2 权限菜单应用中文补丁，且不包含本机绝对路径', async () => {
+  const prepare = await readFile(new URL('../../scripts/prepare-runtime.ts', import.meta.url), 'utf8')
+  const patch = await readFile(
+    new URL('../../patches/dsh-0.1.1-rc.2-permission-localization.patch', import.meta.url),
+    'utf8',
+  )
+  const stageAt = prepare.indexOf('await stageOfficialRuntime(officialRuntimeRoot')
+  const patchAt = prepare.indexOf('applyOfficialRuntimePatch(officialRuntimeRoot)')
+  const packAt = prepare.indexOf('packDirectoryToTarGz(officialRuntimeRoot')
+  assert.equal(stageAt < patchAt && patchAt < packAt, true)
+  assert.match(patch, /dsh-client-ui-permission-presets\/lib\/client\.js/)
+  assert.match(patch, /dsh-client-ui-conversation\/lib\/client\.js/)
+  assert.match(patch, /"preset\.readOnly": "仅可查看"/)
+  assert.match(patch, /"access\.preset\.readOnly": "仅可查看"/)
+  assert.doesNotMatch(patch, /[A-Z]:\\\\Tools\\\\/i)
+})
+
 test('Windows 冒烟在启动应用前复用安装器的运行时解压入口', async () => {
   const script = await readFile(new URL('../../scripts/smoke-package.ps1', import.meta.url), 'utf8')
   const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
