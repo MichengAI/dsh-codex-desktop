@@ -41,8 +41,12 @@ if (!chinese && !english) {
 }
 
 const sections = []
-if (chinese) sections.push(`## 中文说明\n\n${chinese}`)
-if (english) sections.push(`## English\n\n${english}`)
+if (chinese && english) {
+  sections.push(`## 中文说明\n\n${chinese}`)
+  sections.push(`## English\n\n${english}`)
+} else {
+  sections.push(chinese || english)
+}
 
 writeFileSync(outputPath, `${sections.join('\n\n---\n\n')}\n`)
 console.log(`Wrote release notes for ${tag} to ${outputPath}`)
