@@ -162,3 +162,7 @@ For current status, architecture constraints, and iteration records, start at th
 ## License
 
 This project is licensed under [Apache License 2.0](LICENSE).
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the five most recent releases.

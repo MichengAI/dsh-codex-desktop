@@ -162,3 +162,7 @@ pnpm run dist
 ## 许可证
 
 本项目采用 [Apache License 2.0](LICENSE)。
+
+## 更新日志
+
+最近五个发布版本见 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)。
