@@ -179,6 +179,11 @@ jobs:
       - name: 检出发布元数据
         uses: actions/checkout@v4
 
+      - name: 配置 Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+
       - name: 下载各平台制品
         uses: actions/download-artifact@v4
         with:
@@ -195,4 +200,14 @@ jobs:
           $OutputEncoding = [System.Text.Encoding]::UTF8
           $files = Get-ChildItem -LiteralPath 'release' -File | Where-Object { $_.Extension -in '.exe', '.zip', '.dmg', '.AppImage', '.deb', '.yml', '.blockmap' }
           if ($files.Count -eq 0) { throw '未找到可发布的安装包。' }
-          gh release create $env:GITHUB_REF_NAME @($files.FullName) --generate-notes --title $env:GITHUB_REF_NAME
+          node scripts/extract-release-notes.mjs $env:GITHUB_REF_NAME release-notes.md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          gh release view $env:GITHUB_REF_NAME *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release edit $env:GITHUB_REF_NAME --title $env:GITHUB_REF_NAME --notes-file release-notes.md
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            gh release upload $env:GITHUB_REF_NAME @($files.FullName) --clobber
+          } else {
+            gh release create $env:GITHUB_REF_NAME @($files.FullName) --title $env:GITHUB_REF_NAME --notes-file release-notes.md
+          }
