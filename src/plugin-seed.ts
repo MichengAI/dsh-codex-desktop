@@ -533,6 +533,7 @@ export async function pruneMissingProfileBundles(profileDir: string, extraDirs: 
   const current = manifest.dsh?.profile?.bundles ?? []
   const dependencies = new Set(Object.keys(manifest.dependencies ?? {}))
   const next = current.filter((packageName) => (OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(packageName)
+    // Internal package name: keep synchronized with DESKTOP_BRIDGE_PACKAGE in desktop-host.ts.
     || (packageName === 'dsh-desktop-bridge' && isResolvableProfileBundle(profileDir, packageName, extraDirs))
     || (dependencies.has(packageName) && isResolvableProfileBundle(profileDir, packageName, extraDirs)))
   const removed = current.filter((packageName) => !next.includes(packageName))

@@ -8,6 +8,7 @@ const IPC = {
 } as const
 
 contextBridge.exposeInMainWorld('dshShell', {
+  platform: process.platform,
   action: (id: string) => ipcRenderer.invoke(IPC.action, id),
   getBootstrap: () => ipcRenderer.invoke(IPC.getBootstrap),
   onState: (listener: (state: unknown) => void) => {

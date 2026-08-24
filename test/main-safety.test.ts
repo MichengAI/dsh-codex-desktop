@@ -36,10 +36,10 @@ test('桌面壳预加载脚本被编译并提供 DSH 动作兜底', async () => 
   const config = await readFile(new URL('../../tsconfig.json', import.meta.url), 'utf8')
   const preload = await readFile(new URL('../../src/dsh-view-preload.cts', import.meta.url), 'utf8')
   assert.match(config, /src\/\*\*\/\*\.cts/)
-  assert.match(preload, /clientBridgeReady/)
+  assert.match(preload, /clientBridgeRegistrations/)
   assert.match(preload, /runDomAction/)
   assert.match(preload, /添加工作区\|打开文件夹/)
-  assert.match(preload, /\[role="treeitem"\]\[aria-selected\]/)
+  assert.match(preload, /\.dcu-wb-session\[role="treeitem"\]\[aria-selected\]/)
   assert.match(preload, /\^新建任务\$/)
 })
 
@@ -67,4 +67,12 @@ test('关于窗口使用独立丰富页面并进入打包资源', async () => {
   assert.match(main, /frame: false/)
   assert.match(main, /minimizable: false/)
   assert.match(main, /maximizable: false/)
+})
+
+test('shell 在 macOS 为交通灯预留空间且状态早到不会读取空 bootstrap', async () => {
+  const shell = await readFile(new URL('../../assets/shell.html', import.meta.url), 'utf8')
+  assert.match(shell, /data-platform="darwin"[^}]*padding-left:78px/)
+  assert.ok(shell.indexOf('document.documentElement.dataset.platform=window.dshShell.platform') < shell.indexOf('<style>'))
+  assert.match(shell, /bootstrap\?\.locale/)
+  assert.match(shell, /state\?\?value\.state/)
 })

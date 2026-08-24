@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Tray, WebContentsView, dialog, ipcMain, nativeImage, net, protocol, session, shell, type Input, type MenuItemConstructorOptions } from 'electron'
+import { app, BrowserWindow, Menu, Tray, WebContentsView, dialog, ipcMain, nativeImage, net, protocol, session, shell, type Input, type MenuItemConstructorOptions, type WebContents } from 'electron'
 import { existsSync } from 'node:fs'
 import { writeFile as writeTextFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
@@ -20,8 +20,9 @@ import { resolvePrebuiltOfficialRuntime } from './runtime-prebuilt.js'
 import { applyInitialWindowState } from './window-state.js'
 import { WindowNavigationCoordinator } from './window-navigation.js'
 import { installDesktopBridge, resolveDesktopBridgeDir } from './desktop-host.js'
-import { localizedShellActions, localizedShellMenus, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId } from './shell-actions.js'
+import { isChineseLocale, localizedShellActions, localizedShellMenus, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId } from './shell-actions.js'
 import { SHELL_BAR_HEIGHT, SHELL_IPC, type DshNavigationState, type DshShellActionId, type ShellBootstrap, type ShellMenuPopupRequest, type ShellState } from './shell-contract.js'
+import { mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshState, type ShellRendererKind } from './shell-ipc-policy.js'
 import { watchProfileActivation } from './profile-watch.js'
 import updater from 'electron-updater'
 import { buildDesktopTrayItems, desktopUpdateChannel, desktopUpdatePrompt, formatDesktopReleaseNotes, publicDesktopUpdateError, type DesktopUpdateStatus } from './desktop-updater.js'
@@ -490,14 +491,23 @@ function installShellIpc(): void {
   ipcMain.removeHandler(SHELL_IPC.getBootstrap)
   ipcMain.removeHandler(SHELL_IPC.action)
   ipcMain.removeHandler(SHELL_IPC.popupMenu)
-  ipcMain.handle(SHELL_IPC.getBootstrap, () => shellBootstrap())
-  ipcMain.handle(SHELL_IPC.action, (_event, id: unknown) => {
-    if (typeof id !== 'string' || !shellActionIds.has(id)) return
-    return executeShellAction(id as ShellActionId)
+  ipcMain.handle(SHELL_IPC.getBootstrap, event => {
+    if (!mayGetShellBootstrap(shellRendererKind(event.sender))) return
+    return shellBootstrap()
   })
-  ipcMain.handle(SHELL_IPC.popupMenu, (_event, request: ShellMenuPopupRequest) => popupShellMenu(request))
+  ipcMain.handle(SHELL_IPC.action, (event, id: unknown) => {
+    if (typeof id !== 'string' || !shellActionIds.has(id)) return
+    const actionId = id as ShellActionId
+    if (!mayInvokeShellAction(shellRendererKind(event.sender), actionId)) return
+    return executeShellAction(actionId)
+  })
+  ipcMain.handle(SHELL_IPC.popupMenu, (event, request: ShellMenuPopupRequest) => {
+    if (!mayPopupShellMenu(shellRendererKind(event.sender))) return
+    return popupShellMenu(request)
+  })
   ipcMain.removeAllListeners(SHELL_IPC.dshState)
-  ipcMain.on(SHELL_IPC.dshState, (_event, state: Partial<DshNavigationState>) => {
+  ipcMain.on(SHELL_IPC.dshState, (event, state: Partial<DshNavigationState>) => {
+    if (!mayReportDshState(shellRendererKind(event.sender))) return
     if (typeof state !== 'object' || state === null) return
     dshNavigationState = {
       canBack: state.canBack === true,
@@ -507,6 +517,14 @@ function installShellIpc(): void {
     }
     broadcastShellState()
   })
+}
+
+function shellRendererKind(sender: WebContents): ShellRendererKind {
+  if (sender === mainWindow?.webContents) return 'main'
+  if (sender === shortcutsWindow?.webContents) return 'shortcuts'
+  if (sender === aboutWindow?.webContents) return 'about'
+  if (sender === dshView?.webContents) return 'dsh'
+  return 'unknown'
 }
 
 function isActionEnabled(id: ShellActionId): boolean {
@@ -605,7 +623,7 @@ function showShortcutsWindow(): void {
     height: 650,
     minWidth: 520,
     minHeight: 480,
-    title: isChineseLocaleSafe() ? '键盘快捷键' : 'Keyboard Shortcuts',
+    title: isChineseLocale(app.getLocale()) ? '键盘快捷键' : 'Keyboard Shortcuts',
     autoHideMenuBar: true,
     backgroundColor: '#262827',
     webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
@@ -637,7 +655,7 @@ function showAboutWindow(): void {
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
-    title: isChineseLocaleSafe() ? `关于 ${DESKTOP_APP_NAME}` : `About ${DESKTOP_APP_NAME}`,
+    title: isChineseLocale(app.getLocale()) ? `关于 ${DESKTOP_APP_NAME}` : `About ${DESKTOP_APP_NAME}`,
     autoHideMenuBar: true,
     backgroundColor: '#202322',
     ...(icon === undefined ? {} : { icon }),
@@ -647,10 +665,6 @@ function showAboutWindow(): void {
   window.on('closed', () => { if (aboutWindow === window) aboutWindow = undefined })
   installShortcutHandler(window.webContents)
   runMainTask(window.loadFile(resolveShellAsset('about.html')))
-}
-
-function isChineseLocaleSafe(): boolean {
-  return app.getLocale().toLowerCase().startsWith('zh')
 }
 
 function configureDesktopUpdater(): void {

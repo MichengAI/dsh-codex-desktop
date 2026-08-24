@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>DSH Codex Desktop</title>
+  <script>document.documentElement.dataset.platform=window.dshShell.platform</script>
   <style>
     :root{color-scheme:dark;font-family:Inter,"Segoe UI","Microsoft YaHei UI",sans-serif;background:#171918;color:#d7d9d8}
     *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}
     .bar{-webkit-app-region:drag;height:40px;display:flex;align-items:center;gap:4px;padding:0 154px 0 6px;background:#1c1f1e;border-bottom:1px solid #292c2b;user-select:none}
+    html[data-platform="darwin"] .bar{padding-left:78px;padding-right:12px}
     button{-webkit-app-region:no-drag;font:inherit;color:inherit;border:0;background:transparent}
     .nav{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;opacity:.82;transition:background .12s,opacity .12s}
     .nav:hover:not(:disabled){background:#2b2e2d;opacity:1}.nav:disabled{opacity:.28}
@@ -30,10 +32,10 @@
   <script>
     const api=window.dshShell;let bootstrap;let state;let openMenu;
     const menuHost=document.getElementById('menus');const status=document.getElementById('status');
-    function applyState(next){state=next;document.getElementById('back').disabled=!next.canBack;document.getElementById('forward').disabled=!next.canForward;status.textContent=next.reloading?(bootstrap.locale.startsWith('zh')?'正在重新加载…':'Reloading…'):''}
+    function applyState(next){state=next;document.getElementById('back').disabled=!next.canBack;document.getElementById('forward').disabled=!next.canForward;const zh=bootstrap?.locale?.startsWith('zh')??navigator.language.toLowerCase().startsWith('zh');status.textContent=next.reloading?(zh?'正在重新加载…':'Reloading…'):''}
     async function showMenu(button,menu){document.querySelectorAll('.menu').forEach(x=>x.setAttribute('aria-expanded','false'));button.setAttribute('aria-expanded','true');openMenu=button;const rect=button.getBoundingClientRect();await api.popupMenu({menu,x:Math.round(rect.left),y:Math.round(rect.bottom)});button.setAttribute('aria-expanded','false');if(openMenu===button)openMenu=undefined}
     document.querySelectorAll('[data-action]').forEach(button=>button.addEventListener('click',()=>api.action(button.dataset.action)));
-    api.getBootstrap().then(value=>{bootstrap=value;document.documentElement.lang=value.locale;for(const menu of value.menus){const button=document.createElement('button');button.className='menu';button.textContent=menu.label;button.setAttribute('aria-haspopup','menu');button.setAttribute('aria-expanded','false');button.addEventListener('click',()=>showMenu(button,menu.id));menuHost.append(button)}applyState(value.state)});
+    api.getBootstrap().then(value=>{bootstrap=value;document.documentElement.lang=value.locale;document.documentElement.dataset.platform=value.platform;for(const menu of value.menus){const button=document.createElement('button');button.className='menu';button.textContent=menu.label;button.setAttribute('aria-haspopup','menu');button.setAttribute('aria-expanded','false');button.addEventListener('click',()=>showMenu(button,menu.id));menuHost.append(button)}applyState(state??value.state)});
     api.onState(applyState);
   </script>
 </body>

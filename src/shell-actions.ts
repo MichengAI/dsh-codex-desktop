@@ -37,6 +37,7 @@ export interface LocalizedText {
 
 export interface ShellActionDefinition {
   readonly accelerator?: string
+  readonly macAccelerator?: string
   readonly globalShortcut?: boolean
   readonly group: number
   readonly id: ShellActionId
@@ -72,7 +73,7 @@ export const SHELL_ACTIONS: readonly ShellActionDefinition[] = [
   { id: 'quit', menu: 'file', group: 2, label: text('退出', 'Quit'), accelerator: 'CmdOrCtrl+Q', globalShortcut: true, keywords: text('彻底退出 关闭软件', 'exit application') },
 
   { id: 'undo', menu: 'edit', group: 0, label: text('撤销', 'Undo'), accelerator: 'CmdOrCtrl+Z' },
-  { id: 'redo', menu: 'edit', group: 0, label: text('重做', 'Redo'), accelerator: 'CmdOrCtrl+Y' },
+  { id: 'redo', menu: 'edit', group: 0, label: text('重做', 'Redo'), accelerator: 'CmdOrCtrl+Y', macAccelerator: 'CmdOrCtrl+Shift+Z' },
   { id: 'cut', menu: 'edit', group: 1, label: text('剪切', 'Cut'), accelerator: 'CmdOrCtrl+X' },
   { id: 'copy', menu: 'edit', group: 1, label: text('复制', 'Copy'), accelerator: 'CmdOrCtrl+C' },
   { id: 'paste', menu: 'edit', group: 1, label: text('粘贴', 'Paste'), accelerator: 'CmdOrCtrl+V' },
@@ -116,12 +117,16 @@ export function localizedShellMenus(locale: string): LocalizedShellMenu[] {
 
 export function localizedShellActions(locale: string, platform: NodeJS.Platform): LocalizedShellAction[] {
   const chinese = isChineseLocale(locale)
-  return SHELL_ACTIONS.map(action => ({
-    ...action,
-    label: chinese ? action.label.zh : action.label.en,
-    keywords: chinese ? action.keywords?.zh ?? '' : action.keywords?.en ?? '',
-    ...(action.accelerator === undefined ? {} : { acceleratorLabel: formatAccelerator(action.accelerator, platform) }),
-  }))
+  return SHELL_ACTIONS.map(action => {
+    const accelerator = platform === 'darwin' ? action.macAccelerator ?? action.accelerator : action.accelerator
+    return {
+      ...action,
+      ...(accelerator === undefined ? {} : { accelerator }),
+      label: chinese ? action.label.zh : action.label.en,
+      keywords: chinese ? action.keywords?.zh ?? '' : action.keywords?.en ?? '',
+      ...(accelerator === undefined ? {} : { acceleratorLabel: formatAccelerator(accelerator, platform) }),
+    }
+  })
 }
 
 interface ShortcutInput {
@@ -147,6 +152,6 @@ function acceleratorMatches(accelerator: string, input: ShortcutInput, platform:
 
 export function shellActionForShortcut(input: ShortcutInput, platform: NodeJS.Platform): ShellActionId | undefined {
   return SHELL_ACTIONS.find(action => action.globalShortcut === true
-    && action.accelerator !== undefined
-    && acceleratorMatches(action.accelerator, input, platform))?.id
+    && (platform === 'darwin' ? action.macAccelerator ?? action.accelerator : action.accelerator) !== undefined
+    && acceleratorMatches((platform === 'darwin' ? action.macAccelerator ?? action.accelerator : action.accelerator)!, input, platform))?.id
 }

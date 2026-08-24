@@ -41,7 +41,13 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
     const clickByLabel = (patterns: RegExp[]): void => {
       const candidates = [...document.querySelectorAll<HTMLElement>('button,[role="button"],[role="menuitem"]')]
         .filter(element => element.offsetParent !== null)
-      candidates.find(element => patterns.some(pattern => pattern.test(`${element.getAttribute('aria-label') ?? ''} ${element.textContent ?? ''}`)))?.click()
+      candidates.find(element => {
+        const labels = [element.getAttribute('aria-label'), element.textContent]
+          .filter((label): label is string => typeof label === 'string')
+          .map(label => label.trim())
+          .filter(label => label !== '')
+        return patterns.some(pattern => labels.some(label => pattern.test(label)))
+      })?.click()
     }
 
     const apply = (ctx: ClientContext): void => {
@@ -90,7 +96,14 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         const path = await ctx.workspaces.pickDirectory()
         if (path === null) return
         const created = await ctx.workspaces.create({ path })
-        const workspaceId = typeof created === 'string' ? created : created.id ?? created.workspaceId
+        const workspaceId = typeof created === 'string'
+          ? created
+          : typeof created === 'object' && created !== null
+            ? created.id ?? created.workspaceId
+            : undefined
+        if (typeof workspaceId !== 'string' || workspaceId.trim() === '') {
+          throw new Error('创建工作区后未返回有效的 workspaceId。')
+        }
         ctx.workspaces.startSession(workspaceId)
       }
       const onAction = (id: string): void => {
@@ -103,7 +116,7 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         else if (id === 'next-chat') openAdjacent(1)
         else if (id === 'back') openHistory(-1)
         else if (id === 'forward') openHistory(1)
-        else if (id === 'find') clickByLabel([/搜索会话|查找|search sessions|find/i])
+        else if (id === 'find') clickByLabel([/^(?:搜索会话|查找|search sessions|find)$/i])
         else if (id === 'settings') clickByLabel([/^设置$|^settings$|preferences/i])
       }
 

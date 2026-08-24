@@ -5,10 +5,11 @@ const IPC = {
   dshState: 'dsh-shell:dsh-state',
 } as const
 
-let clientBridgeReady = false
+let clientBridgeRegistrations = 0
 let selectionHistory: HTMLElement[] = []
 let selectionIndex = -1
 let selectionSyncScheduled = false
+const MAX_FALLBACK_HISTORY = 100
 
 function normalizedLabel(element: Element): string {
   return `${element.getAttribute('aria-label') ?? ''} ${element.textContent ?? ''}`.trim()
@@ -23,7 +24,7 @@ function clickMatching(patterns: RegExp[]): boolean {
 }
 
 function sessionRows(): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>('[role="treeitem"][aria-selected]')]
+  return [...document.querySelectorAll<HTMLElement>('.dcu-wb-session[role="treeitem"][aria-selected]')]
     .filter(element => element.offsetParent !== null && normalizedLabel(element) !== '')
 }
 
@@ -33,10 +34,16 @@ function currentSessionRow(): HTMLElement | undefined {
 }
 
 function trackSelection(): void {
+  if (clientBridgeRegistrations > 0) return
+  const active = selectionHistory[selectionIndex]
+  selectionHistory = selectionHistory.filter(element => element.isConnected)
+  selectionIndex = active === undefined ? selectionHistory.length - 1 : selectionHistory.indexOf(active)
+  if (selectionIndex < 0) selectionIndex = selectionHistory.length - 1
   const current = currentSessionRow()
   if (current === undefined || selectionHistory[selectionIndex] === current) return
   selectionHistory = selectionHistory.slice(0, selectionIndex + 1)
   selectionHistory.push(current)
+  if (selectionHistory.length > MAX_FALLBACK_HISTORY) selectionHistory = selectionHistory.slice(-MAX_FALLBACK_HISTORY)
   selectionIndex = selectionHistory.length - 1
   reportFallbackState()
 }
@@ -51,7 +58,7 @@ function scheduleTrackSelection(): void {
 }
 
 function reportFallbackState(): void {
-  if (clientBridgeReady) return
+  if (clientBridgeRegistrations > 0) return
   const rows = sessionRows()
   const current = currentSessionRow()
   const rowIndex = current === undefined ? -1 : rows.indexOf(current)
@@ -89,7 +96,7 @@ function runDomAction(id: string): void {
 }
 
 ipcRenderer.on(IPC.dshAction, (_event, id: string) => {
-  setTimeout(() => { if (!clientBridgeReady) runDomAction(id) }, 60)
+  setTimeout(() => { if (clientBridgeRegistrations === 0) runDomAction(id) }, 60)
 })
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -101,11 +108,17 @@ window.addEventListener('DOMContentLoaded', () => {
 contextBridge.exposeInMainWorld('dshDesktopShell', {
   onAction: (listener: (id: string) => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, id: string) => listener(id)
+    clientBridgeRegistrations += 1
+    selectionHistory = []
+    selectionIndex = -1
     ipcRenderer.on(IPC.dshAction, wrapped)
-    return () => ipcRenderer.removeListener(IPC.dshAction, wrapped)
+    return () => {
+      ipcRenderer.removeListener(IPC.dshAction, wrapped)
+      clientBridgeRegistrations = Math.max(0, clientBridgeRegistrations - 1)
+      if (clientBridgeRegistrations === 0) scheduleTrackSelection()
+    }
   },
   reportState: (state: unknown) => {
-    clientBridgeReady = true
     ipcRenderer.send(IPC.dshState, state)
   },
 })

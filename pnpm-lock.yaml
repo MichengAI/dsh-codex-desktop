@@ -18,9 +18,6 @@ importers:
       '@electron/notarize':
         specifier: 2.5.0
         version: 2.5.0(supports-color@7.1.0)
-      '@fortawesome/fontawesome-free':
-        specifier: 7.3.1
-        version: 7.3.1
       '@types/node':
         specifier: 26.2.0
         version: 26.2.0
@@ -84,10 +81,6 @@ packages:
     resolution: {integrity: sha512-dfZeox66AvdPtb2lD8OsIIQh12Tp0GNCRUDfBHIKGpbmopZto2/A8nSpYYLoedPIHpqkeblZ/k8OV0Gy7PYuyQ==}
     engines: {node: '>=14.14'}
     hasBin: true
-
-  '@fortawesome/fontawesome-free@7.3.1':
-    resolution: {integrity: sha512-wmglKKPDIkgV3aWlZzWECCPoGIkYCulzBwxG9+w7rc5BGapZ6cPMpoPOT8k36J0Ni7PPX6c/rsoMWfS4d1MUMg==}
-    engines: {node: '>=6'}
 
   '@isaacs/fs-minipass@4.0.1':
     resolution: {integrity: sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==}
@@ -1227,8 +1220,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
     optional: true
-
-  '@fortawesome/fontawesome-free@7.3.1': {}
 
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
