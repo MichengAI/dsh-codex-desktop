@@ -8,7 +8,7 @@
 
 **下载安装，打开就是可用的本地 AI 工作台。**
 
-[English](README.md) · [下载](https://github.com/MichengAI/dsh-codex-desktop/releases) · [反馈问题](https://github.com/MichengAI/dsh-codex-desktop/issues)
+[English](README.md) · [下载](https://github.com/MichengAI/dsh-codex-desktop/releases) · [更新日志](CHANGELOG.zh-CN.md) · [反馈问题](https://github.com/MichengAI/dsh-codex-desktop/issues)
 
 [![发布版本](https://img.shields.io/github/v/release/MichengAI/dsh-codex-desktop?display_name=tag&label=release)](https://github.com/MichengAI/dsh-codex-desktop/releases)
 [![许可证](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)

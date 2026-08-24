@@ -8,7 +8,7 @@
 
 **Download once. Open a ready-to-use local AI workspace.**
 
-[简体中文](README.zh-CN.md) · [Download](https://github.com/MichengAI/dsh-codex-desktop/releases) · [Report an issue](https://github.com/MichengAI/dsh-codex-desktop/issues)
+[简体中文](README.zh-CN.md) · [Download](https://github.com/MichengAI/dsh-codex-desktop/releases) · [Changelog](CHANGELOG.md) · [Report an issue](https://github.com/MichengAI/dsh-codex-desktop/issues)
 
 [![Release](https://img.shields.io/github/v/release/MichengAI/dsh-codex-desktop?display_name=tag&label=release)](https://github.com/MichengAI/dsh-codex-desktop/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
