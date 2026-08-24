@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { PassThrough } from 'node:stream'
 
 import { APPLY_PLUGIN_UPDATES_IPC, OFFICIAL_DSH_VERSION, isDeepSeekOfficialPackage, isOfficialDshPackage } from './bundled-plugins.js'
+import { desktopBridgeClientBundle } from './desktop-bridge-client-source.js'
 import { finalizeProfileBundlesAfterInstall, officialRuntimeInstallArgs, writeOfficialRuntimeManifest } from './plugin-seed.js'
 import { terminateProcessTree } from './process-control.js'
 
@@ -250,6 +251,7 @@ import { join } from 'node:path'
 
 export const DESKTOP_BRIDGE_FILES = [
   'desktop-bridge.mjs',
+  'desktop-bridge-client-source.js',
   'atomic-file.js',
   'desktop-host.js',
   'bundled-plugins.js',
@@ -277,12 +279,47 @@ export function installDesktopBridge(profileDir: string, sourceDir: string): voi
     if (!existsSync(from)) throw new Error(`桌面桥接文件缺失：${from}`)
     copyFileSync(from, join(destDir, file))
   }
+  writeFileSync(join(destDir, 'desktop-bridge-client.js'), desktopBridgeClientBundle(), 'utf8')
   writeFileSync(join(destDir, 'package.json'), `${JSON.stringify({
     name: DESKTOP_BRIDGE_PACKAGE,
+    version: '0.0.0-desktop',
     type: 'module',
     main: 'desktop-bridge.mjs',
+    exports: {
+      '.': './desktop-bridge.mjs',
+      './client': './desktop-bridge-client.js',
+      './package.json': './package.json',
+    },
+    dsh: {
+      bundle: { patch: './cordis.patch.yml' },
+      client: {
+        inject: [
+          '@deepseek-ai/dsh-client-runtime',
+          '@deepseek-ai/dsh-client-ui-conversation',
+          '@deepseek-ai/dsh-client-ui-layout',
+          '@deepseek-ai/dsh-client-ui-workspace',
+        ],
+        platform: 'web',
+      },
+    },
   }, undefined, 2)}\n`, 'utf8')
+  // The profile patch owns the host insertion; this empty bundle patch makes
+  // the internal package a first-class profile bundle so DSH discovers its
+  // client half as well.
+  writeFileSync(join(destDir, 'cordis.patch.yml'), '[]\n', 'utf8')
+  ensureDesktopBridgeBundle(profileDir)
   ensureDesktopBridgePatch(profileDir)
+}
+
+export function ensureDesktopBridgeBundle(profileDir: string): void {
+  const manifestPath = join(profileDir, 'package.json')
+  const manifest = existsSync(manifestPath)
+    ? JSON.parse(readFileSync(manifestPath, 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }
+    : {}
+  const bundles = manifest.dsh?.profile?.bundles ?? []
+  if (bundles.includes(DESKTOP_BRIDGE_PACKAGE)) return
+  manifest.dsh = { ...manifest.dsh, profile: { ...manifest.dsh?.profile, bundles: [...bundles, DESKTOP_BRIDGE_PACKAGE] } }
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, undefined, 2)}\n`, 'utf8')
 }
 
 export function mergeDesktopBridgePatch(current: string): string {

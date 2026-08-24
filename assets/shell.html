@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DSH Codex Desktop</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,"Segoe UI","Microsoft YaHei UI",sans-serif;background:#171918;color:#d7d9d8}
+    *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}
+    .bar{-webkit-app-region:drag;height:40px;display:flex;align-items:center;gap:4px;padding:0 154px 0 6px;background:#1c1f1e;border-bottom:1px solid #292c2b;user-select:none}
+    button{-webkit-app-region:no-drag;font:inherit;color:inherit;border:0;background:transparent}
+    .nav{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;opacity:.82;transition:background .12s,opacity .12s}
+    .nav:hover:not(:disabled){background:#2b2e2d;opacity:1}.nav:disabled{opacity:.28}
+    .nav img{width:14px;height:14px;filter:invert(91%) sepia(5%) saturate(80%) hue-rotate(80deg)}
+    .divider{width:1px;height:18px;background:#363938;margin:0 3px}
+    .menu{height:30px;padding:0 10px;border-radius:7px;font-size:14px;color:#8f9492}
+    .menu:hover,.menu[aria-expanded="true"]{background:#2b2e2d;color:#c9cdcb}
+    .status{margin-left:auto;font-size:12px;color:#8f9592;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+    @media(max-width:720px){.status{display:none}.bar{padding-right:144px}.menu{padding:0 7px}}
+  </style>
+</head>
+<body>
+  <header class="bar" aria-label="DSH Codex Desktop">
+    <button id="back" class="nav" data-action="back" title="返回" aria-label="返回"><img src="shell-icons/arrow-left.svg" alt=""></button>
+    <button id="forward" class="nav" data-action="forward" title="前进" aria-label="前进"><img src="shell-icons/arrow-right.svg" alt=""></button>
+    <span class="divider" aria-hidden="true"></span>
+    <nav id="menus" aria-label="应用菜单"></nav>
+    <span id="status" class="status" role="status"></span>
+  </header>
+  <script>
+    const api=window.dshShell;let bootstrap;let state;let openMenu;
+    const menuHost=document.getElementById('menus');const status=document.getElementById('status');
+    function applyState(next){state=next;document.getElementById('back').disabled=!next.canBack;document.getElementById('forward').disabled=!next.canForward;status.textContent=next.reloading?(bootstrap.locale.startsWith('zh')?'正在重新加载…':'Reloading…'):''}
+    async function showMenu(button,menu){document.querySelectorAll('.menu').forEach(x=>x.setAttribute('aria-expanded','false'));button.setAttribute('aria-expanded','true');openMenu=button;const rect=button.getBoundingClientRect();await api.popupMenu({menu,x:Math.round(rect.left),y:Math.round(rect.bottom)});button.setAttribute('aria-expanded','false');if(openMenu===button)openMenu=undefined}
+    document.querySelectorAll('[data-action]').forEach(button=>button.addEventListener('click',()=>api.action(button.dataset.action)));
+    api.getBootstrap().then(value=>{bootstrap=value;document.documentElement.lang=value.locale;for(const menu of value.menus){const button=document.createElement('button');button.className='menu';button.textContent=menu.label;button.setAttribute('aria-haspopup','menu');button.setAttribute('aria-expanded','false');button.addEventListener('click',()=>showMenu(button,menu.id));menuHost.append(button)}applyState(value.state)});
+    api.onState(applyState);
+  </script>
+</body>
+</html>

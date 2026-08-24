@@ -31,7 +31,13 @@ export interface StartDshOptions {
 }
 
 /** 桌面窗口已经承载 Web UI，禁止官方 dsh-web-app 再拉起系统浏览器。 */
-export const DSH_WEB_LAUNCH_ARGS = ['web', '--port', '0', '--no-open'] as const
+export const DSH_WEB_LAUNCH_ARGS = ['web', '--port', resolveDesktopWebPort(process.env.DSH_DESKTOP_WEB_PORT), '--no-open'] as const
+
+export function resolveDesktopWebPort(value: string | undefined): string {
+  if (value === undefined || !/^\d+$/.test(value)) return '0'
+  const port = Number(value)
+  return Number.isSafeInteger(port) && port >= 1 && port <= 65_535 ? String(port) : '0'
+}
 
 /** 启动 DSH Web，并在收到本机就绪地址后返回。 */
 export function startDsh(options: StartDshOptions): Promise<DshServer> {

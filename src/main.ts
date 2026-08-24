@@ -1,10 +1,11 @@
-import { app, BrowserWindow, Menu, Tray, dialog, nativeImage, net, protocol, session, shell } from 'electron'
+import { app, BrowserWindow, Menu, Tray, WebContentsView, dialog, ipcMain, nativeImage, net, protocol, session, shell, type Input, type MenuItemConstructorOptions } from 'electron'
 import { existsSync } from 'node:fs'
 import { writeFile as writeTextFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { DESKTOP_APP_NAME, DESKTOP_APP_USER_MODEL_ID, resolveDesktopRuntimeDir, resolveDesktopUserDataDir } from './app-identity.js'
+import { OFFICIAL_DSH_VERSION } from './bundled-plugins.js'
 import { resolveAppIconPath, resolveCompactIconCrop, resolveRasterIconPath, TRAY_ICON_SIZE } from './app-icon.js'
 import { WINDOW_ICON_PIXEL_SIZES, isLoopbackFaviconRequest } from './window-icon.js'
 import { quitDesktopApp, shouldHideInsteadOfClose } from './app-lifecycle.js'
@@ -17,7 +18,10 @@ import { resolveDshBootstrap, resolveDshRuntime, resolveNodeExecutable } from '.
 import { extractPackagedRuntimes } from './extract-runtime.js'
 import { resolvePrebuiltOfficialRuntime } from './runtime-prebuilt.js'
 import { applyInitialWindowState } from './window-state.js'
+import { WindowNavigationCoordinator } from './window-navigation.js'
 import { installDesktopBridge, resolveDesktopBridgeDir } from './desktop-host.js'
+import { localizedShellActions, localizedShellMenus, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId } from './shell-actions.js'
+import { SHELL_BAR_HEIGHT, SHELL_IPC, type DshNavigationState, type DshShellActionId, type ShellBootstrap, type ShellMenuPopupRequest, type ShellState } from './shell-contract.js'
 import { watchProfileActivation } from './profile-watch.js'
 import updater from 'electron-updater'
 import { buildDesktopTrayItems, desktopUpdateChannel, desktopUpdatePrompt, formatDesktopReleaseNotes, publicDesktopUpdateError, type DesktopUpdateStatus } from './desktop-updater.js'
@@ -33,6 +37,9 @@ const dshProcessModule = await import(app.isPackaged
 const { isApplyPluginUpdatesIpc, startDsh } = dshProcessModule
 
 let mainWindow: BrowserWindow | undefined
+let dshView: WebContentsView | undefined
+let shortcutsWindow: BrowserWindow | undefined
+let aboutWindow: BrowserWindow | undefined
 let server: DshServer | undefined
 let tray: Tray | undefined
 let isQuitting = false
@@ -43,6 +50,9 @@ let profileWatcher: { stop: () => void; sync: () => void } | undefined
 let updateStatus: DesktopUpdateStatus = { kind: 'idle' }
 const { autoUpdater } = updater
 let isReportingUnexpectedError = false
+const windowNavigation = new WindowNavigationCoordinator()
+let dshNavigationState: DshNavigationState = { canBack: false, canForward: false, canNextChat: false, canPreviousChat: false }
+const shellActionIds = new Set<string>(SHELL_ACTIONS.map(action => action.id))
 
 process.on('uncaughtException', handleUnexpectedMainError)
 process.on('unhandledRejection', handleUnexpectedMainError)
@@ -95,6 +105,7 @@ async function shutdownDesktop(exit: () => void): Promise<void> {
 
 async function startApplication(): Promise<void> {
   await app.whenReady()
+  installShellIpc()
   installDesktopFaviconReplacement()
   Menu.setApplicationMenu(null)
   configureDesktopUpdater()
@@ -182,7 +193,7 @@ async function startApplication(): Promise<void> {
       if (isQuitting || isRecycling) return
       runMainTask(recycleDshForPluginUpdate())
     }, { onError: handleUnexpectedMainError })
-    createMainWindow(server.url)
+    await createMainWindow(server.url)
   } catch (error) {
     await reportStartupFailure(error)
   }
@@ -243,23 +254,30 @@ function installDesktopFaviconReplacement(): void {
 
 async function showStartupWindow(message: string): Promise<void> {
   const window = mainWindow ??= createWindow()
+  const view = requireDshView()
   const html = resolveStartupHtml()
-  window.webContents.stop()
   if (html !== undefined) {
-    await window.loadFile(html)
-    await window.webContents.executeJavaScript('document.getElementById("msg").textContent = ' + JSON.stringify(message))
+    await windowNavigation.navigate(
+      view,
+      () => view.webContents.loadFile(html),
+      () => view.webContents.executeJavaScript('document.getElementById("msg").textContent = ' + JSON.stringify(message)),
+    )
     return
   }
   const escaped = message.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ?? character)
-  await window.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<main style="font-family:sans-serif;padding:48px"><h1>DSH Codex Desktop</h1><p>' + escaped + '</p></main>'))
+  await windowNavigation.navigate(
+    view,
+    () => view.webContents.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<main style="font-family:sans-serif;padding:48px"><h1>DSH Codex Desktop</h1><p>' + escaped + '</p></main>')),
+  )
 }
 
 let allowedOrigin = ''
 
-function createMainWindow(serverUrl: string): void {
+async function createMainWindow(serverUrl: string): Promise<void> {
   allowedOrigin = new URL(serverUrl).origin
   mainWindow ??= createWindow()
-  runMainTask(mainWindow.loadURL(serverUrl))
+  const view = requireDshView()
+  await windowNavigation.navigate(view, () => view.webContents.loadURL(serverUrl))
 }
 
 async function reportStartupFailure(error: unknown): Promise<void> {
@@ -267,7 +285,11 @@ async function reportStartupFailure(error: unknown): Promise<void> {
   const message = error instanceof Error ? error.message : '未知启动错误。'
   await writeTextFile(logPath, message + '\n', 'utf8').catch(() => undefined)
   const short = message.split(/\r?\n/)[0]?.slice(0, 240) ?? '未知启动错误。'
-  await showStartupWindow('启动失败：' + short + '\n日志：' + logPath)
+  try {
+    await showStartupWindow('启动失败：' + short + '\n日志：' + logPath)
+  } catch (displayError) {
+    console.error('显示启动错误页面失败。', displayError)
+  }
 }
 
 function handleUnexpectedMainError(error: unknown): void {
@@ -294,8 +316,9 @@ async function recycleDshForPluginUpdate(): Promise<void> {
   const startOptions = lastStartOptions
   const seedOptions = lastSeedOptions
   isRecycling = true
-  await showStartupWindow('加载中')
+  broadcastShellState()
   try {
+    await showStartupWindow('加载中')
     const current = server
     server = undefined
     await current?.stop()
@@ -311,12 +334,13 @@ async function recycleDshForPluginUpdate(): Promise<void> {
       }),
     })
     server = started.result
-    createMainWindow(server.url)
+    await createMainWindow(server.url)
   } catch (error) {
     await reportStartupFailure(error)
   } finally {
     profileWatcher?.sync()
     isRecycling = false
+    broadcastShellState()
   }
 }
 
@@ -342,6 +366,25 @@ function resolveWindowIconPath(): string | undefined {
   })
 }
 
+function resolveShellAsset(name: 'shell.html' | 'shortcuts.html' | 'about.html'): string {
+  const packaged = join(process.resourcesPath, name)
+  return existsSync(packaged) ? packaged : join(app.getAppPath(), 'assets', name)
+}
+
+function resolvePreload(name: 'shell-preload.cjs' | 'dsh-view-preload.cjs'): string {
+  return join(app.getAppPath(), 'dist', 'src', name)
+}
+
+function requireDshView(): WebContentsView {
+  if (dshView === undefined) throw new Error('DSH 内容视图尚未创建。')
+  return dshView
+}
+
+function layoutDshView(window: BrowserWindow): void {
+  const bounds = window.getContentBounds()
+  dshView?.setBounds({ x: 0, y: SHELL_BAR_HEIGHT, width: bounds.width, height: Math.max(0, bounds.height - SHELL_BAR_HEIGHT) })
+}
+
 function createWindow(): BrowserWindow {
   const windowIcon = resolveWindowIconImage()
   const window = new BrowserWindow({
@@ -350,37 +393,264 @@ function createWindow(): BrowserWindow {
     minWidth: 960,
     minHeight: 640,
     show: true,
+    title: DESKTOP_APP_NAME,
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    ...(process.platform === 'darwin' ? {} : { titleBarOverlay: { color: '#1c1f1e', symbolColor: '#d7d9d8', height: SHELL_BAR_HEIGHT } }),
     ...(windowIcon === undefined ? {} : { icon: windowIcon }),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: resolvePreload('shell-preload.cjs'),
       sandbox: true,
     },
   })
-  window.webContents.setWindowOpenHandler(({ url }) => {
+  const view = new WebContentsView({ webPreferences: {
+    contextIsolation: true,
+    nodeIntegration: false,
+    preload: resolvePreload('dsh-view-preload.cjs'),
+    sandbox: true,
+  } })
+  dshView = view
+  window.contentView.addChildView(view)
+  layoutDshView(window)
+  window.on('resize', () => layoutDshView(window))
+  window.on('maximize', () => layoutDshView(window))
+  window.on('unmaximize', () => layoutDshView(window))
+  runMainTask(window.loadFile(resolveShellAsset('shell.html')))
+
+  view.webContents.setWindowOpenHandler(({ url }) => {
     if (isExternalOpenUrl(url, allowedOrigin)) runMainTask(shell.openExternal(url))
     return { action: 'deny' }
   })
-  window.webContents.on('will-navigate', (event, url) => {
+  view.webContents.on('will-navigate', (event, url) => {
+    if (windowNavigation.isNavigating()) {
+      event.preventDefault()
+      return
+    }
     if (isSameOrigin(url, allowedOrigin)) return
     event.preventDefault()
     if (isExternalOpenUrl(url, allowedOrigin)) runMainTask(shell.openExternal(url))
   })
-  window.webContents.on('will-redirect', (event, url) => {
+  view.webContents.on('will-redirect', (event, url) => {
     if (isSameOrigin(url, allowedOrigin)) return
     event.preventDefault()
     if (isExternalOpenUrl(url, allowedOrigin)) runMainTask(shell.openExternal(url))
   })
+  installShortcutHandler(window.webContents)
+  installShortcutHandler(view.webContents)
   applyInitialWindowState(window)
+  window.on('enter-full-screen', broadcastShellState)
+  window.on('leave-full-screen', broadcastShellState)
   window.on('close', event => {
     if (!shouldHideInsteadOfClose(isQuitting)) return
     event.preventDefault()
     window.hide()
   })
   window.on('closed', () => {
-    if (mainWindow === window) mainWindow = undefined
+    if (mainWindow === window) {
+      mainWindow = undefined
+      dshView = undefined
+    }
   })
   return window
+}
+
+function currentShellState(): ShellState {
+  const window = mainWindow
+  const zoomFactor = dshView?.webContents.getZoomFactor() ?? 1
+  return {
+    ...dshNavigationState,
+    fullscreen: window?.isFullScreen() ?? false,
+    reloading: isRecycling,
+    zoomPercent: Math.round(zoomFactor * 100),
+  }
+}
+
+function shellBootstrap(): ShellBootstrap {
+  const locale = app.getLocale()
+  return {
+    actions: localizedShellActions(locale, process.platform),
+    locale,
+    menus: localizedShellMenus(locale),
+    platform: process.platform,
+    runtimeVersion: OFFICIAL_DSH_VERSION,
+    state: currentShellState(),
+    version: app.getVersion(),
+  }
+}
+
+function broadcastShellState(): void {
+  const state = currentShellState()
+  for (const window of [mainWindow, shortcutsWindow, aboutWindow]) {
+    if (window !== undefined && !window.isDestroyed()) window.webContents.send(SHELL_IPC.state, state)
+  }
+}
+
+function installShellIpc(): void {
+  ipcMain.removeHandler(SHELL_IPC.getBootstrap)
+  ipcMain.removeHandler(SHELL_IPC.action)
+  ipcMain.removeHandler(SHELL_IPC.popupMenu)
+  ipcMain.handle(SHELL_IPC.getBootstrap, () => shellBootstrap())
+  ipcMain.handle(SHELL_IPC.action, (_event, id: unknown) => {
+    if (typeof id !== 'string' || !shellActionIds.has(id)) return
+    return executeShellAction(id as ShellActionId)
+  })
+  ipcMain.handle(SHELL_IPC.popupMenu, (_event, request: ShellMenuPopupRequest) => popupShellMenu(request))
+  ipcMain.removeAllListeners(SHELL_IPC.dshState)
+  ipcMain.on(SHELL_IPC.dshState, (_event, state: Partial<DshNavigationState>) => {
+    if (typeof state !== 'object' || state === null) return
+    dshNavigationState = {
+      canBack: state.canBack === true,
+      canForward: state.canForward === true,
+      canNextChat: state.canNextChat === true,
+      canPreviousChat: state.canPreviousChat === true,
+    }
+    broadcastShellState()
+  })
+}
+
+function isActionEnabled(id: ShellActionId): boolean {
+  if (id === 'reload') return !isRecycling && lastStartOptions !== undefined && lastSeedOptions !== undefined
+  if (id === 'back') return dshNavigationState.canBack
+  if (id === 'forward') return dshNavigationState.canForward
+  if (id === 'previous-chat') return dshNavigationState.canPreviousChat
+  if (id === 'next-chat') return dshNavigationState.canNextChat
+  return true
+}
+
+function popupShellMenu(request: ShellMenuPopupRequest): void {
+  if (request === null || typeof request !== 'object') return
+  if (!Number.isFinite(request.x) || !Number.isFinite(request.y)) return
+  const window = mainWindow
+  if (window === undefined || window.isDestroyed()) return
+  const menuId = request.menu as ShellMenuId
+  const actions = localizedShellActions(app.getLocale(), process.platform).filter(action => action.menu === menuId)
+  if (actions.length === 0) return
+  const template: MenuItemConstructorOptions[] = []
+  let group = actions[0]?.group
+  for (const action of actions) {
+    if (group !== undefined && action.group !== group) template.push({ type: 'separator' })
+    group = action.group
+    template.push({
+      label: action.label,
+      enabled: isActionEnabled(action.id),
+      ...(action.acceleratorLabel === undefined ? {} : { accelerator: action.acceleratorLabel }),
+      click: () => { runMainTask(Promise.resolve(executeShellAction(action.id))) },
+    })
+  }
+  Menu.buildFromTemplate(template).popup({
+    window,
+    x: Math.round(request.x),
+    y: Math.round(request.y),
+  })
+}
+
+function installShortcutHandler(contents: Electron.WebContents): void {
+  contents.on('before-input-event', (event, input: Input) => {
+    if (input.type !== 'keyDown') return
+    const id = shellActionForShortcut(input, process.platform)
+    if (id === undefined || !isActionEnabled(id)) return
+    event.preventDefault()
+    const auxiliaryWindow = [shortcutsWindow, aboutWindow].find(window => window?.webContents === contents)
+    if (id === 'close-window' && auxiliaryWindow !== undefined) {
+      auxiliaryWindow.close()
+      return
+    }
+    runMainTask(Promise.resolve(executeShellAction(id)))
+  })
+}
+
+function sendDshAction(id: DshShellActionId): void {
+  if (dshView !== undefined && !dshView.webContents.isDestroyed()) dshView.webContents.send(SHELL_IPC.dshAction, id)
+}
+
+async function executeShellAction(id: ShellActionId): Promise<void> {
+  if (!isActionEnabled(id)) return
+  const contents = dshView?.webContents
+  if (id === 'new-chat' || id === 'open-folder' || id === 'settings' || id === 'toggle-sidebar' || id === 'find' || id === 'previous-chat' || id === 'next-chat' || id === 'back' || id === 'forward') {
+    sendDshAction(id)
+    return
+  }
+  if (id === 'close-window') { mainWindow?.hide(); return }
+  if (id === 'quit') { await requestQuit(); return }
+  if (contents === undefined) return
+  if (id === 'undo') contents.undo()
+  else if (id === 'redo') contents.redo()
+  else if (id === 'cut') contents.cut()
+  else if (id === 'copy') contents.copy()
+  else if (id === 'paste') contents.paste()
+  else if (id === 'delete') contents.delete()
+  else if (id === 'select-all') contents.selectAll()
+  else if (id === 'zoom-in') contents.setZoomFactor(Math.min(2, contents.getZoomFactor() + 0.1))
+  else if (id === 'zoom-out') contents.setZoomFactor(Math.max(0.5, contents.getZoomFactor() - 0.1))
+  else if (id === 'zoom-reset') contents.setZoomFactor(1)
+  else if (id === 'toggle-fullscreen') mainWindow?.setFullScreen(!(mainWindow?.isFullScreen() ?? false))
+  else if (id === 'show-shortcuts') showShortcutsWindow()
+  else if (id === 'reload') await recycleDshForPluginUpdate()
+  else if (id === 'check-updates') await checkDesktopUpdate()
+  else if (id === 'whats-new') await shell.openExternal('https://github.com/MichengAI/dsh-codex-desktop/releases')
+  else if (id === 'feedback') await shell.openExternal('https://github.com/MichengAI/dsh-codex-desktop/issues/new')
+  else if (id === 'about') showAboutWindow()
+  broadcastShellState()
+}
+
+function showShortcutsWindow(): void {
+  if (shortcutsWindow !== undefined && !shortcutsWindow.isDestroyed()) {
+    shortcutsWindow.show(); shortcutsWindow.focus(); return
+  }
+  const window = new BrowserWindow({
+    parent: mainWindow,
+    modal: true,
+    width: 620,
+    height: 650,
+    minWidth: 520,
+    minHeight: 480,
+    title: isChineseLocaleSafe() ? '键盘快捷键' : 'Keyboard Shortcuts',
+    autoHideMenuBar: true,
+    backgroundColor: '#262827',
+    webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
+  })
+  shortcutsWindow = window
+  window.on('closed', () => { if (shortcutsWindow === window) shortcutsWindow = undefined })
+  installShortcutHandler(window.webContents)
+  runMainTask(window.loadFile(resolveShellAsset('shortcuts.html')))
+}
+
+function showAboutWindow(): void {
+  if (aboutWindow !== undefined && !aboutWindow.isDestroyed()) {
+    aboutWindow.show()
+    aboutWindow.focus()
+    return
+  }
+  const icon = resolveWindowIconImage()
+  const window = new BrowserWindow({
+    parent: mainWindow,
+    modal: true,
+    width: 560,
+    height: 680,
+    minWidth: 560,
+    minHeight: 680,
+    maxWidth: 560,
+    maxHeight: 680,
+    frame: false,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    title: isChineseLocaleSafe() ? `关于 ${DESKTOP_APP_NAME}` : `About ${DESKTOP_APP_NAME}`,
+    autoHideMenuBar: true,
+    backgroundColor: '#202322',
+    ...(icon === undefined ? {} : { icon }),
+    webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
+  })
+  aboutWindow = window
+  window.on('closed', () => { if (aboutWindow === window) aboutWindow = undefined })
+  installShortcutHandler(window.webContents)
+  runMainTask(window.loadFile(resolveShellAsset('about.html')))
+}
+
+function isChineseLocaleSafe(): boolean {
+  return app.getLocale().toLowerCase().startsWith('zh')
 }
 
 function configureDesktopUpdater(): void {

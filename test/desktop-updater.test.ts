@@ -7,10 +7,12 @@ import { buildDesktopTrayItems, DESKTOP_UPDATE_WARNING, desktopUpdateChannel, de
 test('开发态和空闲态都提供手动检查，不自动下载', () => {
   const idle = buildDesktopTrayItems({ status: { kind: 'idle' }, currentVersion: '0.1.4', packaged: true })
   assert.equal(idle.some(item => item.id === 'check' && item.enabled), true)
+  assert.equal(idle.some(item => item.id === 'check' && item.label === '检查更新…'), true)
   assert.equal(idle.some(item => item.id === 'download'), false)
-  assert.equal(idle.some(item => item.id === 'reload' && item.label === '重新加载 DSH'), true)
+  assert.equal(idle.some(item => item.id === 'reload' && item.label === '重新加载'), true)
   const dev = buildDesktopTrayItems({ status: { kind: 'idle' }, currentVersion: '0.1.4', packaged: false })
   assert.equal(dev.some(item => item.id === 'check' && item.enabled), true)
+  assert.equal(dev.some(item => item.id === 'check' && item.label === '检查更新…'), true)
   assert.equal(dev.some(item => item.id === 'reload' && item.enabled), true)
 })
 

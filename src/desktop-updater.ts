@@ -77,13 +77,13 @@ export function buildDesktopTrayItems(input: {
 }): DesktopTrayItem[] {
   const items: DesktopTrayItem[] = [
     { id: 'show', label: '显示窗口', enabled: true, type: 'normal' },
-    { id: 'reload', label: '重新加载 DSH', enabled: true, type: 'normal' },
+    { id: 'reload', label: '重新加载', enabled: true, type: 'normal' },
     { id: 'sep-1', label: '', enabled: false, type: 'separator' },
     { id: 'version', label: `当前版本 ${input.currentVersion}`, enabled: false, type: 'normal' },
   ]
 
   if (!input.packaged) {
-    items.push({ id: 'check', label: '检查桌面端更新', enabled: true, type: 'normal' })
+    items.push({ id: 'check', label: '检查更新…', enabled: true, type: 'normal' })
   } else if (input.status.kind === 'checking') {
     items.push({ id: 'check', label: '正在检查更新…', enabled: false, type: 'normal' })
   } else if (input.status.kind === 'downloading') {
@@ -93,7 +93,7 @@ export function buildDesktopTrayItems(input: {
   } else if (input.status.kind === 'ready') {
     items.push({ id: 'install', label: `安装并重启 ${input.status.version}`, enabled: true, type: 'normal' })
   } else {
-    items.push({ id: 'check', label: '检查桌面端更新', enabled: true, type: 'normal' })
+    items.push({ id: 'check', label: '检查更新…', enabled: true, type: 'normal' })
   }
 
   items.push({ id: 'sep-2', label: '', enabled: false, type: 'separator' })

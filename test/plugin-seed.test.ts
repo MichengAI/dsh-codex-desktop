@@ -354,6 +354,18 @@ test('启动前会摘掉磁盘上已经不存在的社区 bundle', async () => {
   }
 })
 
+test('桌面内部 bridge bundle 不依赖 profile dependencies 仍会保留', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-keep-desktop-bridge-'))
+  try {
+    await mkdir(join(root, 'node_modules', 'dsh-desktop-bridge'), { recursive: true })
+    await writeFile(join(root, 'node_modules', 'dsh-desktop-bridge', 'package.json'), '{}', 'utf8')
+    await writeFile(join(root, 'package.json'), JSON.stringify({ dsh: { profile: { bundles: ['dsh-desktop-bridge'] } } }), 'utf8')
+    assert.deepEqual(await pruneMissingProfileBundles(root), [])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 
 test('先认磁盘上的包，再更新 bundle 列表', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-finalize-bundle-'))

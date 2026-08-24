@@ -13,6 +13,7 @@
     "scripts/**/*.ts",
     "scripts/**/*.mts",
     "src/**/*.mts",
+    "src/**/*.cts",
     "src/**/*.ts",
     "test/**/*.ts"
   ]

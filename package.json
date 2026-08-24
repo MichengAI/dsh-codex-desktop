@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@electron/notarize": "2.5.0",
+    "@fortawesome/fontawesome-free": "7.3.1",
     "@types/node": "26.2.0",
     "electron": "43.4.1",
     "electron-builder": "26.15.3",
@@ -109,10 +110,30 @@
         "to": "startup.html"
       },
       {
+        "from": "assets/shell.html",
+        "to": "shell.html"
+      },
+      {
+        "from": "assets/shortcuts.html",
+        "to": "shortcuts.html"
+      },
+      {
+        "from": "assets/about.html",
+        "to": "about.html"
+      },
+      {
+        "from": "assets/shell-icons",
+        "to": "shell-icons",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "dist/src",
         "to": "desktop-bridge",
         "filter": [
           "desktop-bridge.mjs",
+          "desktop-bridge-client-source.js",
           "desktop-host.js",
           "atomic-file.js",
           "bundled-plugins.js",

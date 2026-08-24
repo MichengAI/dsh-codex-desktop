@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>键盘快捷键</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,"Segoe UI","Microsoft YaHei UI",sans-serif;background:#262827;color:#f1f2f1}
+    *{box-sizing:border-box}html,body{height:100%;margin:0}body{overflow:hidden}
+    main{height:100%;display:flex;flex-direction:column;padding:22px 24px 18px}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}h1{font-size:20px;margin:0;font-weight:650}
+    .close{width:30px;height:30px;border:0;border-radius:7px;background:transparent;display:grid;place-items:center}.close:hover{background:#393c3b}.close img{width:14px;filter:invert(90%)}
+    .search{height:38px;border:1px solid #4c504e;border-radius:20px;display:flex;align-items:center;gap:9px;padding:0 14px;margin-bottom:13px;background:#2c2e2d}
+    .search:focus-within{border-color:#858b88;box-shadow:0 0 0 2px #858b8830}.search img{width:14px;filter:invert(72%)}input{width:100%;border:0;outline:0;background:transparent;color:#f3f4f3;font:inherit}input::placeholder{color:#909592}
+    #list{overflow:auto;padding-right:4px;scrollbar-color:#565b58 transparent}.section{margin-top:14px}.section:first-child{margin-top:4px}h2{font-size:14px;margin:0 0 8px;color:#dadcdb}
+    .row{min-height:38px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:7px 0;color:#c9ccca;font-size:14px}.keys{display:flex;gap:5px;flex:none}kbd{font:12px/1.7 "Segoe UI",sans-serif;color:#d9dcda;background:#3b3e3d;border:1px solid #4a4e4c;border-radius:5px;padding:0 7px;box-shadow:0 1px 0 #171918}
+    .empty{padding:42px 0;text-align:center;color:#939895}
+  </style>
+</head>
+<body><main><header><h1 id="title">键盘快捷键</h1><button class="close" data-action="close-window" aria-label="关闭"><img src="shell-icons/xmark.svg" alt=""></button></header><label class="search"><img src="shell-icons/magnifying-glass.svg" alt=""><input id="query" type="search" autocomplete="off" placeholder="搜索快捷键"></label><div id="list"></div></main>
+<script>
+  const api=window.dshShell;let data;const list=document.getElementById('list');const query=document.getElementById('query');
+  document.querySelector('[data-action]').addEventListener('click',()=>window.close());
+  const parts=value=>value.replace('Cmd','⌘').replace('Ctrl','Ctrl').split('+');
+  function render(){const q=query.value.trim().toLowerCase();const matched=data.actions.filter(a=>a.acceleratorLabel&&(a.label+' '+a.keywords+' '+a.acceleratorLabel).toLowerCase().includes(q));list.replaceChildren();for(const menu of data.menus){const rows=matched.filter(a=>a.menu===menu.id);if(!rows.length)continue;const section=document.createElement('section');section.className='section';section.innerHTML='<h2></h2>';section.querySelector('h2').textContent=menu.label;for(const action of rows){const row=document.createElement('div');row.className='row';const label=document.createElement('span');label.textContent=action.label;const keys=document.createElement('span');keys.className='keys';for(const key of parts(action.acceleratorLabel)){const kbd=document.createElement('kbd');kbd.textContent=key;keys.append(kbd)}row.append(label,keys);section.append(row)}list.append(section)}if(!list.childElementCount){const empty=document.createElement('div');empty.className='empty';empty.textContent=data.locale.startsWith('zh')?'未找到匹配的快捷键':'No matching shortcuts';list.append(empty)}}
+  query.addEventListener('input',render);api.getBootstrap().then(value=>{data=value;const zh=value.locale.startsWith('zh');document.documentElement.lang=value.locale;document.getElementById('title').textContent=zh?'键盘快捷键':'Keyboard Shortcuts';query.placeholder=zh?'搜索快捷键':'Search shortcuts';render();query.focus()});
+</script></body></html>

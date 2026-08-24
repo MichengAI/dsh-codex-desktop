@@ -4,7 +4,7 @@ import test from 'node:test'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 
-import { APPLY_PLUGIN_UPDATES_IPC, DSH_WEB_LAUNCH_ARGS, isApplyPluginUpdatesIpc, startDsh, type DshServer } from '../src/dsh-process.js'
+import { APPLY_PLUGIN_UPDATES_IPC, DSH_WEB_LAUNCH_ARGS, isApplyPluginUpdatesIpc, resolveDesktopWebPort, startDsh, type DshServer } from '../src/dsh-process.js'
 
 const projectRoot = resolve(import.meta.dirname, '..', '..')
 const fixtureEntry = join(projectRoot, 'test', 'fixtures', 'dsh-fixture.mjs')
@@ -68,4 +68,11 @@ test('识别插件热更新 IPC', () => {
 
 test('桌面启动 DSH 时必须禁止打开系统浏览器', () => {
   assert.deepEqual([...DSH_WEB_LAUNCH_ARGS], ['web', '--port', '0', '--no-open'])
+})
+
+test('本地联调可以复用已有 DSH Web origin', () => {
+  assert.equal(resolveDesktopWebPort('13988'), '13988')
+  assert.equal(resolveDesktopWebPort('0'), '0')
+  assert.equal(resolveDesktopWebPort('65536'), '0')
+  assert.equal(resolveDesktopWebPort('not-a-port'), '0')
 })

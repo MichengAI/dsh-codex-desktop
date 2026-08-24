@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>关于 DSH Codex Desktop</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,"Segoe UI","Microsoft YaHei UI",sans-serif;background:#202322;color:#eef0ef}
+    *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#202322}body{border:1px solid #343836}
+    .titlebar{-webkit-app-region:drag;height:36px;display:flex;align-items:center;padding-left:12px;border-bottom:1px solid #303432;color:#c8cdca;font-size:12px;user-select:none}.titlebar-title{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.titlebar-close{-webkit-app-region:no-drag;margin-left:auto;width:46px;height:35px;border:0;background:transparent;display:grid;place-items:center;cursor:pointer}.titlebar-close:hover{background:#c42b1c}.titlebar-close img{width:13px;height:13px;filter:invert(90%)}
+    main{max-width:496px;margin:0 auto;padding:20px 0 24px}
+    .hero{display:flex;gap:20px;align-items:center;margin-bottom:20px}.icon{width:76px;height:76px;border-radius:18px;box-shadow:0 8px 24px #0007}
+    h1{font-size:24px;line-height:1.25;margin:0 0 7px;letter-spacing:-.02em}.tagline{margin:0;color:#aeb4b1;font-size:14px;line-height:1.55}
+    .card{background:#292c2b;border:1px solid #3a3e3c;border-radius:14px;padding:16px 20px;margin-top:12px}
+    .meta{display:grid;grid-template-columns:1fr auto;gap:12px 20px;font-size:13px}.meta dt{color:#aeb4b1}.meta dd{margin:0;color:#f3f5f4;font-variant-numeric:tabular-nums}
+    h2{font-size:14px;margin:0 0 10px;color:#f3f5f4}.copy{font-size:13px;color:#c8cdca;line-height:1.7;margin:0}
+    ul{margin:12px 0 0;padding-left:19px;color:#c8cdca;font-size:13px;line-height:1.7}
+    .actions{display:flex;gap:10px;margin-top:16px}.actions button{height:38px;border-radius:9px;padding:0 16px;font:inherit;font-size:13px;color:#eef0ef;border:1px solid #464b48;background:#303432;cursor:pointer}.actions button.primary{background:#e7eae8;color:#171918;border-color:#e7eae8;font-weight:600}.actions button:hover{filter:brightness(1.08)}
+    footer{margin-top:16px;padding-top:14px;border-top:1px solid #353937;color:#898f8c;font-size:12px;line-height:1.55}
+  </style>
+</head>
+<body>
+  <header class="titlebar">
+    <span id="windowTitle" class="titlebar-title">关于 DSH Codex Desktop</span>
+    <button id="close" class="titlebar-close" type="button" aria-label="关闭"><img src="shell-icons/xmark.svg" alt=""></button>
+  </header>
+  <main>
+    <section class="hero">
+      <img class="icon" src="icon.png" alt="DSH Codex Desktop">
+      <div><h1>DSH Codex Desktop</h1><p id="tagline" class="tagline">面向 DeepSeek Harness 的跨平台桌面客户端</p></div>
+    </section>
+    <dl class="card meta">
+      <dt id="desktopLabel">桌面版本</dt><dd id="desktopVersion">—</dd>
+      <dt id="runtimeLabel">DSH 运行时</dt><dd id="runtimeVersion">—</dd>
+      <dt id="platformLabel">运行平台</dt><dd id="platform">—</dd>
+    </dl>
+    <section class="card">
+      <h2 id="aboutTitle">关于这个项目</h2>
+      <p id="aboutCopy" class="copy">把本地项目、会话、插件、自动化与智能体工作流集中在一个原生桌面窗口中，同时保留 DeepSeek Harness 的开放插件能力。</p>
+      <ul id="features"><li>按项目管理聊天和工作区</li><li>原生菜单、托盘、快捷键与安全重载</li><li>由 MichengAI 维护的开源桌面应用</li></ul>
+    </section>
+    <div class="actions">
+      <button id="releases" class="primary" type="button">查看新功能</button>
+      <button id="feedback" type="button">问题反馈</button>
+    </div>
+    <footer id="footer">Apache-2.0 开源许可 · DSH Codex Desktop 不存储你的模型凭据。</footer>
+  </main>
+  <script>
+    const api=window.dshShell;
+    api.getBootstrap().then(value=>{const zh=value.locale.startsWith('zh');document.documentElement.lang=value.locale;document.getElementById('desktopVersion').textContent=`v${value.version}`;document.getElementById('runtimeVersion').textContent=value.runtimeVersion;document.getElementById('platform').textContent=value.platform;if(!zh){document.title='About DSH Codex Desktop';document.getElementById('windowTitle').textContent='About DSH Codex Desktop';document.getElementById('close').setAttribute('aria-label','Close');document.getElementById('tagline').textContent='A cross-platform desktop client for DeepSeek Harness';document.getElementById('desktopLabel').textContent='Desktop version';document.getElementById('runtimeLabel').textContent='DSH runtime';document.getElementById('platformLabel').textContent='Platform';document.getElementById('aboutTitle').textContent='About this project';document.getElementById('aboutCopy').textContent='Bring local projects, chats, plugins, automations, and agent workflows into one native desktop window while preserving the open DeepSeek Harness plugin model.';document.getElementById('features').innerHTML='<li>Project-based chats and workspaces</li><li>Native menus, tray, shortcuts, and safe reload</li><li>Open-source desktop app maintained by MichengAI</li>';document.getElementById('releases').textContent="What's new";document.getElementById('feedback').textContent='Send feedback';document.getElementById('footer').textContent='Apache-2.0 licensed · DSH Codex Desktop does not store your model credentials.'}});
+    document.getElementById('close').addEventListener('click',()=>window.close());
+    document.getElementById('releases').addEventListener('click',()=>api.action('whats-new'));
+    document.getElementById('feedback').addEventListener('click',()=>api.action('feedback'));
+  </script>
+</body>
+</html>

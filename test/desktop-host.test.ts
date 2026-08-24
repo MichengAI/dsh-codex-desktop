@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import { APPLY_PLUGIN_UPDATES_IPC, OFFICIAL_DSH_VERSION } from '../src/bundled-plugins.js'
-import { createDesktopHostServices, DESKTOP_BRIDGE_FILES, ensureDesktopBridgePatch, installDesktopBridge, mergeDesktopBridgePatch, officialPluginUpdateVersion, runBundledPnpm, shouldRecycleAfterPluginArgs, shouldRecycleAfterPluginResult } from '../src/desktop-host.js'
+import { createDesktopHostServices, DESKTOP_BRIDGE_FILES, ensureDesktopBridgeBundle, ensureDesktopBridgePatch, installDesktopBridge, mergeDesktopBridgePatch, officialPluginUpdateVersion, runBundledPnpm, shouldRecycleAfterPluginArgs, shouldRecycleAfterPluginResult } from '../src/desktop-host.js'
 
 async function waitFor(predicate: () => boolean | Promise<boolean>, timeoutMs = 1_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
@@ -307,6 +307,43 @@ test('安装桌面桥接时缺少任一依赖都会立即失败', async () => {
     await mkdir(source, { recursive: true })
     await writeFile(join(source, DESKTOP_BRIDGE_FILES[0]), '', 'utf8')
     assert.throws(() => installDesktopBridge(profile, source), /桌面桥接文件缺失/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('桌面桥接清单同时声明 host 与 client 入口', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-bridge-client-'))
+  const source = join(root, 'source')
+  const profile = join(root, 'profile')
+  try {
+    await mkdir(source, { recursive: true })
+    for (const file of DESKTOP_BRIDGE_FILES) await writeFile(join(source, file), '', 'utf8')
+    installDesktopBridge(profile, source)
+    const manifest = JSON.parse(await readFile(join(profile, 'node_modules', 'dsh-desktop-bridge', 'package.json'), 'utf8')) as {
+      exports?: Record<string, string>
+      dsh?: { bundle?: { patch?: string }; client?: { platform?: string } }
+    }
+    assert.equal(manifest.exports?.['./client'], './desktop-bridge-client.js')
+    assert.equal(manifest.exports?.['./package.json'], './package.json')
+    assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml')
+    assert.equal(manifest.dsh?.client?.platform, 'web')
+    assert.match(await readFile(join(profile, 'node_modules', 'dsh-desktop-bridge', 'desktop-bridge-client.js'), 'utf8'), /window\.__ModuleLoader__\.load/)
+    assert.equal(await readFile(join(profile, 'node_modules', 'dsh-desktop-bridge', 'cordis.patch.yml'), 'utf8'), '[]\n')
+    const profileManifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }
+    assert.equal(profileManifest.dsh?.profile?.bundles?.includes('dsh-desktop-bridge'), true)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('重复登记桌面桥接 bundle 不会产生重复项', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-bridge-bundle-'))
+  try {
+    ensureDesktopBridgeBundle(root)
+    ensureDesktopBridgeBundle(root)
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }
+    assert.deepEqual(manifest.dsh?.profile?.bundles, ['dsh-desktop-bridge'])
   } finally {
     await rm(root, { recursive: true, force: true })
   }
