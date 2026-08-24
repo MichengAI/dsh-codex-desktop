@@ -40,17 +40,6 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 应用沿用当前用户的 DSH 数据目录（Windows 为 `%USERPROFILE%\.dsh`），升级桌面客户端后，已有会话和配置仍会保留。
 
-## 本次升级：最新运行时与模型支持
-
-本次版本同步更新了内置运行时和桌面插件组合：
-
-- **DeepSeek Harness `0.1.1-rc.2`**：包含当前 DeepSeek 提供商适配和模型目录。
-- **DeepSeek-V4-Pro / V4-Flash**：配置 DeepSeek API Key 后可直接在模型选择器中使用。根据 [DeepSeek V4 官方发布说明](https://deepseek.com/news/v4-preview/)，两个模型支持 1M 上下文以及思考、非思考两种模式；复杂任务可选 `deepseek-v4-pro`，追求响应速度可选 `deepseek-v4-flash`。模型参数请以 [DeepSeek API 文档](https://api-docs.deepseek.com/zh-cn/) 为准。
-- **DeepSeek-V4-Flash-Vision-Exp**：内置 DSH 适配器已接入实验性视觉模型 `deepseek-v4-flash-vision-exp`，支持文本和图片输入。分析截图、图片或文档时可直接选择该模型，图片附件会以原生图片输入发送，而不是先转成纯文本。
-- **桌面插件组合**：Codex UI 已升级至 `0.2.66`，`dshmarket` 已升级至 `1.17.1`；IM Connect `0.1.13`、Automation `0.1.5`、Skills Manager `0.1.23`、Archive Manager `0.1.12` 和 Agency Agents `0.1.20` 均保持最新。
-
-> 视觉模型仍属于实验性能力，实际可用性、限额和计费以 DeepSeek API 为准，并可能随官方服务调整；不需要图片理解时，建议优先使用标准 V4 模型。
-
 ## 开箱即用的完整工作台
 
 | 能力 | 你可以直接使用 |

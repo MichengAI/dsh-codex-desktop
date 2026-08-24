@@ -40,17 +40,6 @@ Get the current installer from [GitHub Releases](https://github.com/MichengAI/ds
 
 The application keeps DSH data in your existing user profile (`%USERPROFILE%\.dsh` on Windows), so sessions and settings remain available after application upgrades.
 
-## Latest runtime and model support
-
-This release updates the bundled runtime and the desktop plugin set:
-
-- **DeepSeek Harness `0.1.1-rc.2`** — includes the current DeepSeek provider integration and model catalog.
-- **DeepSeek-V4-Pro / V4-Flash** — available from the model picker after you configure a DeepSeek API key. DeepSeek's V4 release provides 1M context and both thinking and non-thinking modes; select `deepseek-v4-pro` for complex work or `deepseek-v4-flash` for faster responses. See the [official V4 announcement](https://deepseek.com/news/v4-preview/) and [API model reference](https://api-docs.deepseek.com/).
-- **DeepSeek-V4-Flash-Vision-Exp** — the bundled DSH adapter includes the experimental visual model (`deepseek-v4-flash-vision-exp`) with text and image input. Select it when a task needs screenshot, image, or document understanding; image attachments are sent as native image inputs instead of being flattened into text.
-- **Desktop plugins** — Codex UI `0.2.66` and `dshmarket` `1.17.1` are bundled, while IM Connect `0.1.13`, Automation `0.1.5`, Skills Manager `0.1.23`, Archive Manager `0.1.12`, and Agency Agents `0.1.20` remain current.
-
-> Vision is an experimental DeepSeek model. API availability, limits, and billing are controlled by DeepSeek and may change; use the standard V4 models when an image is not required.
-
 ## A complete desktop workbench
 
 | Capability | What you get |
