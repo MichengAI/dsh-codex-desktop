@@ -35,6 +35,14 @@ test('下载完成后托盘改为安装并重启', () => {
   assert.equal(items.some(item => item.id === 'install' && item.label.includes('0.1.5')), true)
 })
 
+test('托盘和更新提示可跟随 DSH 英文 locale', () => {
+  const items = buildDesktopTrayItems({ status: { kind: 'idle' }, currentVersion: '0.1.4', packaged: true, locale: 'en' })
+  assert.equal(items.some(item => item.id === 'show' && item.label === 'Show Window'), true)
+  assert.equal(items.some(item => item.id === 'check' && item.label === 'Check for Updates…'), true)
+  assert.match(desktopUpdatePrompt({ kind: 'ready', version: '0.1.5' }, 'en'), /is ready/)
+  assert.match(publicDesktopUpdateError(new Error('getaddrinfo ENOTFOUND github.com'), 'en'), /Unable to check/)
+})
+
 test('更新说明描述桌面应用更新，不混用官方运行时警告', () => {
   const text = desktopUpdatePrompt({ kind: 'available', version: '0.1.5', releaseNotes: '修复托盘' })
   assert.match(text, /0\.1\.5/)

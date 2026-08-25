@@ -2,7 +2,11 @@ const { contextBridge, ipcRenderer } = require('electron') as typeof import('ele
 
 const IPC = {
   dshAction: 'dsh-shell:dsh-action',
+  dshLocale: 'dsh-shell:dsh-locale',
+  dshOpenSession: 'dsh-shell:dsh-open-session',
+  dshNotificationReply: 'dsh-shell:dsh-notification-reply',
   dshState: 'dsh-shell:dsh-state',
+  dshNotification: 'dsh-shell:dsh-notification',
 } as const
 
 let clientBridgeRegistrations = 0
@@ -70,6 +74,11 @@ function reportFallbackState(): void {
   })
 }
 
+function reportDocumentLocale(): void {
+  const locale = document.documentElement.lang.trim()
+  if (locale !== '') ipcRenderer.send(IPC.dshLocale, locale)
+}
+
 function runDomAction(id: string): void {
   if (id === 'new-chat') clickMatching([/^新建任务$|^new task$/i, /^新聊天$|^new chat$/i])
   else if (id === 'open-folder') clickMatching([/添加工作区|打开文件夹|add workspace|open folder/i])
@@ -103,6 +112,8 @@ window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', scheduleTrackSelection, true)
   new MutationObserver(scheduleTrackSelection).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected', 'class'] })
   reportFallbackState()
+  reportDocumentLocale()
+  new MutationObserver(reportDocumentLocale).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
 })
 
 contextBridge.exposeInMainWorld('dshDesktopShell', {
@@ -118,7 +129,23 @@ contextBridge.exposeInMainWorld('dshDesktopShell', {
       if (clientBridgeRegistrations === 0) scheduleTrackSelection()
     }
   },
+  onOpenSession: (listener: (id: string) => void) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, id: string) => listener(id)
+    ipcRenderer.on(IPC.dshOpenSession, wrapped)
+    return () => ipcRenderer.removeListener(IPC.dshOpenSession, wrapped)
+  },
+  onNotificationReply: (listener: (value: { sessionId: string; text: string }) => void) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, value: { sessionId: string; text: string }) => listener(value)
+    ipcRenderer.on(IPC.dshNotificationReply, wrapped)
+    return () => ipcRenderer.removeListener(IPC.dshNotificationReply, wrapped)
+  },
   reportState: (state: unknown) => {
     ipcRenderer.send(IPC.dshState, state)
+  },
+  reportNotification: (event: unknown) => {
+    ipcRenderer.send(IPC.dshNotification, event)
+  },
+  reportLocale: (locale: unknown) => {
+    ipcRenderer.send(IPC.dshLocale, locale)
   },
 })

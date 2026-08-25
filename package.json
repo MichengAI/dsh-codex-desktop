@@ -106,6 +106,10 @@
         "to": "icon.ico"
       },
       {
+        "from": "assets/icons/notification.ico",
+        "to": "notification.ico"
+      },
+      {
         "from": "assets/startup.html",
         "to": "startup.html"
       },
@@ -120,6 +124,17 @@
       {
         "from": "assets/about.html",
         "to": "about.html"
+      },
+      {
+        "from": "assets/settings.html",
+        "to": "settings.html"
+      },
+      {
+        "from": "assets/task-badges",
+        "to": "task-badges",
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "assets/shell-icons",

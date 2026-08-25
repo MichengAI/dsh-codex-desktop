@@ -322,12 +322,13 @@ test('桌面桥接清单同时声明 host 与 client 入口', async () => {
     installDesktopBridge(profile, source)
     const manifest = JSON.parse(await readFile(join(profile, 'node_modules', 'dsh-desktop-bridge', 'package.json'), 'utf8')) as {
       exports?: Record<string, string>
-      dsh?: { bundle?: { patch?: string }; client?: { platform?: string } }
+      dsh?: { bundle?: { patch?: string }; client?: { inject?: string[]; platform?: string } }
     }
     assert.equal(manifest.exports?.['./client'], './desktop-bridge-client.js')
     assert.equal(manifest.exports?.['./package.json'], './package.json')
     assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml')
     assert.equal(manifest.dsh?.client?.platform, 'web')
+    assert.equal(manifest.dsh?.client?.inject?.includes('@deepseek-ai/dsh-client-locale'), true)
     assert.match(await readFile(join(profile, 'node_modules', 'dsh-desktop-bridge', 'desktop-bridge-client.js'), 'utf8'), /window\.__ModuleLoader__\.load/)
     assert.equal(await readFile(join(profile, 'node_modules', 'dsh-desktop-bridge', 'cordis.patch.yml'), 'utf8'), '[]\n')
     const profileManifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }

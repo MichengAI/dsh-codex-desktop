@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { resolveAppIconPath, resolveCompactIconCrop, resolveRasterIconPath } from '../src/app-icon.js'
+import { resolveAppIconPath, resolveCompactIconCrop, resolveNotificationIconPath, resolveRasterIconPath, resolveTaskBadgeIconPath } from '../src/app-icon.js'
 
 test('打包态优先使用 extraResources 中的 ico', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-icon-'))
@@ -56,4 +56,25 @@ test('托盘和任务栏裁掉应用图标的大部分透明边距，并保持�
     width: 456,
     height: 456,
   })
+})
+
+test('任务栏未读标记按计数选择开发态和打包态资源', () => {
+  assert.equal(
+    resolveTaskBadgeIconPath({ appPath: 'D:\\app', isPackaged: false, resourcesPath: 'D:\\resources' }, 3),
+    'D:\\app\\assets\\task-badges\\3.png',
+  )
+  assert.equal(
+    resolveTaskBadgeIconPath({ appPath: 'D:\\app', isPackaged: true, resourcesPath: 'D:\\resources' }, 12),
+    'D:\\resources\\task-badges\\9-plus.png',
+  )
+})
+
+test('Windows 通知来源使用紧凑图标资源', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-notification-icon-'))
+  try {
+    await writeFile(join(root, 'notification.ico'), 'ico')
+    assert.equal(resolveNotificationIconPath({ appPath: root, isPackaged: true, resourcesPath: root }), join(root, 'notification.ico'))
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })

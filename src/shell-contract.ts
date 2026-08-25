@@ -7,8 +7,15 @@ export const SHELL_IPC = {
   getBootstrap: 'dsh-shell:get-bootstrap',
   popupMenu: 'dsh-shell:popup-menu',
   state: 'dsh-shell:state',
+  bootstrap: 'dsh-shell:bootstrap',
   dshAction: 'dsh-shell:dsh-action',
+  dshLocale: 'dsh-shell:dsh-locale',
+  dshOpenSession: 'dsh-shell:dsh-open-session',
+  dshNotificationReply: 'dsh-shell:dsh-notification-reply',
   dshState: 'dsh-shell:dsh-state',
+  dshNotification: 'dsh-shell:dsh-notification',
+  getNotificationPreferences: 'dsh-shell:get-notification-preferences',
+  updateNotificationPreferences: 'dsh-shell:update-notification-preferences',
 } as const
 
 export interface DshNavigationState {

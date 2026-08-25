@@ -294,6 +294,7 @@ export function installDesktopBridge(profileDir: string, sourceDir: string): voi
       bundle: { patch: './cordis.patch.yml' },
       client: {
         inject: [
+          '@deepseek-ai/dsh-client-locale',
           '@deepseek-ai/dsh-client-runtime',
           '@deepseek-ai/dsh-client-ui-conversation',
           '@deepseek-ai/dsh-client-ui-layout',

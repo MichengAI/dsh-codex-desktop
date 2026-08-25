@@ -38,7 +38,23 @@ export function resolveRasterIconPath(options: IconResolutionOptions): string | 
   return candidates.find(candidate => existsSync(candidate))
 }
 
+/** Windows toast headers use a tiny source slot, so use the tightly cropped ICO. */
+export function resolveNotificationIconPath(options: IconResolutionOptions): string | undefined {
+  const candidate = options.isPackaged
+    ? join(options.resourcesPath, 'notification.ico')
+    : resolve(options.appPath, 'assets', 'icons', 'notification.ico')
+  return existsSync(candidate) ? candidate : resolveAppIconPath(options)
+}
+
 export const TRAY_ICON_SIZE = 32
+
+/** Windows taskbar overlays are fixed 16px assets; values above nine share a compact 9+ glyph. */
+export function resolveTaskBadgeIconPath(options: IconResolutionOptions, count: number): string {
+  const name = count > 9 ? '9-plus.png' : `${Math.max(1, Math.trunc(count))}.png`
+  return options.isPackaged
+    ? join(options.resourcesPath, 'task-badges', name)
+    : resolve(options.appPath, 'assets', 'task-badges', name)
+}
 
 /**
  * 应用图标四周留白适合大图展示，但缩进 Windows 托盘或任务栏后会显得偏小。

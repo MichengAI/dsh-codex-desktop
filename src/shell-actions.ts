@@ -12,6 +12,7 @@ export type ShellActionId =
   | 'paste'
   | 'delete'
   | 'select-all'
+  | 'desktop-settings'
   | 'settings'
   | 'toggle-sidebar'
   | 'find'
@@ -79,7 +80,8 @@ export const SHELL_ACTIONS: readonly ShellActionDefinition[] = [
   { id: 'paste', menu: 'edit', group: 1, label: text('粘贴', 'Paste'), accelerator: 'CmdOrCtrl+V' },
   { id: 'delete', menu: 'edit', group: 1, label: text('删除', 'Delete') },
   { id: 'select-all', menu: 'edit', group: 2, label: text('全选', 'Select All'), accelerator: 'CmdOrCtrl+A' },
-  { id: 'settings', menu: 'edit', group: 3, label: text('设置', 'Settings'), accelerator: 'CmdOrCtrl+,', globalShortcut: true, keywords: text('偏好 配置', 'preferences configuration') },
+  { id: 'desktop-settings', menu: 'edit', group: 3, label: text('桌面端设置', 'Desktop Settings'), keywords: text('通知 偏好 配置', 'notifications preferences configuration') },
+  { id: 'settings', menu: 'edit', group: 3, label: text('DSH 设置', 'DSH Settings'), keywords: text('模型 插件 业务设置', 'models plugins DSH configuration') },
 
   { id: 'toggle-sidebar', menu: 'view', group: 0, label: text('切换边栏', 'Toggle Sidebar'), accelerator: 'CmdOrCtrl+B', globalShortcut: true },
   { id: 'find', menu: 'view', group: 1, label: text('查找', 'Find'), accelerator: 'CmdOrCtrl+F', globalShortcut: true, keywords: text('搜索会话', 'search sessions') },
@@ -102,6 +104,12 @@ export const SHELL_ACTIONS: readonly ShellActionDefinition[] = [
 
 export function isChineseLocale(locale: string): boolean {
   return locale.toLowerCase().startsWith('zh')
+}
+
+export function normalizeShellLocale(value: unknown): 'zh' | 'en' | undefined {
+  if (typeof value !== 'string') return undefined
+  const primary = value.trim().toLowerCase().split('-')[0]
+  return primary === 'zh' || primary === 'en' ? primary : undefined
 }
 
 export function formatAccelerator(accelerator: string, platform: NodeJS.Platform): string {

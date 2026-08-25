@@ -7,15 +7,38 @@ interface DesktopNavigationState {
 
 interface SessionList {
   ids: string[]
+  byId: Record<string, {
+    completed?: boolean
+    displayTitle: string
+    pendingInteraction?: 'approval' | 'plan-review' | 'question'
+    running: boolean
+  }>
   current?: string
 }
 
 interface ClientContext {
   effect(callback: () => void | (() => void), label?: string): void
   layout: { toggleSidebar(): void }
+  locale: {
+    getSnapshot(): { active: string }
+    subscribe(listener: () => void): () => void
+  }
   sessions: {
+    binding(id: string): {
+      session: {
+        getSnapshot(): {
+          nodes: Array<{
+            kind: string
+            blocks?: Array<{ kind: string; text?: string }>
+          }>
+        }
+      }
+    } | undefined
     list: { getSnapshot(): SessionList; subscribe(listener: () => void): () => void }
     open(id: string): void
+    scope(id: string): {
+      get(name: 'conversation'): { send(text: string): Promise<void> } | undefined
+    } | undefined
   }
   workspaces: {
     create(input: { path: string }): Promise<{ id?: string; workspaceId?: string } | string>
@@ -26,11 +49,22 @@ interface ClientContext {
 
 interface DesktopShellBridge {
   onAction(listener: (id: string) => void): () => void
+  onOpenSession(listener: (id: string) => void): () => void
+  onNotificationReply(listener: (value: { sessionId: string; text: string }) => void): () => void
+  reportNotification(event: {
+    type: 'notify' | 'dismiss' | 'badge' | 'reply-error'
+    count?: number
+    body?: string
+    kind?: 'turn-complete' | 'approval' | 'question'
+    sessionId?: string
+    title?: string
+  }): void
+  reportLocale(locale: string): void
   reportState(state: DesktopNavigationState): void
 }
 
 export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void; inject: string[] } {
-    const inject = ['sessions', 'workspaces', 'layout']
+    const inject = ['sessions', 'workspaces', 'layout', 'locale']
 
     const visibleSessionRows = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>('.dcu-wb-session[role="treeitem"][aria-selected]')]
       .filter(element => element.offsetParent !== null)
@@ -55,8 +89,43 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
       if (bridge === undefined) return
       let history: string[] = []
       let historyIndex = -1
+      let notificationBaseline: Map<string, { pendingInteraction?: string; running: boolean }> | undefined
+      let selectedForDismiss: string | undefined
+      const unreadCompletions = new Set<string>()
+      let reportedBadgeCount: number | undefined
+
+      const notificationKindForInteraction = (value: string | undefined): 'approval' | 'question' | undefined => {
+        if (value === undefined) return undefined
+        return value === 'question' ? 'question' : 'approval'
+      }
 
       const snapshot = (): SessionList => ctx.sessions.list.getSnapshot()
+      const reportBadge = (): void => {
+        if (reportedBadgeCount === unreadCompletions.size) return
+        reportedBadgeCount = unreadCompletions.size
+        bridge.reportNotification({ type: 'badge', count: unreadCompletions.size })
+      }
+      const markSessionRead = (id: string): void => {
+        if (!unreadCompletions.delete(id)) return
+        reportBadge()
+      }
+      const latestAssistantPreview = (id: string): string | undefined => {
+        const nodes = ctx.sessions.binding(id)?.session.getSnapshot().nodes
+        if (!Array.isArray(nodes)) return undefined
+        for (let index = nodes.length - 1; index >= 0; index -= 1) {
+          const node = nodes[index]
+          if (node?.kind !== 'assistant' || !Array.isArray(node.blocks)) continue
+          const text = node.blocks
+            .filter(block => block?.kind === 'text' && typeof block.text === 'string')
+            .map(block => block.text?.trim() ?? '')
+            .filter(Boolean)
+            .join('\n')
+            .replace(/\s+/g, ' ')
+            .trim()
+          if (text !== '') return text.slice(0, 500)
+        }
+        return undefined
+      }
       const report = (): void => {
         const rows = visibleSessionRows()
         const currentRow = selectedSessionRow()
@@ -69,12 +138,54 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         })
       }
       const trackCurrent = (): void => {
-        const current = snapshot().current
+        const nextSnapshot = snapshot()
+        const current = nextSnapshot.current
         if (current !== undefined && history[historyIndex] !== current) {
           history = history.slice(0, historyIndex + 1)
           history.push(current)
           historyIndex = history.length - 1
         }
+        if (current !== selectedForDismiss) {
+          selectedForDismiss = current
+          if (current !== undefined) {
+            bridge.reportNotification({ type: 'dismiss', sessionId: current })
+            if (document.hasFocus()) markSessionRead(current)
+          }
+        }
+        const nextBaseline = new Map<string, { pendingInteraction?: string; running: boolean }>()
+        for (const id of [...unreadCompletions]) {
+          if (nextSnapshot.byId[id] === undefined) unreadCompletions.delete(id)
+        }
+        for (const id of nextSnapshot.ids) {
+          const row = nextSnapshot.byId[id]
+          if (row === undefined) continue
+          if (row.completed === true) unreadCompletions.add(id)
+          const previous = notificationBaseline?.get(id)
+          nextBaseline.set(id, { running: row.running, ...(row.pendingInteraction === undefined ? {} : { pendingInteraction: row.pendingInteraction }) })
+          if (previous === undefined) continue
+          if (previous.running && !row.running && row.pendingInteraction === undefined) {
+            unreadCompletions.add(id)
+            bridge.reportNotification({
+              type: 'notify',
+              kind: 'turn-complete',
+              sessionId: id,
+              title: row.displayTitle,
+              body: latestAssistantPreview(id),
+            })
+          }
+          const interactionKind = notificationKindForInteraction(row.pendingInteraction)
+          if (interactionKind !== undefined && interactionKind !== notificationKindForInteraction(previous.pendingInteraction)) {
+            bridge.reportNotification({
+              type: 'notify',
+              kind: interactionKind,
+              sessionId: id,
+              title: row.displayTitle,
+            })
+          }
+        }
+        if (current !== undefined && document.hasFocus()) unreadCompletions.delete(current)
+        notificationBaseline = nextBaseline
+        reportBadge()
         queueMicrotask(report)
       }
       const openHistory = (offset: number): void => {
@@ -106,6 +217,15 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         }
         ctx.workspaces.startSession(workspaceId)
       }
+      const sendNotificationReply = async (value: { sessionId: string; text: string }): Promise<void> => {
+        const text = value.text.trim()
+        if (text === '') return
+        const conversation = ctx.sessions.scope(value.sessionId)?.get('conversation')
+        if (conversation === undefined) throw new Error(`会话 ${value.sessionId} 不提供 conversation 服务。`)
+        await conversation.send(text)
+        markSessionRead(value.sessionId)
+        bridge.reportNotification({ type: 'dismiss', sessionId: value.sessionId })
+      }
       const onAction = (id: string): void => {
         // Omitting the id inherits the selected Session's Workspace, exactly like
         // the DSH “新建任务” control.
@@ -122,11 +242,26 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
 
       ctx.effect(() => {
         const stopAction = bridge.onAction(onAction)
+        const stopOpenSession = bridge.onOpenSession(id => { markSessionRead(id); ctx.sessions.open(id) })
+        const stopNotificationReply = bridge.onNotificationReply(value => {
+          void sendNotificationReply(value).catch(error => {
+            console.error('通知回复发送失败。', error)
+            bridge.reportNotification({ type: 'reply-error', sessionId: value.sessionId })
+          })
+        })
         const stopList = ctx.sessions.list.subscribe(trackCurrent)
+        const reportLocale = (): void => { bridge.reportLocale(ctx.locale.getSnapshot().active) }
+        const stopLocale = ctx.locale.subscribe(reportLocale)
+        const onWindowFocus = (): void => {
+          const current = snapshot().current
+          if (current !== undefined) markSessionRead(current)
+        }
+        window.addEventListener('focus', onWindowFocus)
         const observer = new MutationObserver(report)
         observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected', 'class'] })
         trackCurrent()
-        return () => { stopAction(); stopList(); observer.disconnect() }
+        reportLocale()
+        return () => { stopAction(); stopOpenSession(); stopNotificationReply(); stopList(); stopLocale(); window.removeEventListener('focus', onWindowFocus); observer.disconnect() }
       }, 'desktop-shell bridge')
     }
 

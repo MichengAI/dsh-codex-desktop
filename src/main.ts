@@ -1,12 +1,13 @@
-import { app, BrowserWindow, Menu, Tray, WebContentsView, dialog, ipcMain, nativeImage, net, protocol, session, shell, type Input, type MenuItemConstructorOptions, type WebContents } from 'electron'
+import { app, BrowserWindow, Menu, Notification, Tray, WebContentsView, dialog, ipcMain, nativeImage, net, protocol, session, shell, type Input, type MenuItemConstructorOptions, type WebContents } from 'electron'
 import { existsSync } from 'node:fs'
 import { writeFile as writeTextFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { DESKTOP_APP_NAME, DESKTOP_APP_USER_MODEL_ID, resolveDesktopRuntimeDir, resolveDesktopUserDataDir } from './app-identity.js'
+import { DESKTOP_APP_NAME, DESKTOP_APP_USER_MODEL_ID, DESKTOP_TOAST_ACTIVATOR_CLSID, resolveDesktopRuntimeDir, resolveDesktopUserDataDir } from './app-identity.js'
 import { OFFICIAL_DSH_VERSION } from './bundled-plugins.js'
-import { resolveAppIconPath, resolveCompactIconCrop, resolveRasterIconPath, TRAY_ICON_SIZE } from './app-icon.js'
+import { resolveAppIconPath, resolveCompactIconCrop, resolveNotificationIconPath, resolveRasterIconPath, resolveTaskBadgeIconPath, TRAY_ICON_SIZE } from './app-icon.js'
 import { WINDOW_ICON_PIXEL_SIZES, isLoopbackFaviconRequest } from './window-icon.js'
 import { quitDesktopApp, shouldHideInsteadOfClose } from './app-lifecycle.js'
 import type { DshServer, StartDshOptions } from './dsh-process.js'
@@ -20,9 +21,11 @@ import { resolvePrebuiltOfficialRuntime } from './runtime-prebuilt.js'
 import { applyInitialWindowState } from './window-state.js'
 import { WindowNavigationCoordinator } from './window-navigation.js'
 import { installDesktopBridge, resolveDesktopBridgeDir } from './desktop-host.js'
-import { isChineseLocale, localizedShellActions, localizedShellMenus, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId } from './shell-actions.js'
+import { isChineseLocale, localizedShellActions, localizedShellMenus, normalizeShellLocale, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId } from './shell-actions.js'
 import { SHELL_BAR_HEIGHT, SHELL_IPC, type DshNavigationState, type DshShellActionId, type ShellBootstrap, type ShellMenuPopupRequest, type ShellState } from './shell-contract.js'
 import { mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshState, type ShellRendererKind } from './shell-ipc-policy.js'
+import { mayAccessNotificationPreferences, mayReportDshLocale, mayReportDshNotification } from './shell-ipc-policy.js'
+import { DEFAULT_NOTIFICATION_PREFERENCES, buildWindowsReplyToastXml, loadNotificationPreferences, parseDesktopNotificationBridgeEvent, parseWindowsNotificationReplyActivation, saveNotificationPreferences, shouldShowDesktopNotification, windowsNotificationReplyArguments, type DesktopNotificationEvent, type DesktopNotificationPreferences } from './desktop-notifications.js'
 import { watchProfileActivation } from './profile-watch.js'
 import updater from 'electron-updater'
 import { buildDesktopTrayItems, desktopUpdateChannel, desktopUpdatePrompt, formatDesktopReleaseNotes, publicDesktopUpdateError, type DesktopUpdateStatus } from './desktop-updater.js'
@@ -41,6 +44,7 @@ let mainWindow: BrowserWindow | undefined
 let dshView: WebContentsView | undefined
 let shortcutsWindow: BrowserWindow | undefined
 let aboutWindow: BrowserWindow | undefined
+let settingsWindow: BrowserWindow | undefined
 let server: DshServer | undefined
 let tray: Tray | undefined
 let isQuitting = false
@@ -53,13 +57,26 @@ const { autoUpdater } = updater
 let isReportingUnexpectedError = false
 const windowNavigation = new WindowNavigationCoordinator()
 let dshNavigationState: DshNavigationState = { canBack: false, canForward: false, canNextChat: false, canPreviousChat: false }
+let notificationPreferences: DesktopNotificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES
+const activeNotifications = new Map<string, Notification>()
+let unreadCompletionCount = 0
+let activeDshLocale: 'zh' | 'en' | undefined
 const shellActionIds = new Set<string>(SHELL_ACTIONS.map(action => action.id))
+
+function desktopLocale(): string {
+  return activeDshLocale ?? app.getLocale()
+}
+
+function desktopText(zh: string, en: string): string {
+  return isChineseLocale(desktopLocale()) ? zh : en
+}
 
 process.on('uncaughtException', handleUnexpectedMainError)
 process.on('unhandledRejection', handleUnexpectedMainError)
 
 app.setName(DESKTOP_APP_NAME)
 app.setAppUserModelId(DESKTOP_APP_USER_MODEL_ID)
+if (process.platform === 'win32') app.setToastActivatorCLSID(DESKTOP_TOAST_ACTIVATOR_CLSID)
 if (!process.argv.some(argument => argument.startsWith('--user-data-dir='))) {
   app.setPath('userData', resolveDesktopUserDataDir(app.getPath('appData')))
 }
@@ -106,12 +123,15 @@ async function shutdownDesktop(exit: () => void): Promise<void> {
 
 async function startApplication(): Promise<void> {
   await app.whenReady()
+  ensureWindowsNotificationIdentity()
+  installWindowsNotificationActivationHandler()
+  notificationPreferences = await loadNotificationPreferences(notificationPreferencesPath())
   installShellIpc()
   installDesktopFaviconReplacement()
   Menu.setApplicationMenu(null)
   configureDesktopUpdater()
   createTray()
-  await showStartupWindow('加载中')
+  await showStartupWindow(desktopText('加载中', 'Loading'))
 
   try {
     const runtimeOptions = {
@@ -287,7 +307,7 @@ async function reportStartupFailure(error: unknown): Promise<void> {
   await writeTextFile(logPath, message + '\n', 'utf8').catch(() => undefined)
   const short = message.split(/\r?\n/)[0]?.slice(0, 240) ?? '未知启动错误。'
   try {
-    await showStartupWindow('启动失败：' + short + '\n日志：' + logPath)
+    await showStartupWindow(desktopText('启动失败：', 'Startup failed: ') + short + desktopText('\n日志：', '\nLog: ') + logPath)
   } catch (displayError) {
     console.error('显示启动错误页面失败。', displayError)
   }
@@ -319,7 +339,7 @@ async function recycleDshForPluginUpdate(): Promise<void> {
   isRecycling = true
   broadcastShellState()
   try {
-    await showStartupWindow('加载中')
+    await showStartupWindow(desktopText('加载中', 'Loading'))
     const current = server
     server = undefined
     await current?.stop()
@@ -356,7 +376,7 @@ function handleUnexpectedDshExit(message: string): void {
     return
   }
   void writeTextFile(join(app.getPath('userData'), 'startup-error.log'), `${message}\n`, 'utf8').catch(() => undefined)
-  runMainTask(showStartupWindow('DSH 已停止运行。请重新启动应用。'))
+  runMainTask(showStartupWindow(desktopText('DSH 已停止运行。请重新启动应用。', 'DSH has stopped. Restart the app.')))
 }
 
 function resolveWindowIconPath(): string | undefined {
@@ -367,7 +387,7 @@ function resolveWindowIconPath(): string | undefined {
   })
 }
 
-function resolveShellAsset(name: 'shell.html' | 'shortcuts.html' | 'about.html'): string {
+function resolveShellAsset(name: 'shell.html' | 'shortcuts.html' | 'about.html' | 'settings.html'): string {
   const packaged = join(process.resourcesPath, name)
   return existsSync(packaged) ? packaged : join(app.getAppPath(), 'assets', name)
 }
@@ -468,7 +488,7 @@ function currentShellState(): ShellState {
 }
 
 function shellBootstrap(): ShellBootstrap {
-  const locale = app.getLocale()
+  const locale = desktopLocale()
   return {
     actions: localizedShellActions(locale, process.platform),
     locale,
@@ -480,9 +500,16 @@ function shellBootstrap(): ShellBootstrap {
   }
 }
 
+function broadcastShellBootstrap(): void {
+  const bootstrap = shellBootstrap()
+  for (const window of [mainWindow, shortcutsWindow, aboutWindow, settingsWindow]) {
+    if (window !== undefined && !window.isDestroyed()) window.webContents.send(SHELL_IPC.bootstrap, bootstrap)
+  }
+}
+
 function broadcastShellState(): void {
   const state = currentShellState()
-  for (const window of [mainWindow, shortcutsWindow, aboutWindow]) {
+  for (const window of [mainWindow, shortcutsWindow, aboutWindow, settingsWindow]) {
     if (window !== undefined && !window.isDestroyed()) window.webContents.send(SHELL_IPC.state, state)
   }
 }
@@ -491,6 +518,8 @@ function installShellIpc(): void {
   ipcMain.removeHandler(SHELL_IPC.getBootstrap)
   ipcMain.removeHandler(SHELL_IPC.action)
   ipcMain.removeHandler(SHELL_IPC.popupMenu)
+  ipcMain.removeHandler(SHELL_IPC.getNotificationPreferences)
+  ipcMain.removeHandler(SHELL_IPC.updateNotificationPreferences)
   ipcMain.handle(SHELL_IPC.getBootstrap, event => {
     if (!mayGetShellBootstrap(shellRendererKind(event.sender))) return
     return shellBootstrap()
@@ -505,6 +534,15 @@ function installShellIpc(): void {
     if (!mayPopupShellMenu(shellRendererKind(event.sender))) return
     return popupShellMenu(request)
   })
+  ipcMain.handle(SHELL_IPC.getNotificationPreferences, event => {
+    if (!mayAccessNotificationPreferences(shellRendererKind(event.sender))) return
+    return notificationPreferences
+  })
+  ipcMain.handle(SHELL_IPC.updateNotificationPreferences, async (event, value: unknown) => {
+    if (!mayAccessNotificationPreferences(shellRendererKind(event.sender))) return
+    notificationPreferences = await saveNotificationPreferences(notificationPreferencesPath(), value)
+    return notificationPreferences
+  })
   ipcMain.removeAllListeners(SHELL_IPC.dshState)
   ipcMain.on(SHELL_IPC.dshState, (event, state: Partial<DshNavigationState>) => {
     if (!mayReportDshState(shellRendererKind(event.sender))) return
@@ -517,12 +555,41 @@ function installShellIpc(): void {
     }
     broadcastShellState()
   })
+  ipcMain.removeAllListeners(SHELL_IPC.dshLocale)
+  ipcMain.on(SHELL_IPC.dshLocale, (event, value: unknown) => {
+    if (!mayReportDshLocale(shellRendererKind(event.sender))) return
+    const locale = normalizeShellLocale(value)
+    if (locale === undefined || locale === activeDshLocale) return
+    activeDshLocale = locale
+    broadcastShellBootstrap()
+    updateUnreadCompletionBadge(unreadCompletionCount)
+  })
+  ipcMain.removeAllListeners(SHELL_IPC.dshNotification)
+  ipcMain.on(SHELL_IPC.dshNotification, (event, value: unknown) => {
+    if (!mayReportDshNotification(shellRendererKind(event.sender))) return
+    const notificationEvent = parseDesktopNotificationBridgeEvent(value)
+    if (notificationEvent === undefined) return
+    if (notificationEvent.type === 'badge') {
+      updateUnreadCompletionBadge(notificationEvent.count)
+      return
+    }
+    if (notificationEvent.type === 'dismiss') {
+      dismissNotificationsForSession(notificationEvent.sessionId)
+      return
+    }
+    if (notificationEvent.type === 'reply-error') {
+      showNotificationReplyError(notificationEvent.sessionId)
+      return
+    }
+    showDesktopNotification(notificationEvent)
+  })
 }
 
 function shellRendererKind(sender: WebContents): ShellRendererKind {
   if (sender === mainWindow?.webContents) return 'main'
   if (sender === shortcutsWindow?.webContents) return 'shortcuts'
   if (sender === aboutWindow?.webContents) return 'about'
+  if (sender === settingsWindow?.webContents) return 'settings'
   if (sender === dshView?.webContents) return 'dsh'
   return 'unknown'
 }
@@ -542,7 +609,7 @@ function popupShellMenu(request: ShellMenuPopupRequest): void {
   const window = mainWindow
   if (window === undefined || window.isDestroyed()) return
   const menuId = request.menu as ShellMenuId
-  const actions = localizedShellActions(app.getLocale(), process.platform).filter(action => action.menu === menuId)
+  const actions = localizedShellActions(desktopLocale(), process.platform).filter(action => action.menu === menuId)
   if (actions.length === 0) return
   const template: MenuItemConstructorOptions[] = []
   let group = actions[0]?.group
@@ -569,7 +636,7 @@ function installShortcutHandler(contents: Electron.WebContents): void {
     const id = shellActionForShortcut(input, process.platform)
     if (id === undefined || !isActionEnabled(id)) return
     event.preventDefault()
-    const auxiliaryWindow = [shortcutsWindow, aboutWindow].find(window => window?.webContents === contents)
+    const auxiliaryWindow = [shortcutsWindow, aboutWindow, settingsWindow].find(window => window?.webContents === contents)
     if (id === 'close-window' && auxiliaryWindow !== undefined) {
       auxiliaryWindow.close()
       return
@@ -590,6 +657,7 @@ async function executeShellAction(id: ShellActionId): Promise<void> {
     return
   }
   if (id === 'close-window') { mainWindow?.hide(); return }
+  if (id === 'desktop-settings') { showDesktopSettingsWindow(); return }
   if (id === 'quit') { await requestQuit(); return }
   if (contents === undefined) return
   if (id === 'undo') contents.undo()
@@ -612,6 +680,230 @@ async function executeShellAction(id: ShellActionId): Promise<void> {
   broadcastShellState()
 }
 
+function notificationPreferencesPath(): string {
+  return join(app.getPath('userData'), 'desktop-settings.json')
+}
+
+/**
+ * Windows resolves a toast's small source icon from a Start Menu shortcut that
+ * matches both the running executable and AppUserModelID. Packaged installs get
+ * this from electron-builder; isolated test runs need the same registration or
+ * Windows falls back to the generic Electron identity shown in the toast header.
+ */
+function ensureWindowsNotificationIdentity(): void {
+  if (process.platform !== 'win32') return
+  const notificationIcon = resolveNotificationIconPath({ appPath: app.getAppPath(), isPackaged: app.isPackaged, resourcesPath: process.resourcesPath })
+  const shortcutDirectories = [
+    join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs'),
+    process.env.ProgramData === undefined ? undefined : join(process.env.ProgramData, 'Microsoft', 'Windows', 'Start Menu', 'Programs'),
+  ].filter((value): value is string => value !== undefined)
+  for (const directory of shortcutDirectories) {
+    for (const name of [`${DESKTOP_APP_NAME}.lnk`, `${DESKTOP_APP_NAME} Test.lnk`]) {
+      const shortcut = join(directory, name)
+      if (!existsSync(shortcut)) continue
+      try {
+        const details = shell.readShortcutLink(shortcut)
+        if (resolve(details.target).toLocaleLowerCase() !== resolve(process.execPath).toLocaleLowerCase()) continue
+        shell.writeShortcutLink(shortcut, 'update', {
+          target: details.target,
+          appUserModelId: DESKTOP_APP_USER_MODEL_ID,
+          toastActivatorClsid: DESKTOP_TOAST_ACTIVATOR_CLSID,
+          ...(notificationIcon === undefined ? {} : { icon: notificationIcon, iconIndex: 0 }),
+        })
+      } catch {
+        // A stale or protected shortcut must not prevent the desktop app from starting.
+      }
+    }
+  }
+  if (app.isPackaged || !process.argv.some(argument => argument.startsWith('--user-data-dir='))) return
+  const icon = notificationIcon
+  if (icon === undefined) return
+  const shortcut = join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', `${DESKTOP_APP_NAME} Test.lnk`)
+  const args = process.argv.slice(1)
+    .map(argument => /\s|"/.test(argument) ? `"${argument.replaceAll('"', '\\"')}"` : argument)
+    .join(' ')
+  shell.writeShortcutLink(shortcut, existsSync(shortcut) ? 'replace' : 'create', {
+    target: process.execPath,
+    args,
+    cwd: app.getAppPath(),
+    description: `${DESKTOP_APP_NAME} test build`,
+    icon,
+    iconIndex: 0,
+    appUserModelId: DESKTOP_APP_USER_MODEL_ID,
+    toastActivatorClsid: DESKTOP_TOAST_ACTIVATOR_CLSID,
+  })
+}
+
+function sendNotificationReplyToDsh(sessionId: string, text: string): void {
+  if (dshView === undefined || dshView.webContents.isDestroyed()) {
+    showNotificationReplyError(sessionId)
+    return
+  }
+  dshView.webContents.send(SHELL_IPC.dshNotificationReply, { sessionId, text })
+}
+
+function installWindowsNotificationActivationHandler(): void {
+  if (process.platform !== 'win32') return
+  Notification.handleActivation(details => {
+    const reply = parseWindowsNotificationReplyActivation(details)
+    if (reply === undefined) return
+    sendNotificationReplyToDsh(reply.sessionId, reply.text)
+  })
+}
+
+function notificationCopy(event: DesktopNotificationEvent): { title: string; body: string } {
+  const zh = isChineseLocale(desktopLocale())
+  const status = event.kind === 'approval'
+    ? (zh ? '需要审批' : 'Approval required')
+    : event.kind === 'question'
+      ? (zh ? '需要你的输入' : 'Your input is needed')
+      : (zh ? '任务已完成' : 'Task completed')
+  const title = event.title === undefined ? status : `${status} · ${event.title}`
+  if (event.body !== undefined) {
+    return { title, body: event.body }
+  }
+  const task = event.title === undefined
+    ? (zh ? 'DeepSeek Harness 任务' : 'DeepSeek Harness task')
+    : `“${event.title}”`
+  if (event.kind === 'approval') return { title, body: zh ? `${task}正在等待审批` : `${task} is waiting for approval` }
+  if (event.kind === 'question') return { title, body: zh ? `${task}正在等待你的回答` : `${task} is waiting for your answer` }
+  return { title, body: zh ? `${task}已完成` : `${task} is complete` }
+}
+
+function updateUnreadCompletionBadge(count: number): void {
+  unreadCompletionCount = count
+  if (process.platform === 'win32' && mainWindow !== undefined && !mainWindow.isDestroyed()) {
+    if (count === 0) {
+      mainWindow.setOverlayIcon(null, '')
+    } else {
+      const iconPath = resolveTaskBadgeIconPath({ appPath: app.getAppPath(), isPackaged: app.isPackaged, resourcesPath: process.resourcesPath }, count)
+      const overlay = nativeImage.createFromPath(iconPath)
+      if (!overlay.isEmpty()) {
+        const description = isChineseLocale(desktopLocale()) ? `${count} 个已完成任务` : `${count} completed tasks`
+        mainWindow.setOverlayIcon(overlay, description)
+      }
+    }
+  } else if (process.platform === 'darwin' || process.platform === 'linux') {
+    app.setBadgeCount(count)
+  }
+  refreshTrayMenu()
+}
+
+function dismissNotificationsForSession(sessionId: string): void {
+  for (const [id, notification] of activeNotifications) {
+    if (!id.endsWith(`:${sessionId}`)) continue
+    notification.close()
+    activeNotifications.delete(id)
+  }
+}
+
+function focusMainWindowForNotification(): void {
+  showMainWindow()
+  if (process.platform !== 'win32' || mainWindow === undefined) return
+  mainWindow.setAlwaysOnTop(true)
+  mainWindow.focus()
+  mainWindow.setAlwaysOnTop(false)
+}
+
+function openNotificationSession(sessionId: string): void {
+  focusMainWindowForNotification()
+  if (dshView !== undefined && !dshView.webContents.isDestroyed()) {
+    dshView.webContents.send(SHELL_IPC.dshOpenSession, sessionId)
+  }
+}
+
+function showNotificationReplyError(sessionId: string): void {
+  if (!Notification.isSupported()) return
+  const zh = isChineseLocale(desktopLocale())
+  const id = `reply-error:${sessionId}`
+  activeNotifications.get(id)?.close()
+  const notification = new Notification({
+    title: zh ? '回复发送失败' : 'Reply not sent',
+    body: zh ? '未能将回复发送到这个任务。请打开任务后重试。' : 'The reply could not be sent to this task. Open it and try again.',
+    timeoutType: 'never',
+  })
+  activeNotifications.set(id, notification)
+  notification.on('click', () => {
+    openNotificationSession(sessionId)
+    dismissNotificationsForSession(sessionId)
+  })
+  notification.on('close', () => {
+    if (activeNotifications.get(id) === notification) activeNotifications.delete(id)
+  })
+  notification.show()
+}
+
+function showDesktopNotification(event: DesktopNotificationEvent): void {
+  if (!Notification.isSupported()) return
+  if (!shouldShowDesktopNotification(event, notificationPreferences, mainWindow?.isFocused() ?? false)) return
+  const id = `${event.kind}:${event.sessionId}`
+  activeNotifications.get(id)?.close()
+  const copy = notificationCopy(event)
+  const supportsReply = event.kind !== 'approval' && (process.platform === 'win32' || process.platform === 'darwin')
+  const zh = isChineseLocale(desktopLocale())
+  const replyPlaceholder = zh ? `回复 ${DESKTOP_APP_NAME}` : `Reply to ${DESKTOP_APP_NAME}`
+  const toastId = `dsh-${createHash('sha256').update(id).digest('hex').slice(0, 40)}`
+  const notification = new Notification({
+    ...copy,
+    ...(supportsReply ? {
+      hasReply: true,
+      replyPlaceholder,
+    } : {}),
+    ...(supportsReply && process.platform === 'win32' ? {
+      id: toastId,
+      toastXml: buildWindowsReplyToastXml({
+        ...copy,
+        id: toastId,
+        persistent: event.kind !== 'turn-complete',
+        placeholder: replyPlaceholder,
+        replyLabel: zh ? '回复' : 'Reply',
+        replyArguments: windowsNotificationReplyArguments(event.sessionId),
+        closeLabel: zh ? '关闭' : 'Close',
+      }),
+    } : {}),
+    ...(event.kind === 'turn-complete' ? {} : { timeoutType: 'never' }),
+  })
+  activeNotifications.set(id, notification)
+  notification.on('click', () => {
+    openNotificationSession(event.sessionId)
+    dismissNotificationsForSession(event.sessionId)
+  })
+  if (supportsReply && process.platform !== 'win32') {
+    notification.on('reply', (details, legacyReply) => {
+      const text = (details.reply ?? legacyReply).trim().slice(0, 4_000)
+      if (text === '') return
+      sendNotificationReplyToDsh(event.sessionId, text)
+    })
+  }
+  notification.on('close', () => {
+    if (activeNotifications.get(id) === notification) activeNotifications.delete(id)
+  })
+  notification.show()
+}
+
+function showDesktopSettingsWindow(): void {
+  if (settingsWindow !== undefined && !settingsWindow.isDestroyed()) {
+    settingsWindow.show()
+    settingsWindow.focus()
+    return
+  }
+  const window = new BrowserWindow({
+    parent: mainWindow,
+    width: 760,
+    height: 620,
+    minWidth: 680,
+    minHeight: 540,
+    title: desktopText('桌面端设置', 'Desktop Settings'),
+    autoHideMenuBar: true,
+    backgroundColor: '#202322',
+    webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
+  })
+  settingsWindow = window
+  window.on('closed', () => { if (settingsWindow === window) settingsWindow = undefined })
+  installShortcutHandler(window.webContents)
+  runMainTask(window.loadFile(resolveShellAsset('settings.html')))
+}
+
 function showShortcutsWindow(): void {
   if (shortcutsWindow !== undefined && !shortcutsWindow.isDestroyed()) {
     shortcutsWindow.show(); shortcutsWindow.focus(); return
@@ -623,7 +915,7 @@ function showShortcutsWindow(): void {
     height: 650,
     minWidth: 520,
     minHeight: 480,
-    title: isChineseLocale(app.getLocale()) ? '键盘快捷键' : 'Keyboard Shortcuts',
+    title: desktopText('键盘快捷键', 'Keyboard Shortcuts'),
     autoHideMenuBar: true,
     backgroundColor: '#262827',
     webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
@@ -655,7 +947,7 @@ function showAboutWindow(): void {
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
-    title: isChineseLocale(app.getLocale()) ? `关于 ${DESKTOP_APP_NAME}` : `About ${DESKTOP_APP_NAME}`,
+    title: desktopText(`关于 ${DESKTOP_APP_NAME}`, `About ${DESKTOP_APP_NAME}`),
     autoHideMenuBar: true,
     backgroundColor: '#202322',
     ...(icon === undefined ? {} : { icon }),
@@ -685,7 +977,7 @@ function configureDesktopUpdater(): void {
     refreshTrayMenu()
   })
   autoUpdater.on('error', error => {
-    updateStatus = { kind: 'error', message: publicDesktopUpdateError(error) }
+    updateStatus = { kind: 'error', message: publicDesktopUpdateError(error, desktopLocale()) }
     refreshTrayMenu()
   })
 }
@@ -711,17 +1003,21 @@ function createTray(): void {
   } catch {
     return
   }
-  tray.setToolTip(DESKTOP_APP_NAME)
   tray.on('click', () => showMainWindow())
   refreshTrayMenu()
 }
 
 function refreshTrayMenu(): void {
   if (tray === undefined) return
+  const badgeSuffix = unreadCompletionCount > 0
+    ? (isChineseLocale(desktopLocale()) ? ` · ${unreadCompletionCount} 个已完成任务` : ` · ${unreadCompletionCount} completed tasks`)
+    : ''
+  tray.setToolTip(DESKTOP_APP_NAME + badgeSuffix)
   const items = buildDesktopTrayItems({
     status: updateStatus,
     currentVersion: app.getVersion(),
     packaged: app.isPackaged,
+    locale: desktopLocale(),
   })
   tray.setContextMenu(Menu.buildFromTemplate(items.map(item => {
     if (item.type === 'separator') return { type: 'separator' }
@@ -764,7 +1060,7 @@ async function checkDesktopUpdate(): Promise<void> {
     await dialog.showMessageBox({
       type: 'info',
       title: DESKTOP_APP_NAME,
-      message: '开发态不能检查安装包更新，请使用发布的安装包。',
+      message: desktopText('开发态不能检查安装包更新，请使用发布的安装包。', 'Update checks are unavailable in development builds. Use a released installer.'),
     })
     return
   }
@@ -779,7 +1075,7 @@ async function checkDesktopUpdate(): Promise<void> {
       await dialog.showMessageBox({
         type: 'info',
         title: DESKTOP_APP_NAME,
-        message: '当前已是最新桌面端版本。',
+        message: desktopText('当前已是最新桌面端版本。', 'You already have the latest desktop version.'),
       })
       return
     }
@@ -788,14 +1084,14 @@ async function checkDesktopUpdate(): Promise<void> {
     const prompt = await dialog.showMessageBox({
       type: 'question',
       title: DESKTOP_APP_NAME,
-      message: desktopUpdatePrompt(updateStatus),
-      buttons: ['下载并安装', '取消'],
+      message: desktopUpdatePrompt(updateStatus, desktopLocale()),
+      buttons: [desktopText('下载并安装', 'Download and Install'), desktopText('取消', 'Cancel')],
       defaultId: 0,
       cancelId: 1,
     })
     if (prompt.response === 0) await downloadDesktopUpdate()
   } catch (error) {
-    const message = publicDesktopUpdateError(error)
+    const message = publicDesktopUpdateError(error, desktopLocale())
     updateStatus = { kind: 'error', message }
     refreshTrayMenu()
     await dialog.showMessageBox({
@@ -819,14 +1115,14 @@ async function downloadDesktopUpdate(): Promise<void> {
     const prompt = await dialog.showMessageBox({
       type: 'question',
       title: DESKTOP_APP_NAME,
-      message: desktopUpdatePrompt(ready),
-      buttons: ['现在安装', '稍后'],
+      message: desktopUpdatePrompt(ready, desktopLocale()),
+      buttons: [desktopText('现在安装', 'Install Now'), desktopText('稍后', 'Later')],
       defaultId: 0,
       cancelId: 1,
     })
     if (prompt.response === 0) await installDesktopUpdate()
   } catch (error) {
-    const message = publicDesktopUpdateError(error)
+    const message = publicDesktopUpdateError(error, desktopLocale())
     updateStatus = { kind: 'error', message }
     refreshTrayMenu()
     await dialog.showMessageBox({

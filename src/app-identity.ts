@@ -4,6 +4,7 @@ import { dirname, join, win32 } from 'node:path'
 export const DESKTOP_APP_NAME = 'DSH Codex Desktop'
 export const DESKTOP_USER_DATA_DIR = DESKTOP_APP_NAME
 export const DESKTOP_APP_USER_MODEL_ID = 'ai.micheng.deepseekHarnessDesktop'
+export const DESKTOP_TOAST_ACTIVATOR_CLSID = '{9D7BD1F0-EB17-48E8-AC4A-5347F81E719A}'
 
 /** Electron 默认用 package.json 的 name，这里强制改到和应用名一致的目录。 */
 export function resolveDesktopUserDataDir(appDataDir: string): string {
