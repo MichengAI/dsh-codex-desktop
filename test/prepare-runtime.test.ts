@@ -225,16 +225,20 @@ test('Windows 冒烟在启动应用前复用安装器的运行时解压入口', 
   assert.match(main, /--user-data-dir=/)
 })
 
-test('正式标签缺少签名凭据时仍允许生成多平台测试版', async () => {
+test('正式标签缺少签名凭据时仍允许生成带 ad-hoc 签名的多平台测试版', async () => {
   const workflow = await readFile(new URL('../../.github/workflows/desktop-package.yml', import.meta.url), 'utf8')
   assert.match(workflow, /version: 11\.22\.0/)
   assert.match(workflow, /未配置 Windows 代码签名凭据，继续生成未签名测试版/)
-  assert.match(workflow, /未配置 macOS 签名证书，继续生成未签名测试版/)
+  assert.match(workflow, /未配置 macOS 签名证书，将生成 ad-hoc 签名测试版/)
   assert.doesNotMatch(workflow, /正式标签发布必须配置 (?:Windows|macOS)/)
   assert.match(workflow, /\$env:CSC_LINK = \$env:WINDOWS_CERTIFICATE/)
   assert.doesNotMatch(workflow, /CSC_LINK: \$\{\{ startsWith\(matrix\.platform/)
+  assert.match(workflow, /\$env:CSC_FOR_PULL_REQUEST = 'true'/)
+  assert.match(workflow, /--config\.mac\.identity=-/)
+  assert.match(workflow, /--config\.mac\.hardenedRuntime=false/)
+  assert.match(workflow, /codesign --verify --deep --strict --verbose=2/)
   assert.match(workflow, /pnpm test\r?\n\s+if \(\$LASTEXITCODE -ne 0\) \{ exit \$LASTEXITCODE \}/)
-  assert.match(workflow, /pnpm run dist[^\r\n]*\r?\n\s+if \(\$LASTEXITCODE -ne 0\) \{ exit \$LASTEXITCODE \}/)
+  assert.match(workflow, /pnpm run dist -- @buildArguments\r?\n\s+if \(\$LASTEXITCODE -ne 0\) \{ exit \$LASTEXITCODE \}/)
 })
 
 test('打包态从 desktop-bridge 加载 DSH 主进程模块', async () => {

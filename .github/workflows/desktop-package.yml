@@ -71,7 +71,7 @@ jobs:
           $certificateValues = @($env:MACOS_CERTIFICATE, $env:MACOS_CERTIFICATE_PASSWORD, $env:MACOS_KEYCHAIN_PASSWORD)
           $configuredCount = @($certificateValues | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
           if ($configuredCount -eq 0) {
-            Write-Host '未配置 macOS 签名证书，继续生成未签名测试版。'
+            Write-Host '未配置 macOS 签名证书，将生成 ad-hoc 签名测试版。'
             exit 0
           }
           if ($configuredCount -ne $certificateValues.Count) {
@@ -110,6 +110,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
@@ -123,7 +124,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pnpm run dist -- ${{ matrix.buildArguments }}
+
+          $buildArguments = @('${{ matrix.buildArguments }}' -split '\s+' | Where-Object { $_ })
+          $isMacPlatform = '${{ matrix.platform }}'.StartsWith('macos-')
+          $isReleaseTag = $env:GITHUB_REF -like 'refs/tags/v*'
+          $hasImportedDeveloperId = $isMacPlatform -and $isReleaseTag -and -not [string]::IsNullOrWhiteSpace($env:MACOS_CERTIFICATE)
+          if ($isMacPlatform -and -not $hasImportedDeveloperId) {
+            Write-Host '使用 electron-builder 对完整 macOS 应用执行 ad-hoc 签名。'
+            $env:CSC_FOR_PULL_REQUEST = 'true'
+            $buildArguments += '--config.mac.identity=-'
+            $buildArguments += '--config.mac.hardenedRuntime=false'
+          }
+
+          pnpm run dist -- @buildArguments
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           if ('${{ matrix.platform }}' -eq 'macos-arm64') {
@@ -149,6 +162,9 @@ jobs:
           $OutputEncoding = [System.Text.Encoding]::UTF8
           $applicationPath = Get-ChildItem -LiteralPath 'release' -Recurse -Directory -Filter '*.app' | Select-Object -First 1 -ExpandProperty FullName
           if ([string]::IsNullOrWhiteSpace($applicationPath)) { throw '未找到 macOS 应用包。' }
+          & /usr/bin/codesign --verify --deep --strict --verbose=2 $applicationPath
+          if ($LASTEXITCODE -ne 0) { throw 'macOS 应用签名验证失败。' }
+          & /usr/bin/codesign --display --verbose=4 $applicationPath
           pnpm run smoke:mac -- --application-path $applicationPath
 
       - name: 冒烟检查 Linux 打包应用
