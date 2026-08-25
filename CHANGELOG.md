@@ -4,14 +4,14 @@
 
 The five most recent published versions are listed below.
 
-## 1.0.29 — 2026-08-25
+## 1.0.30 — 2026-08-25
 
-- Ad-hoc signed the complete macOS app for both Apple Silicon and Intel builds when no Developer ID certificate is configured.
+- When no Developer ID certificate is configured, an after-pack hook now runs `codesign --force --deep --sign -` on the complete Apple Silicon and Intel app bundles.
 - Added strict whole-bundle signature verification before uploading macOS artifacts, preventing another DMG or ZIP that macOS reports as damaged.
 - Scoped the loose installation-directory icon to Windows so an unrelated ICO can no longer enter the macOS app bundle and block signing.
 - Preserved the future Developer ID signing path so configured release certificates replace the ad-hoc fallback automatically.
 
-Release tag: [`v1.0.29`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.29).
+Release tag: [`v1.0.30`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.30).
 
 ## 1.0.26 — 2026-08-24
 

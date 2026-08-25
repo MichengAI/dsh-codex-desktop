@@ -4,14 +4,14 @@
 
 以下记录最近发布的五个版本。
 
-## 1.0.29 — 2026-08-25
+## 1.0.30 — 2026-08-25
 
-- 在未配置 Developer ID 证书时，对 macOS Apple Silicon 与 Intel 应用执行完整的 ad-hoc 签名。
+- 在未配置 Developer ID 证书时，通过构建钩子对 macOS Apple Silicon 与 Intel 完整应用包执行 `codesign --force --deep --sign -`。
 - 在上传安装包前严格验证整个 macOS 应用签名，避免再次发布提示“应用已损坏”的 DMG 或 ZIP。
 - 将安装目录根图标限定为 Windows 专用，避免无关 ICO 文件进入 macOS 应用包并阻断签名。
 - 保留未来 Developer ID 正式签名路径；配置证书后不再使用 ad-hoc 兜底。
 
-发布标签：[`v1.0.29`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.29)。
+发布标签：[`v1.0.30`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.30)。
 
 ## 1.0.26 — 2026-08-24
 
