@@ -149,6 +149,12 @@
     ],
     "win": {
       "icon": "assets/icons/icon.ico",
+      "extraFiles": [
+        {
+          "from": "assets/icons/icon.ico",
+          "to": "DSH Codex Desktop.ico"
+        }
+      ],
       "target": [
         "nsis",
         "zip"
@@ -187,12 +193,6 @@
       "uninstallDisplayName": "DSH Codex Desktop"
     },
     "executableName": "DSH Codex Desktop",
-    "extraFiles": [
-      {
-        "from": "assets/icons/icon.ico",
-        "to": "DSH Codex Desktop.ico"
-      }
-    ],
     "publish": {
       "provider": "github",
       "owner": "MichengAI",

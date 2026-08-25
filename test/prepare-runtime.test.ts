@@ -85,6 +85,20 @@ test('打包配置把离线插件仓库放到 extraResources', async () => {
   )
 })
 
+test('Windows 根目录图标不会进入 macOS 应用包', async () => {
+  const manifest = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as {
+    build?: {
+      extraFiles?: unknown
+      win?: { extraFiles?: { from?: string; to?: string }[] }
+    }
+  }
+  assert.equal(manifest.build?.extraFiles, undefined)
+  assert.equal(
+    manifest.build?.win?.extraFiles?.some(item => item.from === 'assets/icons/icon.ico' && item.to === 'DSH Codex Desktop.ico'),
+    true,
+  )
+})
+
 test('Windows 只写 pnpm.cmd，避免和 pnpm 包装目录撞名', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-pnpm-'))
   try {
