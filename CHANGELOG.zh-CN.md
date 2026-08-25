@@ -4,6 +4,14 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.27 — 2026-08-25
+
+- 在未配置 Developer ID 证书时，对 macOS Apple Silicon 与 Intel 应用执行完整的 ad-hoc 签名。
+- 在上传安装包前严格验证整个 macOS 应用签名，避免再次发布提示“应用已损坏”的 DMG 或 ZIP。
+- 保留未来 Developer ID 正式签名路径；配置证书后不再使用 ad-hoc 兜底。
+
+发布标签：[`v1.0.27`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.27)。
+
 ## 1.0.26 — 2026-08-24
 
 - 新增 Codex 风格桌面壳：返回/前进导航，以及文件、编辑、视图和帮助菜单。
@@ -32,9 +40,3 @@
 - 插件更新结果较旧或没有变化时跳过 Desktop 重载。
 
 发布标签：[`v1.0.23`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.23)。
-
-## 1.0.22 — 2026-08-21
-
-- 从当前 Profile 根目录执行插件市场命令。
-
-发布标签：[`v1.0.22`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.22)。

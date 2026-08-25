@@ -4,6 +4,14 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.27 — 2026-08-25
+
+- Ad-hoc signed the complete macOS app for both Apple Silicon and Intel builds when no Developer ID certificate is configured.
+- Added strict whole-bundle signature verification before uploading macOS artifacts, preventing another DMG or ZIP that macOS reports as damaged.
+- Preserved the future Developer ID signing path so configured release certificates replace the ad-hoc fallback automatically.
+
+Release tag: [`v1.0.27`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.27).
+
 ## 1.0.26 — 2026-08-24
 
 - Added a Codex-style desktop shell with back/forward navigation and File, Edit, View, and Help menus.
@@ -32,9 +40,3 @@ Release tag: [`v1.0.24`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Skipped Desktop reloads when a plugin update resolves to an older or unchanged version.
 
 Release tag: [`v1.0.23`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.23).
-
-## 1.0.22 — 2026-08-21
-
-- Ran marketplace commands from the active profile root.
-
-Release tag: [`v1.0.22`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.22).
