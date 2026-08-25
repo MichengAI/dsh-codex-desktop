@@ -238,7 +238,9 @@ test('正式标签缺少签名凭据时仍允许生成带 ad-hoc 签名的多平
   assert.match(workflow, /--config\.mac\.hardenedRuntime=false/)
   assert.match(workflow, /codesign --verify --deep --strict --verbose=2/)
   assert.match(workflow, /pnpm test\r?\n\s+if \(\$LASTEXITCODE -ne 0\) \{ exit \$LASTEXITCODE \}/)
-  assert.match(workflow, /pnpm run dist -- @buildArguments\r?\n\s+if \(\$LASTEXITCODE -ne 0\) \{ exit \$LASTEXITCODE \}/)
+  assert.doesNotMatch(workflow, /pnpm run dist -- @buildArguments/)
+  assert.match(workflow, /pnpm run prepare-runtime\r?\n\s+if \(\$LASTEXITCODE -ne 0\) \{ exit \$LASTEXITCODE \}/)
+  assert.match(workflow, /pnpm exec electron-builder --publish never @buildArguments\r?\n\s+if \(\$LASTEXITCODE -ne 0\) \{ exit \$LASTEXITCODE \}/)
 })
 
 test('打包态从 desktop-bridge 加载 DSH 主进程模块', async () => {
