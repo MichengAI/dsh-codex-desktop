@@ -130,10 +130,9 @@ jobs:
           $isReleaseTag = $env:GITHUB_REF -like 'refs/tags/v*'
           $hasImportedDeveloperId = $isMacPlatform -and $isReleaseTag -and -not [string]::IsNullOrWhiteSpace($env:MACOS_CERTIFICATE)
           if ($isMacPlatform -and -not $hasImportedDeveloperId) {
-            Write-Host '使用 electron-builder 对完整 macOS 应用执行 ad-hoc 签名。'
-            $env:CSC_FOR_PULL_REQUEST = 'true'
-            $buildArguments += '--config.mac.identity=-'
-            $buildArguments += '--config.mac.hardenedRuntime=false'
+            Write-Host '使用 afterPack 对完整 macOS 应用执行 ad-hoc 签名。'
+            $env:DSH_MACOS_ADHOC_SIGN = 'true'
+            $env:CSC_IDENTITY_AUTO_DISCOVERY = 'false'
           }
 
           pnpm run prepare-runtime

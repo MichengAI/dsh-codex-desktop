@@ -46,6 +46,7 @@
     "productName": "DSH Codex Desktop",
     "icon": "assets/icon.png",
     "asar": true,
+    "afterPack": "dist/scripts/adhoc-sign.mjs",
     "afterSign": "dist/scripts/notarize.mjs",
     "directories": {
       "output": "release"
