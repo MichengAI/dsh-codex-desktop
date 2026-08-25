@@ -4,6 +4,17 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.31 — 2026-08-26
+
+- Added Codex-style task notifications for completed work, approvals, and questions, with per-task taskbar badges and notification preferences.
+- Added native inline replies that return text to the exact task that produced the notification, including reliable Windows Action Center and cold-start activation handling.
+- Added the DSH Codex Desktop notification identity, compact source icon, task-aware titles, and localized Reply and Close actions.
+- Added a dedicated Notifications settings page with a styled completion-notification menu and independent approval and question controls.
+- Made the entire desktop shell follow the language selected inside DeepSeek Harness, covering menus, Settings, Keyboard Shortcuts, About, the tray, notifications, badges, and updater dialogs.
+- Fixed completion notifications showing a task's earliest text instead of its latest assistant result.
+
+Release tag: [`v1.0.31`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.31).
+
 ## 1.0.30 — 2026-08-25
 
 - When no Developer ID certificate is configured, an after-pack hook now runs `codesign --force --deep --sign -` on the complete Apple Silicon and Intel app bundles.
@@ -35,9 +46,3 @@ Release tag: [`v1.0.25`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Localized the rc.2 permission interface in the Desktop runtime.
 
 Release tag: [`v1.0.24`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.24).
-
-## 1.0.23 — 2026-08-22
-
-- Skipped Desktop reloads when a plugin update resolves to an older or unchanged version.
-
-Release tag: [`v1.0.23`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.23).

@@ -4,6 +4,17 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.31 — 2026-08-26
+
+- 新增 Codex 风格任务通知，覆盖任务完成、审批和问题提醒，并提供按任务统计的任务栏标记与通知偏好。
+- 新增原生内联回复，将输入准确发送回产生通知的任务；Windows Action Center 与冷启动激活也可可靠处理。
+- 新增 DSH Codex Desktop 通知身份、紧凑来源图标、带任务名称的标题，以及国际化的“回复”和“关闭”操作。
+- 新增独立“通知”设置页，包括带样式的任务完成通知菜单，以及独立的审批和问题通知控制。
+- 整个桌面外壳改为跟随 DeepSeek Harness 内部选择的语言，包括菜单、设置、键盘快捷键、关于、托盘、通知、标记和更新对话框。
+- 修复任务完成通知错误显示任务最早内容而不是最新助手结果的问题。
+
+发布标签：[`v1.0.31`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.31)。
+
 ## 1.0.30 — 2026-08-25
 
 - 在未配置 Developer ID 证书时，通过构建钩子对 macOS Apple Silicon 与 Intel 完整应用包执行 `codesign --force --deep --sign -`。
@@ -35,9 +46,3 @@
 - 在 Desktop 运行时中本地化 rc.2 权限界面。
 
 发布标签：[`v1.0.24`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.24)。
-
-## 1.0.23 — 2026-08-22
-
-- 插件更新结果较旧或没有变化时跳过 Desktop 重载。
-
-发布标签：[`v1.0.23`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.23)。
