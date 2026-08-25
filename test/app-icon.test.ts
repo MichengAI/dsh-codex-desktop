@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import test from 'node:test'
 
 import { resolveAppIconPath, resolveCompactIconCrop, resolveNotificationIconPath, resolveRasterIconPath, resolveTaskBadgeIconPath } from '../src/app-icon.js'
@@ -61,11 +61,11 @@ test('托盘和任务栏裁掉应用图标的大部分透明边距，并保持�
 test('任务栏未读标记按计数选择开发态和打包态资源', () => {
   assert.equal(
     resolveTaskBadgeIconPath({ appPath: 'D:\\app', isPackaged: false, resourcesPath: 'D:\\resources' }, 3),
-    join('D:\\app', 'assets', 'task-badges', '3.png'),
+    resolve('D:\\app', 'assets', 'task-badges', '3.png'),
   )
   assert.equal(
     resolveTaskBadgeIconPath({ appPath: 'D:\\app', isPackaged: true, resourcesPath: 'D:\\resources' }, 12),
-    join('D:\\resources', 'task-badges', '9-plus.png'),
+    resolve('D:\\resources', 'task-badges', '9-plus.png'),
   )
 })
 
