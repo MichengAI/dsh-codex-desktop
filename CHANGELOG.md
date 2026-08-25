@@ -4,6 +4,15 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.32 — 2026-08-26
+
+- Added `dsh-context` 0.32.0 for context inspection and management, and `dsh-better-sidebar` 0.16.1 for an extensible workspace sidebar.
+- Updated the bundled MichengAI products to Codex UI 0.2.87, IM Connect 0.1.24, Automation 0.1.18, Skills Manager 0.1.24, Archive Manager 0.1.14, and Agency Agents 0.1.21.
+- Updated the bundled plugin market to `dshmarket` 1.29.2.
+- Extended the offline first-launch catalog so new and existing desktop profiles receive the two ecosystem plugins through the normal self-healing seed path.
+
+Release tag: [`v1.0.32`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.32).
+
 ## 1.0.31 — 2026-08-26
 
 - Added Codex-style task notifications for completed work, approvals, and questions, with per-task taskbar badges and notification preferences.
@@ -39,10 +48,3 @@ Release tag: [`v1.0.26`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Enlarged tray and taskbar icons for clearer system-shell presentation.
 
 Release tag: [`v1.0.25`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.25).
-
-## 1.0.24 — 2026-08-23
-
-- Preserved line endings while patching the bundled runtime.
-- Localized the rc.2 permission interface in the Desktop runtime.
-
-Release tag: [`v1.0.24`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.24).

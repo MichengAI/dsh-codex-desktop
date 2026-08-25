@@ -4,6 +4,15 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.32 — 2026-08-26
+
+- 新增 `dsh-context` 0.32.0，提供上下文透视与管理；新增 `dsh-better-sidebar` 0.16.1，提供可扩展的工作区侧边栏。
+- 将内置 MichengAI 产品更新到 Codex UI 0.2.87、IM Connect 0.1.24、Automation 0.1.18、Skills Manager 0.1.24、Archive Manager 0.1.14 和 Agency Agents 0.1.21。
+- 将内置插件市场更新到 `dshmarket` 1.29.2。
+- 扩展首次启动离线插件目录，新旧桌面 profile 都会通过既有自修复补种流程获得这两个生态插件。
+
+发布标签：[`v1.0.32`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.32)。
+
 ## 1.0.31 — 2026-08-26
 
 - 新增 Codex 风格任务通知，覆盖任务完成、审批和问题提醒，并提供按任务统计的任务栏标记与通知偏好。
@@ -39,10 +48,3 @@
 - 放大托盘和任务栏图标，提升系统界面的辨识度。
 
 发布标签：[`v1.0.25`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.25)。
-
-## 1.0.24 — 2026-08-23
-
-- 修补内置运行时时保留原始换行符。
-- 在 Desktop 运行时中本地化 rc.2 权限界面。
-
-发布标签：[`v1.0.24`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.24)。

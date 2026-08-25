@@ -91,6 +91,8 @@ The installer ships with the local runtime required to start DSH. On first launc
 | Archive management | [`@michengai/dsh-archive-manager`](https://github.com/MichengAI/dsh-archive-manager) |
 | IM assistant | [`@michengai/dsh-im-connect`](https://github.com/MichengAI/dsh-im-connect) |
 | Scheduled automation | [`@michengai/dsh-automation`](https://github.com/MichengAI/dsh-automation) |
+| Context inspection and management | [`dsh-context`](https://github.com/bowenliang123/dsh-context) |
+| Extensible workspace sidebar | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
 
 You can later manage additional plugins from the plugin market. The desktop application keeps its own runtime separate from profile-installed community plugins so plugin changes do not overwrite the application runtime.
 
@@ -102,8 +104,9 @@ DSH Codex Desktop combines the core runtime, feature products, and plugin market
 | --- | --- | --- |
 | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | Models, sessions, tools, and plugin runtime | The core runtime bundled and started by the desktop app |
 | **DSH Codex Desktop** | Cross-platform workbench for end users | This product, responsible for ready-to-run installation, updates, and recovery |
-| [DSH Codex Suite](https://github.com/MichengAI/dsh-codex-ui/tree/main/packages/dsh-codex-suite) | One-click feature suite for existing DSH Web environments | Installs the same six feature products without the desktop runtime |
+| [DSH Codex Suite](https://github.com/MichengAI/dsh-codex-ui/tree/main/packages/dsh-codex-suite) | One-click feature suite for existing DSH Web environments | Installs the six MichengAI feature products without the desktop runtime |
 | Six feature products | [Codex UI](https://github.com/MichengAI/dsh-codex-ui) · [IM Connect](https://github.com/MichengAI/dsh-im-connect) · [Automation](https://github.com/MichengAI/dsh-automation) · [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) · [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) · [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | Each can be installed independently; all six are bundled with the desktop app |
+| Integrated ecosystem plugins | [DSH Context](https://github.com/bowenliang123/dsh-context) · [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | Bundled with the desktop app for context insight and an extensible workspace sidebar |
 | `dshmarket` | Discover, install, and update more DSH plugins | Included as the plugin market |
 
 ## Updates and recovery

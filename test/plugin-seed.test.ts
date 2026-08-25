@@ -33,7 +33,7 @@ test('官方运行时不会写进 Web profile 补种计划', () => {
   assert.deepEqual(plan, { action: 'add', packages: [...catalog] })
 })
 
-test('六个插件都已在 profile 中时跳过补种', () => {
+test('目录插件都已在 profile 中时跳过补种', () => {
   const plan = planBundledPluginSeed({
     catalog,
     declaredPackages: catalog.map(item => item.packageName),

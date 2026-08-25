@@ -91,6 +91,8 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | 归档会话管理 | [`@michengai/dsh-archive-manager`](https://github.com/MichengAI/dsh-archive-manager) |
 | IM 助理 | [`@michengai/dsh-im-connect`](https://github.com/MichengAI/dsh-im-connect) |
 | 定时自动化 | [`@michengai/dsh-automation`](https://github.com/MichengAI/dsh-automation) |
+| 上下文透视与管理 | [`dsh-context`](https://github.com/bowenliang123/dsh-context) |
+| 可扩展工作区侧边栏 | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
 
 后续可以在插件市场管理更多插件。桌面应用的运行时与 profile 中安装的社区插件保持隔离，插件变更不会覆盖应用运行时。
 
@@ -102,8 +104,9 @@ DSH Codex Desktop 把核心运行时、功能产品和插件市场组合成一�
 | --- | --- | --- |
 | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | 提供模型、会话、工具和插件运行能力 | 桌面端内置并负责启动的核心运行时 |
 | **DSH Codex Desktop** | 面向终端用户的跨平台桌面工作台 | 当前产品，负责下载安装即用、更新与自修复 |
-| [DSH Codex Suite](https://github.com/MichengAI/dsh-codex-ui/tree/main/packages/dsh-codex-suite) | 面向已有 DSH Web 环境的一键功能套件 | 安装与桌面端相同的 6 个功能产品，但不包含桌面运行时 |
+| [DSH Codex Suite](https://github.com/MichengAI/dsh-codex-ui/tree/main/packages/dsh-codex-suite) | 面向已有 DSH Web 环境的一键功能套件 | 安装 6 个 MichengAI 功能产品，但不包含桌面运行时 |
 | 6 个功能产品 | [Codex UI](https://github.com/MichengAI/dsh-codex-ui) · [IM Connect](https://github.com/MichengAI/dsh-im-connect) · [Automation](https://github.com/MichengAI/dsh-automation) · [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) · [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) · [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | 各自可以独立安装，桌面端已全部内置 |
+| 集成的生态插件 | [DSH Context](https://github.com/bowenliang123/dsh-context) · [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | 随桌面端内置，提供上下文洞察与可扩展的工作区侧边栏 |
 | `dshmarket` | 发现、安装和更新更多 DSH 插件 | 作为插件市场随桌面端提供 |
 
 ## 更新与自修复
