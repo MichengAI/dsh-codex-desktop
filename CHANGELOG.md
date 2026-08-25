@@ -4,13 +4,13 @@
 
 The five most recent published versions are listed below.
 
-## 1.0.27 — 2026-08-25
+## 1.0.28 — 2026-08-25
 
 - Ad-hoc signed the complete macOS app for both Apple Silicon and Intel builds when no Developer ID certificate is configured.
 - Added strict whole-bundle signature verification before uploading macOS artifacts, preventing another DMG or ZIP that macOS reports as damaged.
 - Preserved the future Developer ID signing path so configured release certificates replace the ad-hoc fallback automatically.
 
-Release tag: [`v1.0.27`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.27).
+Release tag: [`v1.0.28`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.28).
 
 ## 1.0.26 — 2026-08-24
 
