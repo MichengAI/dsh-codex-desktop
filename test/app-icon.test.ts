@@ -61,11 +61,11 @@ test('托盘和任务栏裁掉应用图标的大部分透明边距，并保持�
 test('任务栏未读标记按计数选择开发态和打包态资源', () => {
   assert.equal(
     resolveTaskBadgeIconPath({ appPath: 'D:\\app', isPackaged: false, resourcesPath: 'D:\\resources' }, 3),
-    'D:\\app\\assets\\task-badges\\3.png',
+    join('D:\\app', 'assets', 'task-badges', '3.png'),
   )
   assert.equal(
     resolveTaskBadgeIconPath({ appPath: 'D:\\app', isPackaged: true, resourcesPath: 'D:\\resources' }, 12),
-    'D:\\resources\\task-badges\\9-plus.png',
+    join('D:\\resources', 'task-badges', '9-plus.png'),
   )
 })
 
