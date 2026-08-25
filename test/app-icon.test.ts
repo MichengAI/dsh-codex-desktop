@@ -65,7 +65,7 @@ test('任务栏未读标记按计数选择开发态和打包态资源', () => {
   )
   assert.equal(
     resolveTaskBadgeIconPath({ appPath: 'D:\\app', isPackaged: true, resourcesPath: 'D:\\resources' }, 12),
-    resolve('D:\\resources', 'task-badges', '9-plus.png'),
+    join('D:\\resources', 'task-badges', '9-plus.png'),
   )
 })
 
