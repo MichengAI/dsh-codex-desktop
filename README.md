@@ -63,6 +63,10 @@ The application keeps DSH data in your existing user profile (`%USERPROFILE%\.ds
 
 <p align="center"><img src="assets/screenshots/desktop-conversation-light.png" alt="DSH Codex Desktop light conversation workspace" width="960"></p>
 
+<p align="center"><em>Inspect context composition while the extensible workspace sidebar keeps project files within reach.</em></p>
+
+<p align="center"><img src="assets/screenshots/desktop-context-sidebar.png" alt="Context management dashboard with the extensible workspace sidebar" width="960"></p>
+
 <p align="center"><em>Archived conversations stay searchable and can be restored from Settings.</em></p>
 
 <p align="center"><img src="assets/screenshots/desktop-archive.png" alt="Archived conversation management" width="960"></p>

@@ -63,6 +63,10 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 <p align="center"><img src="assets/screenshots/desktop-conversation-light.png" alt="浅色桌面对话工作区" width="960"></p>
 
+<p align="center"><em>在上下文面板中查看组成与演进，同时通过可扩展侧边栏浏览项目文件。</em></p>
+
+<p align="center"><img src="assets/screenshots/desktop-context-sidebar.png" alt="上下文管理面板与可扩展工作区侧边栏" width="960"></p>
+
 <p align="center"><em>已归档会话可检索，并能从设置中恢复。</em></p>
 
 <p align="center"><img src="assets/screenshots/desktop-archive.png" alt="已归档会话管理" width="960"></p>

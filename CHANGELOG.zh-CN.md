@@ -4,6 +4,12 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.33 — 2026-08-26
+
+- 新增产品预览截图，同时展示 `dsh-context` 上下文管理与 DSH Better Sidebar 文件浏览器。
+
+发布标签：[`v1.0.33`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.33)。
+
 ## 1.0.32 — 2026-08-26
 
 - 新增 `dsh-context` 0.32.0，提供上下文透视与管理；新增 `dsh-better-sidebar` 0.16.1，提供可扩展的工作区侧边栏。
@@ -42,9 +48,3 @@
 - 加固不同渲染窗口的 IPC 权限，并修复 macOS 交通灯安全区和首帧布局。
 
 发布标签：[`v1.0.26`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.26)。
-
-## 1.0.25 — 2026-08-23
-
-- 放大托盘和任务栏图标，提升系统界面的辨识度。
-
-发布标签：[`v1.0.25`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.25)。

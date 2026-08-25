@@ -4,6 +4,12 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.33 — 2026-08-26
+
+- Added a product preview showing `dsh-context` context management alongside the DSH Better Sidebar file explorer.
+
+Release tag: [`v1.0.33`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.33).
+
 ## 1.0.32 — 2026-08-26
 
 - Added `dsh-context` 0.32.0 for context inspection and management, and `dsh-better-sidebar` 0.16.1 for an extensible workspace sidebar.
@@ -42,9 +48,3 @@ Release tag: [`v1.0.30`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Hardened IPC permissions between renderer windows and fixed the macOS traffic-light safe area and first-frame layout.
 
 Release tag: [`v1.0.26`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.26).
-
-## 1.0.25 — 2026-08-23
-
-- Enlarged tray and taskbar icons for clearer system-shell presentation.
-
-Release tag: [`v1.0.25`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.25).
