@@ -4,6 +4,12 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.35 — 2026-08-26
+
+- 移除“桌面端设置”“键盘快捷键”和“关于”窗口中的 Electron 原生菜单栏，按下 Alt 时不再在已经国际化的桌面外壳上方显示英文 `File / Edit / View / Window` 菜单。
+
+发布标签：[`v1.0.35`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.35)。
+
 ## 1.0.34 — 2026-08-26
 
 - 将 `dsh-mcp-connector` 0.2.21 加入内置离线目录，支持通过 OAuth、API Key、HTTP、stdio 与 JSON 配置管理 MCP 连接。
@@ -40,12 +46,3 @@
 - 修复任务完成通知错误显示任务最早内容而不是最新助手结果的问题。
 
 发布标签：[`v1.0.31`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.31)。
-
-## 1.0.30 — 2026-08-25
-
-- 在未配置 Developer ID 证书时，通过构建钩子对 macOS Apple Silicon 与 Intel 完整应用包执行 `codesign --force --deep --sign -`。
-- 在上传安装包前严格验证整个 macOS 应用签名，避免再次发布提示“应用已损坏”的 DMG 或 ZIP。
-- 将安装目录根图标限定为 Windows 专用，避免无关 ICO 文件进入 macOS 应用包并阻断签名。
-- 保留未来 Developer ID 正式签名路径；配置证书后不再使用 ad-hoc 兜底。
-
-发布标签：[`v1.0.30`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.30)。

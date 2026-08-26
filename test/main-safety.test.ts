@@ -111,6 +111,10 @@ test('桌面通知和更新设置使用独立窗口并进入打包资源', async
   assert.match(settings, /Installation always requires your confirmation/)
   assert.match(main, /showDesktopSettingsWindow\('updates'\)/)
   assert.match(main, /autoInstallOnAppQuit = false/)
+  assert.match(main, /function removeNativeWindowMenu/)
+  assert.match(main, /window\.setMenu\(null\)/)
+  assert.match(main, /window\.setMenuBarVisibility\(false\)/)
+  assert.equal((main.match(/removeNativeWindowMenu\(window\)/g) ?? []).length, 3)
 })
 
 test('shell 在 macOS 为交通灯预留空间且状态早到不会读取空 bootstrap', async () => {

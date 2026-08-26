@@ -942,6 +942,12 @@ function showDesktopNotification(event: DesktopNotificationEvent): void {
 
 type DesktopSettingsSection = 'notifications' | 'updates'
 
+function removeNativeWindowMenu(window: BrowserWindow): void {
+  if (process.platform === 'darwin') return
+  window.setMenu(null)
+  window.setMenuBarVisibility(false)
+}
+
 function showDesktopSettingsWindow(section: DesktopSettingsSection = 'notifications'): void {
   if (settingsWindow !== undefined && !settingsWindow.isDestroyed()) {
     settingsWindow.show()
@@ -960,6 +966,7 @@ function showDesktopSettingsWindow(section: DesktopSettingsSection = 'notificati
     backgroundColor: '#202322',
     webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
   })
+  removeNativeWindowMenu(window)
   settingsWindow = window
   window.on('closed', () => { if (settingsWindow === window) settingsWindow = undefined })
   installShortcutHandler(window.webContents)
@@ -986,6 +993,7 @@ function showShortcutsWindow(): void {
     backgroundColor: '#262827',
     webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
   })
+  removeNativeWindowMenu(window)
   shortcutsWindow = window
   window.on('closed', () => { if (shortcutsWindow === window) shortcutsWindow = undefined })
   installShortcutHandler(window.webContents)
@@ -1019,6 +1027,7 @@ function showAboutWindow(): void {
     ...(icon === undefined ? {} : { icon }),
     webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
   })
+  removeNativeWindowMenu(window)
   aboutWindow = window
   window.on('closed', () => { if (aboutWindow === window) aboutWindow = undefined })
   installShortcutHandler(window.webContents)

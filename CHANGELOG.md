@@ -4,6 +4,12 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.35 — 2026-08-26
+
+- Removed Electron's native menu bar from Desktop Settings, Keyboard Shortcuts, and About windows so pressing Alt can no longer reveal an English `File / Edit / View / Window` menu over the localized desktop shell.
+
+Release tag: [`v1.0.35`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.35).
+
 ## 1.0.34 — 2026-08-26
 
 - Added `dsh-mcp-connector` 0.2.21 to the bundled offline catalog for OAuth, API-key, HTTP, stdio, and JSON-based MCP connection management.
@@ -40,12 +46,3 @@ Release tag: [`v1.0.32`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Fixed completion notifications showing a task's earliest text instead of its latest assistant result.
 
 Release tag: [`v1.0.31`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.31).
-
-## 1.0.30 — 2026-08-25
-
-- When no Developer ID certificate is configured, an after-pack hook now runs `codesign --force --deep --sign -` on the complete Apple Silicon and Intel app bundles.
-- Added strict whole-bundle signature verification before uploading macOS artifacts, preventing another DMG or ZIP that macOS reports as damaged.
-- Scoped the loose installation-directory icon to Windows so an unrelated ICO can no longer enter the macOS app bundle and block signing.
-- Preserved the future Developer ID signing path so configured release certificates replace the ad-hoc fallback automatically.
-
-Release tag: [`v1.0.30`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.30).
