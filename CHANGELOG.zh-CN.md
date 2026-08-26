@@ -7,6 +7,7 @@
 ## 1.0.33 — 2026-08-26
 
 - 新增产品预览截图，同时展示 `dsh-context` 上下文管理与 DSH Better Sidebar 文件浏览器。
+- 对 Windows 短暂文件占用导致的替换失败增加重试，避免 profile 更新被临时锁中断。
 
 发布标签：[`v1.0.33`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.33)。
 

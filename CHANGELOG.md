@@ -7,6 +7,7 @@ The five most recent published versions are listed below.
 ## 1.0.33 — 2026-08-26
 
 - Added a product preview showing `dsh-context` context management alongside the DSH Better Sidebar file explorer.
+- Retried transient Windows file replacement failures so profile updates are not interrupted by short-lived file locks.
 
 Release tag: [`v1.0.33`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.33).
 
