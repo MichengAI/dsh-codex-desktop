@@ -8,6 +8,12 @@ const IPC = {
   bootstrap: 'dsh-shell:bootstrap',
   getNotificationPreferences: 'dsh-shell:get-notification-preferences',
   updateNotificationPreferences: 'dsh-shell:update-notification-preferences',
+  getUpdatePreferences: 'dsh-shell:get-update-preferences',
+  updateUpdatePreferences: 'dsh-shell:update-update-preferences',
+  getDesktopUpdateState: 'dsh-shell:get-desktop-update-state',
+  desktopUpdateAction: 'dsh-shell:desktop-update-action',
+  desktopUpdateState: 'dsh-shell:desktop-update-state',
+  settingsSection: 'dsh-shell:settings-section',
 } as const
 
 contextBridge.exposeInMainWorld('dshShell', {
@@ -16,6 +22,10 @@ contextBridge.exposeInMainWorld('dshShell', {
   getBootstrap: () => ipcRenderer.invoke(IPC.getBootstrap),
   getNotificationPreferences: () => ipcRenderer.invoke(IPC.getNotificationPreferences),
   updateNotificationPreferences: (value: unknown) => ipcRenderer.invoke(IPC.updateNotificationPreferences, value),
+  getUpdatePreferences: () => ipcRenderer.invoke(IPC.getUpdatePreferences),
+  updateUpdatePreferences: (value: unknown) => ipcRenderer.invoke(IPC.updateUpdatePreferences, value),
+  getDesktopUpdateState: () => ipcRenderer.invoke(IPC.getDesktopUpdateState),
+  desktopUpdateAction: (action: unknown) => ipcRenderer.invoke(IPC.desktopUpdateAction, action),
   onState: (listener: (state: unknown) => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, state: unknown) => listener(state)
     ipcRenderer.on(IPC.state, wrapped)
@@ -25,6 +35,16 @@ contextBridge.exposeInMainWorld('dshShell', {
     const wrapped = (_event: Electron.IpcRendererEvent, bootstrap: unknown) => listener(bootstrap)
     ipcRenderer.on(IPC.bootstrap, wrapped)
     return () => ipcRenderer.removeListener(IPC.bootstrap, wrapped)
+  },
+  onDesktopUpdateState: (listener: (state: unknown) => void) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, state: unknown) => listener(state)
+    ipcRenderer.on(IPC.desktopUpdateState, wrapped)
+    return () => ipcRenderer.removeListener(IPC.desktopUpdateState, wrapped)
+  },
+  onSettingsSection: (listener: (section: unknown) => void) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, section: unknown) => listener(section)
+    ipcRenderer.on(IPC.settingsSection, wrapped)
+    return () => ipcRenderer.removeListener(IPC.settingsSection, wrapped)
   },
   popupMenu: (request: unknown) => ipcRenderer.invoke(IPC.popupMenu, request),
 })

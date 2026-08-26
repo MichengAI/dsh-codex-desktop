@@ -154,17 +154,16 @@ export async function stageBundledPlugins(destinationRoot: string, nodeRoot: str
   await writeFile(join(stagingDir, 'package.json'), JSON.stringify({
     name: 'dsh-desktop-bundled-plugins',
     private: true,
-    pnpm: officialRuntimePnpmConfig(),
     dependencies: Object.fromEntries(stagedPackages.map(plugin => [plugin.packageName, plugin.version])),
   }, undefined, 2) + '\n', 'utf8')
-  await writeFile(join(stagingDir, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml(), 'utf8')
+  await writeFile(join(stagingDir, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml(false), 'utf8')
   runStagedPnpm(nodeRoot, [
     'install',
     '--dir', stagingDir,
     '--store-dir', storeDir,
     '--prod',
     '--config.node-linker=hoisted',
-    '--config.auto-install-peers=true',
+    '--config.auto-install-peers=false',
     '--config.minimumReleaseAge=0',
     '--registry=https://registry.npmjs.org/',
   ])

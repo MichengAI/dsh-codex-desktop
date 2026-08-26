@@ -1,8 +1,31 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 
-import { buildDesktopTrayItems, DESKTOP_UPDATE_WARNING, desktopUpdateChannel, desktopUpdatePrompt, formatDesktopReleaseNotes, publicDesktopUpdateError } from '../src/desktop-updater.js'
+import { DEFAULT_UPDATE_PREFERENCES, buildDesktopTrayItems, DESKTOP_UPDATE_WARNING, desktopUpdateChannel, desktopUpdatePrompt, formatDesktopReleaseNotes, loadUpdatePreferences, publicDesktopUpdateError, sanitizeUpdatePreferences, saveUpdatePreferences, shouldCheckForUpdatesOnStartup, shouldDownloadUpdateAutomatically } from '../src/desktop-updater.js'
+
+test('更新策略使用安全默认值并持久化', async () => {
+  assert.deepEqual(sanitizeUpdatePreferences(undefined), DEFAULT_UPDATE_PREFERENCES)
+  assert.deepEqual(sanitizeUpdatePreferences({ policy: 'unexpected' }), DEFAULT_UPDATE_PREFERENCES)
+  assert.deepEqual(sanitizeUpdatePreferences({ policy: 'auto-download' }), { policy: 'auto-download' })
+  assert.equal(shouldCheckForUpdatesOnStartup({ policy: 'notify' }, true), true)
+  assert.equal(shouldCheckForUpdatesOnStartup({ policy: 'auto-download' }, true), true)
+  assert.equal(shouldCheckForUpdatesOnStartup({ policy: 'manual' }, true), false)
+  assert.equal(shouldCheckForUpdatesOnStartup({ policy: 'notify' }, false), false)
+  assert.equal(shouldDownloadUpdateAutomatically({ policy: 'auto-download' }), true)
+
+  const root = await mkdtemp(join(tmpdir(), 'dsh-update-preferences-'))
+  const path = join(root, 'settings.json')
+  try {
+    assert.deepEqual(await loadUpdatePreferences(path), DEFAULT_UPDATE_PREFERENCES)
+    assert.deepEqual(await saveUpdatePreferences(path, { policy: 'manual' }), { policy: 'manual' })
+    assert.deepEqual(await loadUpdatePreferences(path), { policy: 'manual' })
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
 
 test('开发态和空闲态都提供手动检查，不自动下载', () => {
   const idle = buildDesktopTrayItems({ status: { kind: 'idle' }, currentVersion: '0.1.4', packaged: true })
@@ -78,12 +101,14 @@ test('打包配置把更新源指到 GitHub Releases', async () => {
   assert.equal(publish?.provider, 'github')
 })
 
-test('主进程不得在启动时自动检查更新', async () => {
+test('主进程在窗口稳定后按策略安排启动检查', async () => {
   const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
   assert.match(main, /buildDesktopTrayItems/)
   assert.match(main, /import updater from 'electron-updater'/)
   assert.doesNotMatch(main, /import \{ autoUpdater \} from 'electron-updater'/)
   assert.match(main, /autoDownload = false/)
   assert.match(main, /function checkDesktopUpdate/)
-  assert.doesNotMatch(main, /createTray\(\)\s*void checkDesktopUpdate/)
+  assert.match(main, /await createMainWindow\(server\.url\)\s*scheduleStartupUpdateCheck\(\)/)
+  assert.match(main, /shouldCheckForUpdatesOnStartup\(updatePreferences, app\.isPackaged\)/)
+  assert.match(main, /checkDesktopUpdate\('background'\)/)
 })

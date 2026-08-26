@@ -50,6 +50,7 @@ The application keeps DSH data in your existing user profile (`%USERPROFILE%\.ds
 | **Archive management** | Search archived conversations, restore a session when needed, or permanently remove archived records. |
 | **IM assistant** | Configure DingTalk, Feishu, Lark, WeChat, WeCom, QQ, Telegram, and other available channels in one place. |
 | **Plugin market** | Discover, install, update, enable, and diagnose DSH plugins without leaving the desktop client. |
+| **MCP connector** | Add and manage MCP services through OAuth, API keys, HTTP, stdio, or JSON configuration. |
 | **Scheduled automation** | Use the built-in DSH scheduling capability to manage recurring tasks from the same workspace. |
 | **Safe local runtime** | The app starts DSH on a validated loopback address and keeps the browser UI inside the desktop shell. |
 
@@ -97,6 +98,7 @@ The installer ships with the local runtime required to start DSH. On first launc
 | Scheduled automation | [`@michengai/dsh-automation`](https://github.com/MichengAI/dsh-automation) |
 | Context inspection and management | [`dsh-context`](https://github.com/bowenliang123/dsh-context) |
 | Extensible workspace sidebar | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
+| MCP connection management | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
 
 You can later manage additional plugins from the plugin market. The desktop application keeps its own runtime separate from profile-installed community plugins so plugin changes do not overwrite the application runtime.
 
@@ -110,12 +112,12 @@ DSH Codex Desktop combines the core runtime, feature products, and plugin market
 | **DSH Codex Desktop** | Cross-platform workbench for end users | This product, responsible for ready-to-run installation, updates, and recovery |
 | [DSH Codex Suite](https://github.com/MichengAI/dsh-codex-ui/tree/main/packages/dsh-codex-suite) | One-click feature suite for existing DSH Web environments | Installs the six MichengAI feature products without the desktop runtime |
 | Six feature products | [Codex UI](https://github.com/MichengAI/dsh-codex-ui) · [IM Connect](https://github.com/MichengAI/dsh-im-connect) · [Automation](https://github.com/MichengAI/dsh-automation) · [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) · [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) · [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | Each can be installed independently; all six are bundled with the desktop app |
-| Integrated ecosystem plugins | [DSH Context](https://github.com/bowenliang123/dsh-context) · [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | Bundled with the desktop app for context insight and an extensible workspace sidebar |
+| Integrated ecosystem plugins | [DSH Context](https://github.com/bowenliang123/dsh-context) · [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) · [DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector) | Bundled with the desktop app for context insight, workspace navigation, and MCP connection management |
 | `dshmarket` | Discover, install, and update more DSH plugins | Included as the plugin market |
 
 ## Updates and recovery
 
-- **Desktop updates** are manual: use the tray menu to check for a new desktop version, download it, then choose install and restart.
+- **Desktop updates** are checked after startup by default and notify you when a new release is available. Settings → Updates can instead download releases automatically or switch to manual-only checks. Installation and restart always require an explicit action.
 - **DSH reload** is available from the tray menu after changing plugins or profile configuration; it restarts the local DSH service without reinstalling the desktop application.
 - **Plugin updates** remain in the DSH settings and plugin market. A failed plugin installation is not activated as a running bundle.
 - **Startup recovery** removes stale community-plugin registrations that no longer have an installed package, then retries the local DSH startup.

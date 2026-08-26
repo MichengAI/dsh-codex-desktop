@@ -50,6 +50,7 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | **归档管理** | 搜索已归档会话、按需恢复，或永久清理归档记录。 |
 | **IM 助理** | 在一个界面中配置钉钉、飞书、Lark、微信、企业微信、QQ、Telegram 等可用频道。 |
 | **插件市场** | 无需离开桌面客户端，即可发现、安装、更新、启用和诊断 DSH 插件。 |
+| **MCP 连接器** | 通过 OAuth、API Key、HTTP、stdio 或 JSON 配置添加并管理 MCP 服务。 |
 | **定时自动化** | 使用内置 DSH 定时能力，在同一工作台管理周期任务。 |
 | **安全的本地运行时** | 应用只在经过校验的本机回环地址启动 DSH，并将 Web 界面承载在桌面壳中。 |
 
@@ -97,6 +98,7 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | 定时自动化 | [`@michengai/dsh-automation`](https://github.com/MichengAI/dsh-automation) |
 | 上下文透视与管理 | [`dsh-context`](https://github.com/bowenliang123/dsh-context) |
 | 可扩展工作区侧边栏 | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
+| MCP 连接管理 | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
 
 后续可以在插件市场管理更多插件。桌面应用的运行时与 profile 中安装的社区插件保持隔离，插件变更不会覆盖应用运行时。
 
@@ -110,12 +112,12 @@ DSH Codex Desktop 把核心运行时、功能产品和插件市场组合成一�
 | **DSH Codex Desktop** | 面向终端用户的跨平台桌面工作台 | 当前产品，负责下载安装即用、更新与自修复 |
 | [DSH Codex Suite](https://github.com/MichengAI/dsh-codex-ui/tree/main/packages/dsh-codex-suite) | 面向已有 DSH Web 环境的一键功能套件 | 安装 6 个 MichengAI 功能产品，但不包含桌面运行时 |
 | 6 个功能产品 | [Codex UI](https://github.com/MichengAI/dsh-codex-ui) · [IM Connect](https://github.com/MichengAI/dsh-im-connect) · [Automation](https://github.com/MichengAI/dsh-automation) · [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) · [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) · [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | 各自可以独立安装，桌面端已全部内置 |
-| 集成的生态插件 | [DSH Context](https://github.com/bowenliang123/dsh-context) · [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | 随桌面端内置，提供上下文洞察与可扩展的工作区侧边栏 |
+| 集成的生态插件 | [DSH Context](https://github.com/bowenliang123/dsh-context) · [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) · [DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector) | 随桌面端内置，提供上下文洞察、工作区导航与 MCP 连接管理 |
 | `dshmarket` | 发现、安装和更新更多 DSH 插件 | 作为插件市场随桌面端提供 |
 
 ## 更新与自修复
 
-- **桌面端更新**：从托盘菜单手动检查新版本、下载后选择安装并重启；应用不会在启动时自动升级。
+- **桌面端更新**：默认在启动完成后检查新版本并提醒；可在“设置 → 更新”中改为自动下载或仅手动检查。安装与重启始终需要你明确操作。
 - **重新加载 DSH**：修改插件或 profile 配置后，可从托盘菜单重新加载本地 DSH 服务，不需要重装桌面应用。
 - **插件更新**：仍在 DSH 设置和插件市场中完成；安装失败的插件不会被激活为运行 bundle。
 - **启动自修复**：启动时会移除磁盘上已不存在的社区插件登记，再重试启动本地 DSH。

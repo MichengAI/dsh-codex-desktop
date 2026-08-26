@@ -24,9 +24,9 @@ export const OFFICIAL_LAUNCH_PEERS: readonly BundledPlugin[] = [
   { packageName: '@deepseek-ai/dsh-timeout', version: OFFICIAL_DSH_VERSION },
   { packageName: '@deepseek-ai/dsh-invariants', version: OFFICIAL_DSH_VERSION },
 ]
-/** 随桌面端离线仓库分发的八个社区插件和插件市场。 */
+/** 随桌面端离线仓库分发的九个社区插件和插件市场。 */
 export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
-  { packageName: '@michengai/dsh-codex-ui', version: '0.2.87' },
+  { packageName: '@michengai/dsh-codex-ui', version: '0.2.88' },
   { packageName: '@michengai/dsh-im-connect', version: '0.1.24' },
   { packageName: '@michengai/dsh-automation', version: '0.1.18' },
   { packageName: '@michengai/dsh-skills-manager', version: '0.1.24' },
@@ -34,13 +34,14 @@ export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
   { packageName: '@michengai/dsh-agency-agents', version: '0.1.21' },
   { packageName: 'dsh-context', version: '0.32.0' },
   { packageName: 'dsh-better-sidebar', version: '0.16.1' },
+  { packageName: 'dsh-mcp-connector', version: '0.2.21' },
   { packageName: 'dshmarket', version: '1.29.2' },
 ]
 
 /** 离线 store 只放社区插件，官方运行时单独预装，避免安装包把同一份依赖打两遍。 */
 export const STORE_PACKAGES: readonly BundledPlugin[] = BUNDLED_PLUGINS
 
-/** 首次补种的完整清单：官方运行时、八个社区插件和插件市场。 */
+/** 首次补种的完整清单：官方运行时、九个社区插件和插件市场。 */
 export const SEEDED_PACKAGES: readonly BundledPlugin[] = [OFFICIAL_RUNTIME, ...BUNDLED_PLUGINS]
 
 export const OFFICIAL_PROFILE_BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] as const

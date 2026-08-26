@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { BUNDLED_PLUGINS, OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, compareReleaseVersions, isDeepSeekOfficialPackage, isOfficialDshPackage, officialDshVersionOverrides, officialRuntimeDependencies, officialRuntimePnpmConfig, planOfficialRuntimeTarget, pnpmAllowBuildsManifest, pnpmWorkspaceYaml, SUITE_PACKAGE, bundledPluginNames, seededPackageNames } from '../src/bundled-plugins.js'
 
-test('内置目录包含八个社区插件和插件市场', () => {
+test('内置目录包含九个社区插件和插件市场', () => {
   assert.deepEqual(bundledPluginNames(), [
     '@michengai/dsh-codex-ui',
     '@michengai/dsh-im-connect',
@@ -13,9 +13,10 @@ test('内置目录包含八个社区插件和插件市场', () => {
     '@michengai/dsh-agency-agents',
     'dsh-context',
     'dsh-better-sidebar',
+    'dsh-mcp-connector',
     'dshmarket',
   ])
-  assert.equal(BUNDLED_PLUGINS.length, 9)
+  assert.equal(BUNDLED_PLUGINS.length, 10)
   assert.equal(SUITE_PACKAGE, '@michengai/dsh-codex-suite')
 })
 
@@ -31,13 +32,13 @@ test('每个内置插件都钉死精确版本', () => {
     assert.match(plugin.version, /^\d+\.\d+\.\d+$/)
     assert.equal(
       plugin.packageName.startsWith('@michengai/')
-        || ['dsh-context', 'dsh-better-sidebar', 'dshmarket'].includes(plugin.packageName),
+        || ['dsh-context', 'dsh-better-sidebar', 'dsh-mcp-connector', 'dshmarket'].includes(plugin.packageName),
       true,
     )
   }
   assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.29.2')
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
-    '@michengai/dsh-codex-ui': '0.2.87',
+    '@michengai/dsh-codex-ui': '0.2.88',
     '@michengai/dsh-im-connect': '0.1.24',
     '@michengai/dsh-automation': '0.1.18',
     '@michengai/dsh-skills-manager': '0.1.24',
@@ -45,6 +46,7 @@ test('每个内置插件都钉死精确版本', () => {
     '@michengai/dsh-agency-agents': '0.1.21',
     'dsh-context': '0.32.0',
     'dsh-better-sidebar': '0.16.1',
+    'dsh-mcp-connector': '0.2.21',
     dshmarket: '1.29.2',
   })
 })
@@ -92,4 +94,5 @@ test('装配与补种会放行 DSH 所需的原生构建脚本', () => {
   assert.equal(allow.allowBuilds['@deepseek-ai/dsh-subprocess-local'], true)
   assert.match(pnpmWorkspaceYaml(), /allowBuilds:/)
   assert.match(pnpmWorkspaceYaml(), /autoInstallPeers:\s*true/)
+  assert.match(pnpmWorkspaceYaml(false), /autoInstallPeers:\s*false/)
 })

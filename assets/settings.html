@@ -8,48 +8,53 @@
     :root{color-scheme:dark;font-family:Inter,"Segoe UI","Microsoft YaHei UI",sans-serif;background:#202322;color:#eef0ef}
     *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#202322}
     body{display:grid;grid-template-columns:184px minmax(0,1fr)}
+    button{font:inherit}
     aside{padding:26px 12px;border-right:1px solid #343735;background:#1c1f1e}
     .eyebrow{margin:0 10px 18px;color:#888e8b;font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase}
-    .nav-item{width:100%;height:36px;border:0;border-radius:8px;padding:0 12px;text-align:left;background:#303331;color:#f0f2f1;font:600 13px/1 inherit;cursor:default}
+    .nav-item{width:100%;height:36px;border:0;border-radius:8px;padding:0 12px;text-align:left;background:transparent;color:#a8aeab;font-size:13px;font-weight:600;cursor:pointer;outline:none;transition:background .14s,color .14s}
+    .nav-item:hover{background:#292c2b;color:#eef0ef}.nav-item:focus-visible{box-shadow:inset 0 0 0 2px #a1a7a455}.nav-item[aria-current="page"]{background:#303331;color:#f0f2f1;cursor:default}
     main{overflow:auto;padding:36px 44px 48px;scrollbar-color:#505552 transparent}
     .content{max-width:560px;margin:0 auto}
     h1{margin:0 0 28px;font-size:24px;line-height:1.2;font-weight:650;letter-spacing:-.02em}
-    .group{border-top:1px solid #383c3a}
+    .page[hidden]{display:none}.group{border-top:1px solid #383c3a}
     .row{min-height:78px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:28px;padding:17px 0;border-bottom:1px solid #343836}
     .label{display:block;margin-bottom:5px;color:#f0f2f1;font-size:14px;font-weight:540}
-    .description{margin:0;max-width:390px;color:#979d9a;font-size:12.5px;line-height:1.5}
-    .select-wrap{position:relative;width:184px}
-    .select-trigger{width:100%;height:34px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #4a4f4c;border-radius:8px;padding:0 10px 0 12px;background:#2b2e2d;color:#eef0ef;font:600 12.5px/1 inherit;text-align:left;outline:none;cursor:pointer;transition:border-color .14s,background .14s,box-shadow .14s}
+    .description{display:block;margin:0;max-width:390px;color:#979d9a;font-size:12.5px;line-height:1.5}
+    .select-wrap{position:relative;width:198px}
+    .select-trigger{width:100%;min-height:36px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #4a4f4c;border-radius:8px;padding:7px 10px 7px 12px;background:#2b2e2d;color:#eef0ef;font-size:12.5px;font-weight:600;line-height:1.3;text-align:left;outline:none;cursor:pointer;transition:border-color .14s,background .14s,box-shadow .14s}
     .select-trigger:hover,.select-trigger[aria-expanded="true"]{border-color:#676d6a;background:#303332}.select-trigger:focus-visible{border-color:#9ba19e;box-shadow:0 0 0 2px #9ba19e28}
     .select-trigger img{width:11px;height:11px;filter:brightness(0) invert(89%);opacity:.78;transition:transform .14s}.select-trigger[aria-expanded="true"] img{transform:rotate(180deg)}
     .select-menu{position:absolute;z-index:10;top:calc(100% + 5px);right:0;width:100%;margin:0;padding:5px;border:1px solid #4a4f4c;border-radius:9px;background:#252827;box-shadow:0 14px 34px #0008,0 2px 8px #0006}
-    .select-menu[hidden]{display:none}.select-option{width:100%;min-height:32px;display:flex;align-items:center;border:0;border-radius:6px;padding:0 9px;background:transparent;color:#dfe2e0;font:12.5px/1.25 inherit;text-align:left;cursor:pointer;outline:none}.select-option:hover,.select-option:focus-visible{background:#353937;color:#fff}.select-option[aria-selected="true"]{background:#3b403d;color:#fff;font-weight:650}
-    .switch{position:relative;width:38px;height:22px;display:inline-block}
-    .switch input{position:absolute;opacity:0;pointer-events:none}
-    .track{position:absolute;inset:0;border-radius:999px;background:#474c49;border:1px solid #5a605d;transition:background .14s,border-color .14s}
-    .track::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#d8dbd9;box-shadow:0 1px 2px #0006;transition:transform .14s,background .14s}
-    .switch input:checked+.track{background:#e7eae8;border-color:#e7eae8}.switch input:checked+.track::after{background:#202322;transform:translateX(16px)}
-    .switch input:focus-visible+.track{box-shadow:0 0 0 2px #9ba19e55}
-    #status{height:18px;margin-top:14px;color:#858b88;font-size:12px;text-align:right;opacity:0;transition:opacity .15s}#status.visible{opacity:1}
-    @media(max-width:720px){body{grid-template-columns:150px minmax(0,1fr)}main{padding:30px 28px}.row{gap:18px}.select-wrap{width:164px}}
+    .select-menu[hidden]{display:none}.select-option{width:100%;min-height:34px;display:flex;align-items:center;border:0;border-radius:6px;padding:6px 9px;background:transparent;color:#dfe2e0;font-size:12.5px;line-height:1.3;text-align:left;cursor:pointer;outline:none}.select-option:hover,.select-option:focus-visible{background:#353937;color:#fff}.select-option[aria-selected="true"]{background:#3b403d;color:#fff;font-weight:650}
+    .switch{position:relative;width:38px;height:22px;display:inline-block}.switch input{position:absolute;opacity:0;pointer-events:none}
+    .track{position:absolute;inset:0;border-radius:999px;background:#474c49;border:1px solid #5a605d;transition:background .14s,border-color .14s}.track::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#d8dbd9;box-shadow:0 1px 2px #0006;transition:transform .14s,background .14s}
+    .switch input:checked+.track{background:#e7eae8;border-color:#e7eae8}.switch input:checked+.track::after{background:#202322;transform:translateX(16px)}.switch input:focus-visible+.track{box-shadow:0 0 0 2px #9ba19e55}
+    .status-line{height:18px;margin-top:14px;color:#858b88;font-size:12px;text-align:right;opacity:0;transition:opacity .15s}.status-line.visible{opacity:1}
+    .version-block{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 0;border-bottom:1px solid #343836}
+    .version{font-size:13px;color:#cfd3d1}.badge{display:inline-flex;align-items:center;min-height:23px;border:1px solid #474c49;border-radius:999px;padding:2px 9px;color:#b9bfbc;background:#292c2b;font-size:11.5px;font-weight:600}
+    .badge.available,.badge.ready{border-color:#52685d;background:#27352e;color:#bce1cc}.badge.error{border-color:#6b4c4c;background:#372929;color:#e1bcbc}
+    .update-action{min-width:132px;min-height:36px;border:1px solid #555b58;border-radius:8px;padding:7px 14px;background:#e7eae8;color:#202322;font-size:12.5px;font-weight:650;cursor:pointer;outline:none;transition:background .14s,box-shadow .14s}.update-action:hover{background:#fff}.update-action:focus-visible{box-shadow:0 0 0 3px #aeb4b150}.update-action:disabled{border-color:#454946;background:#343735;color:#7e8481;cursor:default}
+    .notes{margin-top:18px;padding:14px 16px;border:1px solid #363a38;border-radius:9px;background:#1d201f}.notes[hidden]{display:none}.notes-title{margin:0 0 8px;color:#cfd3d1;font-size:12px;font-weight:650}.notes-body{max-height:150px;margin:0;overflow:auto;white-space:pre-wrap;color:#969c99;font:12px/1.55 "Segoe UI",sans-serif;scrollbar-color:#505552 transparent}
+    .update-feedback{min-height:20px;margin:14px 0 0;color:#979d9a;font-size:12px;line-height:1.5}.update-feedback.error{color:#e1bcbc}
+    @media(max-width:720px){body{grid-template-columns:150px minmax(0,1fr)}main{padding:30px 28px}.row{gap:18px}.select-wrap{width:176px}}
   </style>
 </head>
 <body>
   <aside aria-label="设置分类">
     <p id="desktopLabel" class="eyebrow">桌面端</p>
     <button id="notificationsNav" class="nav-item" type="button" aria-current="page">通知</button>
+    <button id="updatesNav" class="nav-item" type="button">更新</button>
   </aside>
   <main>
     <div class="content">
-      <h1 id="title">通知</h1>
-      <section aria-labelledby="title">
+      <section id="notificationsPage" class="page" aria-labelledby="notificationsTitle">
+        <h1 id="notificationsTitle">通知</h1>
         <div class="group">
           <div class="row">
             <span><span id="turnLabel" class="label">任务完成通知</span><span id="turnDescription" class="description">设置 DeepSeek Harness 完成任务时何时提醒你</span></span>
             <div class="select-wrap">
               <button id="turnModeButton" class="select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="turnModeList">
-                <span id="turnModeValue">仅在窗口未聚焦时</span>
-                <img src="./shell-icons/chevron-down.svg" alt="">
+                <span id="turnModeValue">仅在窗口未聚焦时</span><img src="./shell-icons/chevron-down.svg" alt="">
               </button>
               <div id="turnModeList" class="select-menu" role="listbox" aria-labelledby="turnLabel" hidden>
                 <button class="select-option" type="button" role="option" data-value="off" aria-selected="false">从不</button>
@@ -67,20 +72,133 @@
             <span class="switch"><input id="questionsEnabled" type="checkbox"><span class="track" aria-hidden="true"></span></span>
           </label>
         </div>
-        <div id="status" role="status" aria-live="polite">已保存</div>
+        <div id="notificationSaved" class="status-line" role="status" aria-live="polite">已保存</div>
+      </section>
+
+      <section id="updatesPage" class="page" aria-labelledby="updatesTitle" hidden>
+        <h1 id="updatesTitle">更新</h1>
+        <div class="group">
+          <div class="row">
+            <span><span id="policyLabel" class="label">自动更新</span><span id="policyDescription" class="description">选择桌面端如何检查和下载新版本。安装前始终由你确认。</span></span>
+            <div class="select-wrap">
+              <button id="policyButton" class="select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="policyList">
+                <span id="policyValue">自动检查并提醒</span><img src="./shell-icons/chevron-down.svg" alt="">
+              </button>
+              <div id="policyList" class="select-menu" role="listbox" aria-labelledby="policyLabel" hidden>
+                <button class="select-option" type="button" role="option" data-value="notify" aria-selected="true">自动检查并提醒</button>
+                <button class="select-option" type="button" role="option" data-value="auto-download" aria-selected="false">自动下载，安装前提醒</button>
+                <button class="select-option" type="button" role="option" data-value="manual" aria-selected="false">仅手动检查</button>
+              </div>
+            </div>
+          </div>
+          <div class="version-block">
+            <div>
+              <span id="currentVersionLabel" class="label">当前版本</span>
+              <span id="currentVersion" class="version">—</span>
+              <span id="lastChecked" class="description">尚未检查</span>
+            </div>
+            <span id="updateBadge" class="badge">准备就绪</span>
+          </div>
+          <div class="row">
+            <span><span id="checkLabel" class="label">桌面端更新</span><span id="checkDescription" class="description">检查 GitHub Releases 中适用于当前系统的新版本。</span></span>
+            <button id="updateAction" class="update-action" type="button">检查更新</button>
+          </div>
+        </div>
+        <div id="releaseNotes" class="notes" hidden>
+          <p id="releaseNotesTitle" class="notes-title">版本说明</p>
+          <pre id="releaseNotesBody" class="notes-body"></pre>
+        </div>
+        <p id="updateFeedback" class="update-feedback" role="status" aria-live="polite"></p>
       </section>
     </div>
   </main>
   <script>
     const api=window.dshShell;
-    const turnModeButton=document.getElementById('turnModeButton');const turnModeList=document.getElementById('turnModeList');const turnModeValue=document.getElementById('turnModeValue');const turnOptions=[...turnModeList.querySelectorAll('[role="option"]')];const approvals=document.getElementById('approvalsEnabled');const questions=document.getElementById('questionsEnabled');const status=document.getElementById('status');let currentTurnMode='unfocused';let statusTimer;
-    function localize(locale){const zh=locale.startsWith('zh');document.documentElement.lang=locale;document.title=zh?'桌面端设置':'Desktop Settings';document.querySelector('aside').setAttribute('aria-label',zh?'设置分类':'Settings categories');document.getElementById('desktopLabel').textContent=zh?'桌面端':'Desktop';document.getElementById('notificationsNav').textContent=zh?'通知':'Notifications';document.getElementById('title').textContent=zh?'通知':'Notifications';document.getElementById('turnLabel').textContent=zh?'任务完成通知':'Task completion notifications';document.getElementById('turnDescription').textContent=zh?'设置 DeepSeek Harness 完成任务时何时提醒你':"Set when DeepSeek Harness alerts you that it's finished";const modeLabels=zh?['从不','仅在窗口未聚焦时','始终']:['Never','Only when unfocused','Always'];turnOptions.forEach((option,index)=>option.textContent=modeLabels[index]);document.getElementById('approvalLabel').textContent=zh?'审批通知':'Approval notifications';document.getElementById('approvalDescription').textContent=zh?'需要你审批权限或计划时显示提醒':'Show alerts when permissions or plans require your approval';document.getElementById('questionLabel').textContent=zh?'问题通知':'Question notifications';document.getElementById('questionDescription').textContent=zh?'任务需要你的输入才能继续时显示提醒':'Show alerts when input is needed to continue';status.textContent=zh?'已保存':'Saved';setTurnMode(currentTurnMode)}
-    function setTurnMode(value){const option=turnOptions.find(item=>item.dataset.value===value)??turnOptions[1];currentTurnMode=option.dataset.value;turnModeValue.textContent=option.textContent;for(const item of turnOptions)item.setAttribute('aria-selected',String(item===option))}
-    function setMenuOpen(open){turnModeButton.setAttribute('aria-expanded',String(open));turnModeList.hidden=!open;if(open)(turnOptions.find(item=>item.dataset.value===currentTurnMode)??turnOptions[0]).focus()}
-    function showSaved(){status.classList.add('visible');clearTimeout(statusTimer);statusTimer=setTimeout(()=>status.classList.remove('visible'),1200)}
-    async function save(){const value=await api.updateNotificationPreferences({turnMode:currentTurnMode,approvalsEnabled:approvals.checked,questionsEnabled:questions.checked});setTurnMode(value.turnMode);approvals.checked=value.approvalsEnabled;questions.checked=value.questionsEnabled;showSaved()}
-    turnModeButton.addEventListener('click',()=>setMenuOpen(turnModeList.hidden));turnModeButton.addEventListener('keydown',event=>{if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();setMenuOpen(true)}});turnModeList.addEventListener('keydown',event=>{const active=turnOptions.indexOf(document.activeElement);if(event.key==='Escape'){event.preventDefault();setMenuOpen(false);turnModeButton.focus()}else if(event.key==='Tab')setMenuOpen(false);else if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();turnOptions[(active+(event.key==='ArrowDown'?1:-1)+turnOptions.length)%turnOptions.length].focus()}});for(const option of turnOptions)option.addEventListener('click',()=>{setTurnMode(option.dataset.value);setMenuOpen(false);turnModeButton.focus();void save()});document.addEventListener('pointerdown',event=>{if(!turnModeButton.parentElement.contains(event.target))setMenuOpen(false)});
-    Promise.all([api.getBootstrap(),api.getNotificationPreferences()]).then(([bootstrap,value])=>{localize(bootstrap.locale);setTurnMode(value.turnMode);approvals.checked=value.approvalsEnabled;questions.checked=value.questionsEnabled;for(const control of [approvals,questions])control.addEventListener('change',()=>void save())});api.onBootstrap(value=>localize(value.locale));
+    const byId=id=>document.getElementById(id);
+    const notificationsNav=byId('notificationsNav'),updatesNav=byId('updatesNav');
+    const notificationsPage=byId('notificationsPage'),updatesPage=byId('updatesPage');
+    const approvals=byId('approvalsEnabled'),questions=byId('questionsEnabled'),saved=byId('notificationSaved');
+    const updateAction=byId('updateAction'),updateBadge=byId('updateBadge'),updateFeedback=byId('updateFeedback');
+    const releaseNotes=byId('releaseNotes'),releaseNotesBody=byId('releaseNotesBody');
+    let locale='zh-CN',currentTurnMode='unfocused',currentPolicy='notify',updateState={currentVersion:'—',packaged:false,status:{kind:'idle'}},savedTimer;
+
+    function createListbox(buttonId,listId,valueId,initial,onCommit){
+      const button=byId(buttonId),list=byId(listId),value=byId(valueId),options=[...list.querySelectorAll('[role="option"]')];
+      let current=initial;
+      const set=next=>{const option=options.find(item=>item.dataset.value===next)??options[0];current=option.dataset.value;value.textContent=option.textContent;for(const item of options)item.setAttribute('aria-selected',String(item===option));return current};
+      const open=next=>{button.setAttribute('aria-expanded',String(next));list.hidden=!next;if(next)(options.find(item=>item.dataset.value===current)??options[0]).focus()};
+      button.addEventListener('click',()=>open(list.hidden));
+      button.addEventListener('keydown',event=>{if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();open(true)}});
+      list.addEventListener('keydown',event=>{const active=options.indexOf(document.activeElement);if(event.key==='Escape'){event.preventDefault();open(false);button.focus()}else if(event.key==='Tab')open(false);else if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();options[(active+(event.key==='ArrowDown'?1:-1)+options.length)%options.length].focus()}else if(event.key==='Home'||event.key==='End'){event.preventDefault();options[event.key==='Home'?0:options.length-1].focus()}});
+      for(const option of options)option.addEventListener('click',()=>{set(option.dataset.value);open(false);button.focus();onCommit(current)});
+      document.addEventListener('pointerdown',event=>{if(!button.parentElement.contains(event.target))open(false)});
+      return {set,options};
+    }
+
+    const turnSelect=createListbox('turnModeButton','turnModeList','turnModeValue','unfocused',value=>{currentTurnMode=value;void saveNotifications()});
+    const policySelect=createListbox('policyButton','policyList','policyValue','notify',value=>{currentPolicy=value;void saveUpdatePolicy()});
+
+    function isZh(){return locale.toLowerCase().startsWith('zh')}
+    function text(zh,en){return isZh()?zh:en}
+    function setPage(section){
+      const updates=section==='updates';
+      notificationsPage.hidden=updates;updatesPage.hidden=!updates;
+      if(updates){updatesNav.setAttribute('aria-current','page');notificationsNav.removeAttribute('aria-current')}
+      else{notificationsNav.setAttribute('aria-current','page');updatesNav.removeAttribute('aria-current')}
+    }
+    function localize(nextLocale){
+      locale=typeof nextLocale==='string'?nextLocale:'zh-CN';document.documentElement.lang=locale;
+      document.title=text('桌面端设置','Desktop Settings');document.querySelector('aside').setAttribute('aria-label',text('设置分类','Settings categories'));
+      byId('desktopLabel').textContent=text('桌面端','Desktop');notificationsNav.textContent=text('通知','Notifications');updatesNav.textContent=text('更新','Updates');
+      byId('notificationsTitle').textContent=text('通知','Notifications');byId('turnLabel').textContent=text('任务完成通知','Task completion notifications');byId('turnDescription').textContent=text('设置 DeepSeek Harness 完成任务时何时提醒你',"Set when DeepSeek Harness alerts you that it's finished");
+      const turnLabels=isZh()?['从不','仅在窗口未聚焦时','始终']:['Never','Only when unfocused','Always'];turnSelect.options.forEach((option,index)=>option.textContent=turnLabels[index]);
+      byId('approvalLabel').textContent=text('审批通知','Approval notifications');byId('approvalDescription').textContent=text('需要你审批权限或计划时显示提醒','Show alerts when permissions or plans require your approval');
+      byId('questionLabel').textContent=text('问题通知','Question notifications');byId('questionDescription').textContent=text('任务需要你的输入才能继续时显示提醒','Show alerts when input is needed to continue');saved.textContent=text('已保存','Saved');
+      byId('updatesTitle').textContent=text('更新','Updates');byId('policyLabel').textContent=text('自动更新','Automatic updates');byId('policyDescription').textContent=text('选择桌面端如何检查和下载新版本。安装前始终由你确认。','Choose how the desktop app checks for and downloads new versions. Installation always requires your confirmation.');
+      const policyLabels=isZh()?['自动检查并提醒','自动下载，安装前提醒','仅手动检查']:['Check automatically and notify','Download automatically, ask before install','Check manually only'];policySelect.options.forEach((option,index)=>option.textContent=policyLabels[index]);
+      byId('currentVersionLabel').textContent=text('当前版本','Current version');byId('checkLabel').textContent=text('桌面端更新','Desktop updates');byId('checkDescription').textContent=text('检查 GitHub Releases 中适用于当前系统的新版本。','Check GitHub Releases for a new version compatible with this system.');byId('releaseNotesTitle').textContent=text('版本说明','Release notes');
+      turnSelect.set(currentTurnMode);policySelect.set(currentPolicy);renderUpdateState(updateState);
+    }
+    function showSaved(){saved.classList.add('visible');clearTimeout(savedTimer);savedTimer=setTimeout(()=>saved.classList.remove('visible'),1200)}
+    async function saveNotifications(){
+      const value=await api.updateNotificationPreferences({turnMode:currentTurnMode,approvalsEnabled:approvals.checked,questionsEnabled:questions.checked});
+      currentTurnMode=turnSelect.set(value.turnMode);approvals.checked=value.approvalsEnabled;questions.checked=value.questionsEnabled;showSaved();
+    }
+    async function saveUpdatePolicy(){
+      const value=await api.updateUpdatePreferences({policy:currentPolicy});currentPolicy=policySelect.set(value.policy);
+      updateFeedback.className='update-feedback';updateFeedback.textContent=text('更新策略已保存。','Update policy saved.');
+    }
+    function formatChecked(value){
+      if(!value)return text('尚未检查','Not checked yet');
+      try{const formatted=new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));return text('上次检查：'+formatted,'Last checked: '+formatted)}catch{return text('已检查','Checked')}
+    }
+    function renderUpdateState(value){
+      if(!value||!value.status)return;updateState=value;const status=value.status,kind=status.kind;
+      byId('currentVersion').textContent=value.currentVersion||'—';byId('lastChecked').textContent=formatChecked(value.lastCheckedAt);
+      updateBadge.className='badge '+kind;updateFeedback.className='update-feedback'+(kind==='error'?' error':'');releaseNotes.hidden=true;releaseNotesBody.textContent='';
+      const labels={
+        idle:text('准备就绪','Ready'),checking:text('正在检查','Checking'),available:text('有新版本','Update available'),none:text('已是最新','Up to date'),
+        downloading:text('下载中 '+Math.round(status.percent||0)+'%','Downloading '+Math.round(status.percent||0)+'%'),ready:text('等待安装','Ready to install'),error:text('检查失败','Check failed')
+      };
+      updateBadge.textContent=labels[kind]||labels.idle;
+      let action='check',actionLabel=text('检查更新','Check for updates'),disabled=false,feedback='';
+      if(!value.packaged){disabled=true;feedback=text('开发版本不连接发布更新服务。','Development builds do not connect to the release update service.')}
+      else if(kind==='checking'){disabled=true;feedback=text('正在检查新版本…','Checking for a new version…')}
+      else if(kind==='available'){action='download';actionLabel=text('下载 '+status.version,'Download '+status.version);feedback=text('发现桌面端 '+status.version+'。','Desktop '+status.version+' is available.');if(status.releaseNotes){releaseNotes.hidden=false;releaseNotesBody.textContent=status.releaseNotes}}
+      else if(kind==='downloading'){disabled=true;feedback=text('正在下载 '+Math.round(status.percent||0)+'%…','Downloading '+Math.round(status.percent||0)+'%…')}
+      else if(kind==='ready'){action='install';actionLabel=text('安装并重启','Install and restart');feedback=text('桌面端 '+status.version+' 已下载。安装将关闭并重启应用，请先保存工作。','Desktop '+status.version+' is downloaded. Installation closes and restarts the app, so save your work first.')}
+      else if(kind==='none'){feedback=text('当前已是最新桌面端版本。','You already have the latest desktop version.')}
+      else if(kind==='error'){feedback=status.message||text('无法检查桌面端更新，请稍后重试。','Unable to check for desktop updates. Try again later.')}
+      updateAction.dataset.action=action;updateAction.textContent=actionLabel;updateAction.disabled=disabled;updateFeedback.textContent=feedback;
+    }
+    notificationsNav.addEventListener('click',()=>setPage('notifications'));updatesNav.addEventListener('click',()=>setPage('updates'));
+    approvals.addEventListener('change',()=>void saveNotifications());questions.addEventListener('change',()=>void saveNotifications());
+    updateAction.addEventListener('click',async()=>{if(updateAction.disabled)return;updateAction.disabled=true;const next=await api.desktopUpdateAction(updateAction.dataset.action||'check');if(next)renderUpdateState(next)});
+    Promise.all([api.getBootstrap(),api.getNotificationPreferences(),api.getUpdatePreferences(),api.getDesktopUpdateState()]).then(([bootstrap,notifications,preferences,state])=>{
+      currentTurnMode=turnSelect.set(notifications.turnMode);approvals.checked=notifications.approvalsEnabled;questions.checked=notifications.questionsEnabled;
+      currentPolicy=policySelect.set(preferences.policy);localize(bootstrap.locale);renderUpdateState(state);
+    });
+    api.onBootstrap(value=>localize(value.locale));api.onDesktopUpdateState(renderUpdateState);api.onSettingsSection(value=>setPage(value==='updates'?'updates':'notifications'));
   </script>
 </body>
 </html>

@@ -4,6 +4,16 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.34 — 2026-08-26
+
+- Added `dsh-mcp-connector` 0.2.21 to the bundled offline catalog for OAuth, API-key, HTTP, stdio, and JSON-based MCP connection management.
+- Added a dedicated Updates settings page with automatic check-and-notify, automatic download with install confirmation, and manual-only policies.
+- Added a delayed, non-blocking startup update check for packaged builds. New versions notify in the background, while installation and restart always require an explicit user action.
+- Updated Codex UI to 0.2.88 and refreshed compatible development dependencies.
+- Aligned community-store assembly with the Web profile's isolated official-runtime model so prerelease DSH peers are not duplicated into the plugin profile.
+
+Release tag: [`v1.0.34`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.34).
+
 ## 1.0.33 — 2026-08-26
 
 - Added a product preview showing `dsh-context` context management alongside the DSH Better Sidebar file explorer.
@@ -39,13 +49,3 @@ Release tag: [`v1.0.31`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Preserved the future Developer ID signing path so configured release certificates replace the ad-hoc fallback automatically.
 
 Release tag: [`v1.0.30`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.30).
-
-## 1.0.26 — 2026-08-24
-
-- Added a Codex-style desktop shell with back/forward navigation and File, Edit, View, and Help menus.
-- Added new chat, open folder, chat traversal, keyboard shortcuts, zoom, fullscreen, reload, and tray controls.
-- Expanded the About window and aligned product wording across desktop menus, the tray, and Help.
-- Fixed incorrect workspace selection after opening a folder, overbroad Find actions, client-bridge fallback failures, and navigation races.
-- Hardened IPC permissions between renderer windows and fixed the macOS traffic-light safe area and first-frame layout.
-
-Release tag: [`v1.0.26`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.26).

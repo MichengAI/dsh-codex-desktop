@@ -30,3 +30,7 @@ export function mayReportDshLocale(kind: ShellRendererKind): boolean {
 export function mayAccessNotificationPreferences(kind: ShellRendererKind): boolean {
   return kind === 'settings'
 }
+
+export function mayAccessDesktopUpdates(kind: ShellRendererKind): boolean {
+  return kind === 'settings'
+}

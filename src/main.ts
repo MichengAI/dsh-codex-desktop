@@ -24,11 +24,11 @@ import { installDesktopBridge, resolveDesktopBridgeDir } from './desktop-host.js
 import { isChineseLocale, localizedShellActions, localizedShellMenus, normalizeShellLocale, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId } from './shell-actions.js'
 import { SHELL_BAR_HEIGHT, SHELL_IPC, type DshNavigationState, type DshShellActionId, type ShellBootstrap, type ShellMenuPopupRequest, type ShellState } from './shell-contract.js'
 import { mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshState, type ShellRendererKind } from './shell-ipc-policy.js'
-import { mayAccessNotificationPreferences, mayReportDshLocale, mayReportDshNotification } from './shell-ipc-policy.js'
+import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayReportDshLocale, mayReportDshNotification } from './shell-ipc-policy.js'
 import { DEFAULT_NOTIFICATION_PREFERENCES, buildWindowsReplyToastXml, loadNotificationPreferences, parseDesktopNotificationBridgeEvent, parseWindowsNotificationReplyActivation, saveNotificationPreferences, shouldShowDesktopNotification, windowsNotificationReplyArguments, type DesktopNotificationEvent, type DesktopNotificationPreferences } from './desktop-notifications.js'
 import { watchProfileActivation } from './profile-watch.js'
 import updater from 'electron-updater'
-import { buildDesktopTrayItems, desktopUpdateChannel, desktopUpdatePrompt, formatDesktopReleaseNotes, publicDesktopUpdateError, type DesktopUpdateStatus } from './desktop-updater.js'
+import { DEFAULT_UPDATE_PREFERENCES, STARTUP_UPDATE_CHECK_DELAY_MS, buildDesktopTrayItems, desktopUpdateChannel, desktopUpdatePrompt, formatDesktopReleaseNotes, loadUpdatePreferences, publicDesktopUpdateError, saveUpdatePreferences, shouldCheckForUpdatesOnStartup, shouldDownloadUpdateAutomatically, type DesktopUpdateAction, type DesktopUpdatePreferences, type DesktopUpdateSnapshot, type DesktopUpdateStatus } from './desktop-updater.js'
 
 interface DshProcessModule {
   isApplyPluginUpdatesIpc: (message: unknown) => boolean
@@ -53,6 +53,9 @@ let lastStartOptions: Omit<StartDshOptions, 'onUnexpectedExit' | 'onIpcMessage'>
 let lastSeedOptions: Parameters<typeof applyPendingProfileUpdates>[0] | undefined
 let profileWatcher: { stop: () => void; sync: () => void } | undefined
 let updateStatus: DesktopUpdateStatus = { kind: 'idle' }
+let updatePreferences: DesktopUpdatePreferences = DEFAULT_UPDATE_PREFERENCES
+let lastUpdateCheckAt: string | undefined
+let startupUpdateTimer: NodeJS.Timeout | undefined
 const { autoUpdater } = updater
 let isReportingUnexpectedError = false
 const windowNavigation = new WindowNavigationCoordinator()
@@ -107,6 +110,8 @@ async function shutdownDesktop(exit: () => void): Promise<void> {
     isQuitting,
     markQuitting: () => { isQuitting = true },
     destroyTray: () => {
+      if (startupUpdateTimer !== undefined) clearTimeout(startupUpdateTimer)
+      startupUpdateTimer = undefined
       tray?.destroy()
       tray = undefined
       profileWatcher?.stop()
@@ -126,6 +131,7 @@ async function startApplication(): Promise<void> {
   ensureWindowsNotificationIdentity()
   installWindowsNotificationActivationHandler()
   notificationPreferences = await loadNotificationPreferences(notificationPreferencesPath())
+  updatePreferences = await loadUpdatePreferences(updatePreferencesPath())
   installShellIpc()
   installDesktopFaviconReplacement()
   Menu.setApplicationMenu(null)
@@ -215,6 +221,7 @@ async function startApplication(): Promise<void> {
       runMainTask(recycleDshForPluginUpdate())
     }, { onError: handleUnexpectedMainError })
     await createMainWindow(server.url)
+    scheduleStartupUpdateCheck()
   } catch (error) {
     await reportStartupFailure(error)
   }
@@ -514,12 +521,38 @@ function broadcastShellState(): void {
   }
 }
 
+function desktopUpdateSnapshot(): DesktopUpdateSnapshot {
+  return {
+    currentVersion: app.getVersion(),
+    packaged: app.isPackaged,
+    status: updateStatus,
+    ...(lastUpdateCheckAt === undefined ? {} : { lastCheckedAt: lastUpdateCheckAt }),
+  }
+}
+
+function broadcastDesktopUpdateState(): void {
+  if (settingsWindow !== undefined && !settingsWindow.isDestroyed()) {
+    settingsWindow.webContents.send(SHELL_IPC.desktopUpdateState, desktopUpdateSnapshot())
+  }
+}
+
+function setDesktopUpdateStatus(status: DesktopUpdateStatus, checked = false): void {
+  updateStatus = status
+  if (checked) lastUpdateCheckAt = new Date().toISOString()
+  refreshTrayMenu()
+  broadcastDesktopUpdateState()
+}
+
 function installShellIpc(): void {
   ipcMain.removeHandler(SHELL_IPC.getBootstrap)
   ipcMain.removeHandler(SHELL_IPC.action)
   ipcMain.removeHandler(SHELL_IPC.popupMenu)
   ipcMain.removeHandler(SHELL_IPC.getNotificationPreferences)
   ipcMain.removeHandler(SHELL_IPC.updateNotificationPreferences)
+  ipcMain.removeHandler(SHELL_IPC.getUpdatePreferences)
+  ipcMain.removeHandler(SHELL_IPC.updateUpdatePreferences)
+  ipcMain.removeHandler(SHELL_IPC.getDesktopUpdateState)
+  ipcMain.removeHandler(SHELL_IPC.desktopUpdateAction)
   ipcMain.handle(SHELL_IPC.getBootstrap, event => {
     if (!mayGetShellBootstrap(shellRendererKind(event.sender))) return
     return shellBootstrap()
@@ -542,6 +575,28 @@ function installShellIpc(): void {
     if (!mayAccessNotificationPreferences(shellRendererKind(event.sender))) return
     notificationPreferences = await saveNotificationPreferences(notificationPreferencesPath(), value)
     return notificationPreferences
+  })
+  ipcMain.handle(SHELL_IPC.getUpdatePreferences, event => {
+    if (!mayAccessDesktopUpdates(shellRendererKind(event.sender))) return
+    return updatePreferences
+  })
+  ipcMain.handle(SHELL_IPC.updateUpdatePreferences, async (event, value: unknown) => {
+    if (!mayAccessDesktopUpdates(shellRendererKind(event.sender))) return
+    updatePreferences = await saveUpdatePreferences(updatePreferencesPath(), value)
+    if (shouldDownloadUpdateAutomatically(updatePreferences) && updateStatus.kind === 'available') {
+      runMainTask(downloadDesktopUpdate('settings'))
+    }
+    return updatePreferences
+  })
+  ipcMain.handle(SHELL_IPC.getDesktopUpdateState, event => {
+    if (!mayAccessDesktopUpdates(shellRendererKind(event.sender))) return
+    return desktopUpdateSnapshot()
+  })
+  ipcMain.handle(SHELL_IPC.desktopUpdateAction, async (event, value: unknown) => {
+    if (!mayAccessDesktopUpdates(shellRendererKind(event.sender))) return
+    if (value !== 'check' && value !== 'download' && value !== 'install') return
+    await handleDesktopUpdateSettingsAction(value)
+    return desktopUpdateSnapshot()
   })
   ipcMain.removeAllListeners(SHELL_IPC.dshState)
   ipcMain.on(SHELL_IPC.dshState, (event, state: Partial<DshNavigationState>) => {
@@ -682,6 +737,10 @@ async function executeShellAction(id: ShellActionId): Promise<void> {
 
 function notificationPreferencesPath(): string {
   return join(app.getPath('userData'), 'desktop-settings.json')
+}
+
+function updatePreferencesPath(): string {
+  return join(app.getPath('userData'), 'desktop-update-settings.json')
 }
 
 /**
@@ -881,10 +940,13 @@ function showDesktopNotification(event: DesktopNotificationEvent): void {
   notification.show()
 }
 
-function showDesktopSettingsWindow(): void {
+type DesktopSettingsSection = 'notifications' | 'updates'
+
+function showDesktopSettingsWindow(section: DesktopSettingsSection = 'notifications'): void {
   if (settingsWindow !== undefined && !settingsWindow.isDestroyed()) {
     settingsWindow.show()
     settingsWindow.focus()
+    settingsWindow.webContents.send(SHELL_IPC.settingsSection, section)
     return
   }
   const window = new BrowserWindow({
@@ -901,6 +963,10 @@ function showDesktopSettingsWindow(): void {
   settingsWindow = window
   window.on('closed', () => { if (settingsWindow === window) settingsWindow = undefined })
   installShortcutHandler(window.webContents)
+  window.webContents.once('did-finish-load', () => {
+    window.webContents.send(SHELL_IPC.settingsSection, section)
+    window.webContents.send(SHELL_IPC.desktopUpdateState, desktopUpdateSnapshot())
+  })
   runMainTask(window.loadFile(resolveShellAsset('settings.html')))
 }
 
@@ -969,17 +1035,24 @@ function configureDesktopUpdater(): void {
     autoUpdater.allowDowngrade = false
   }
   autoUpdater.on('download-progress', progress => {
-    updateStatus = { kind: 'downloading', percent: progress.percent }
-    refreshTrayMenu()
+    setDesktopUpdateStatus({ kind: 'downloading', percent: progress.percent })
   })
   autoUpdater.on('update-downloaded', info => {
-    updateStatus = { kind: 'ready', version: info.version }
-    refreshTrayMenu()
+    setDesktopUpdateStatus({ kind: 'ready', version: info.version })
   })
   autoUpdater.on('error', error => {
-    updateStatus = { kind: 'error', message: publicDesktopUpdateError(error, desktopLocale()) }
-    refreshTrayMenu()
+    setDesktopUpdateStatus({ kind: 'error', message: publicDesktopUpdateError(error, desktopLocale()) })
   })
+}
+
+function scheduleStartupUpdateCheck(): void {
+  if (startupUpdateTimer !== undefined || !shouldCheckForUpdatesOnStartup(updatePreferences, app.isPackaged)) return
+  startupUpdateTimer = setTimeout(() => {
+    startupUpdateTimer = undefined
+    if (!isQuitting && shouldCheckForUpdatesOnStartup(updatePreferences, app.isPackaged)) {
+      runMainTask(checkDesktopUpdate('background'))
+    }
+  }, STARTUP_UPDATE_CHECK_DELAY_MS)
 }
 
 function createTray(): void {
@@ -1055,63 +1128,79 @@ async function handleTrayUpdateAction(id: string): Promise<void> {
   }
 }
 
-async function checkDesktopUpdate(): Promise<void> {
+type DesktopUpdateInteraction = 'interactive' | 'background' | 'settings'
+
+async function checkDesktopUpdate(interaction: DesktopUpdateInteraction = 'interactive'): Promise<void> {
+  if (updateStatus.kind === 'checking' || updateStatus.kind === 'downloading') return
   if (!app.isPackaged) {
-    await dialog.showMessageBox({
-      type: 'info',
-      title: DESKTOP_APP_NAME,
-      message: desktopText('开发态不能检查安装包更新，请使用发布的安装包。', 'Update checks are unavailable in development builds. Use a released installer.'),
-    })
+    if (interaction === 'interactive') {
+      await dialog.showMessageBox({
+        type: 'info',
+        title: DESKTOP_APP_NAME,
+        message: desktopText('开发态不能检查安装包更新，请使用发布的安装包。', 'Update checks are unavailable in development builds. Use a released installer.'),
+      })
+    }
     return
   }
-  updateStatus = { kind: 'checking' }
-  refreshTrayMenu()
+  setDesktopUpdateStatus({ kind: 'checking' })
   try {
     const result = await autoUpdater.checkForUpdates()
     const version = result?.updateInfo.version
     if (version === undefined || version === app.getVersion()) {
-      updateStatus = { kind: 'none' }
-      refreshTrayMenu()
-      await dialog.showMessageBox({
-        type: 'info',
-        title: DESKTOP_APP_NAME,
-        message: desktopText('当前已是最新桌面端版本。', 'You already have the latest desktop version.'),
-      })
+      setDesktopUpdateStatus({ kind: 'none' }, true)
+      dismissDesktopUpdateNotification()
+      if (interaction === 'interactive') {
+        await dialog.showMessageBox({
+          type: 'info',
+          title: DESKTOP_APP_NAME,
+          message: desktopText('当前已是最新桌面端版本。', 'You already have the latest desktop version.'),
+        })
+      }
       return
     }
-    updateStatus = { kind: 'available', version, releaseNotes: formatDesktopReleaseNotes(result?.updateInfo.releaseNotes) }
-    refreshTrayMenu()
+    const available: Extract<DesktopUpdateStatus, { kind: 'available' }> = { kind: 'available', version, releaseNotes: formatDesktopReleaseNotes(result?.updateInfo.releaseNotes) }
+    setDesktopUpdateStatus(available, true)
+    if (interaction === 'background') {
+      if (shouldDownloadUpdateAutomatically(updatePreferences)) await downloadDesktopUpdate('background')
+      else showDesktopUpdateNotification('available', version)
+      return
+    }
+    if (interaction === 'settings') return
     const prompt = await dialog.showMessageBox({
       type: 'question',
       title: DESKTOP_APP_NAME,
-      message: desktopUpdatePrompt(updateStatus, desktopLocale()),
+      message: desktopUpdatePrompt(available, desktopLocale()),
       buttons: [desktopText('下载并安装', 'Download and Install'), desktopText('取消', 'Cancel')],
       defaultId: 0,
       cancelId: 1,
     })
-    if (prompt.response === 0) await downloadDesktopUpdate()
+    if (prompt.response === 0) await downloadDesktopUpdate('interactive')
   } catch (error) {
     const message = publicDesktopUpdateError(error, desktopLocale())
-    updateStatus = { kind: 'error', message }
-    refreshTrayMenu()
-    await dialog.showMessageBox({
-      type: 'error',
-      title: DESKTOP_APP_NAME,
-      message,
-    })
+    setDesktopUpdateStatus({ kind: 'error', message }, true)
+    if (interaction === 'interactive') {
+      await dialog.showMessageBox({
+        type: 'error',
+        title: DESKTOP_APP_NAME,
+        message,
+      })
+    }
   }
 }
 
-async function downloadDesktopUpdate(): Promise<void> {
+async function downloadDesktopUpdate(interaction: DesktopUpdateInteraction = 'interactive'): Promise<void> {
   if (updateStatus.kind !== 'available') return
   const version = updateStatus.version
-  updateStatus = { kind: 'downloading', percent: 0 }
-  refreshTrayMenu()
+  setDesktopUpdateStatus({ kind: 'downloading', percent: 0 })
   try {
     await autoUpdater.downloadUpdate()
     const ready = { kind: 'ready' as const, version }
-    updateStatus = ready
-    refreshTrayMenu()
+    setDesktopUpdateStatus(ready)
+    if (interaction === 'background') {
+      showDesktopUpdateNotification('ready', version)
+      return
+    }
+    if (interaction === 'settings') return
     const prompt = await dialog.showMessageBox({
       type: 'question',
       title: DESKTOP_APP_NAME,
@@ -1123,14 +1212,50 @@ async function downloadDesktopUpdate(): Promise<void> {
     if (prompt.response === 0) await installDesktopUpdate()
   } catch (error) {
     const message = publicDesktopUpdateError(error, desktopLocale())
-    updateStatus = { kind: 'error', message }
-    refreshTrayMenu()
-    await dialog.showMessageBox({
-      type: 'error',
-      title: DESKTOP_APP_NAME,
-      message,
-    })
+    setDesktopUpdateStatus({ kind: 'error', message })
+    if (interaction === 'interactive') {
+      await dialog.showMessageBox({
+        type: 'error',
+        title: DESKTOP_APP_NAME,
+        message,
+      })
+    }
   }
+}
+
+async function handleDesktopUpdateSettingsAction(action: DesktopUpdateAction): Promise<void> {
+  if (action === 'check') await checkDesktopUpdate('settings')
+  else if (action === 'download') await downloadDesktopUpdate('settings')
+  else await installDesktopUpdate()
+}
+
+const DESKTOP_UPDATE_NOTIFICATION_ID = 'desktop-update'
+
+function dismissDesktopUpdateNotification(): void {
+  activeNotifications.get(DESKTOP_UPDATE_NOTIFICATION_ID)?.close()
+  activeNotifications.delete(DESKTOP_UPDATE_NOTIFICATION_ID)
+}
+
+function showDesktopUpdateNotification(kind: 'available' | 'ready', version: string): void {
+  if (!Notification.isSupported()) return
+  dismissDesktopUpdateNotification()
+  const icon = resolveNotificationIconPath({ appPath: app.getAppPath(), isPackaged: app.isPackaged, resourcesPath: process.resourcesPath })
+  const notification = new Notification({
+    title: DESKTOP_APP_NAME,
+    body: kind === 'ready'
+      ? desktopText(`桌面端 ${version} 已下载，点击选择安装时间。`, `Desktop ${version} is ready. Click to choose when to install.`)
+      : desktopText(`发现桌面端 ${version}，点击查看更新。`, `Desktop ${version} is available. Click to review the update.`),
+    ...(icon === undefined ? {} : { icon }),
+  })
+  activeNotifications.set(DESKTOP_UPDATE_NOTIFICATION_ID, notification)
+  notification.on('click', () => {
+    showDesktopSettingsWindow('updates')
+    dismissDesktopUpdateNotification()
+  })
+  notification.on('close', () => {
+    if (activeNotifications.get(DESKTOP_UPDATE_NOTIFICATION_ID) === notification) activeNotifications.delete(DESKTOP_UPDATE_NOTIFICATION_ID)
+  })
+  notification.show()
 }
 
 async function installDesktopUpdate(): Promise<void> {

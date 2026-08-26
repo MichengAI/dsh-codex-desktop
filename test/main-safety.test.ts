@@ -69,7 +69,7 @@ test('关于窗口使用独立丰富页面并进入打包资源', async () => {
   assert.match(main, /maximizable: false/)
 })
 
-test('桌面通知设置使用独立窗口并进入打包资源', async () => {
+test('桌面通知和更新设置使用独立窗口并进入打包资源', async () => {
   const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
   const manifest = await readFile(new URL('../../package.json', import.meta.url), 'utf8')
   const settings = await readFile(new URL('../../assets/settings.html', import.meta.url), 'utf8')
@@ -99,6 +99,18 @@ test('桌面通知设置使用独立窗口并进入打包资源', async () => {
   assert.match(main, /mayReportDshLocale/)
   assert.match(main, /broadcastShellBootstrap/)
   assert.match(settings, /api\.onBootstrap/)
+  assert.match(settings, /id="updatesNav"/)
+  assert.match(settings, /id="updatesPage"/)
+  assert.match(settings, /data-value="notify"/)
+  assert.match(settings, /data-value="auto-download"/)
+  assert.match(settings, /data-value="manual"/)
+  assert.match(settings, /api\.updateUpdatePreferences/)
+  assert.match(settings, /api\.desktopUpdateAction/)
+  assert.match(settings, /api\.onDesktopUpdateState/)
+  assert.match(settings, /安装前始终由你确认/)
+  assert.match(settings, /Installation always requires your confirmation/)
+  assert.match(main, /showDesktopSettingsWindow\('updates'\)/)
+  assert.match(main, /autoInstallOnAppQuit = false/)
 })
 
 test('shell 在 macOS 为交通灯预留空间且状态早到不会读取空 bootstrap', async () => {

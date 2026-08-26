@@ -16,6 +16,12 @@ export const SHELL_IPC = {
   dshNotification: 'dsh-shell:dsh-notification',
   getNotificationPreferences: 'dsh-shell:get-notification-preferences',
   updateNotificationPreferences: 'dsh-shell:update-notification-preferences',
+  getUpdatePreferences: 'dsh-shell:get-update-preferences',
+  updateUpdatePreferences: 'dsh-shell:update-update-preferences',
+  getDesktopUpdateState: 'dsh-shell:get-desktop-update-state',
+  desktopUpdateAction: 'dsh-shell:desktop-update-action',
+  desktopUpdateState: 'dsh-shell:desktop-update-state',
+  settingsSection: 'dsh-shell:settings-section',
 } as const
 
 export interface DshNavigationState {

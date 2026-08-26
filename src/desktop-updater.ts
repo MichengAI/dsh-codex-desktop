@@ -1,3 +1,7 @@
+import { readFile } from 'node:fs/promises'
+
+import { writeTextFileAtomic } from './atomic-file.js'
+
 export type DesktopUpdateStatus =
   | { kind: 'idle' }
   | { kind: 'checking' }
@@ -6,6 +10,23 @@ export type DesktopUpdateStatus =
   | { kind: 'downloading'; percent: number }
   | { kind: 'ready'; version: string }
   | { kind: 'error'; message: string }
+
+export type DesktopUpdatePolicy = 'notify' | 'auto-download' | 'manual'
+export type DesktopUpdateAction = 'check' | 'download' | 'install'
+
+export interface DesktopUpdatePreferences {
+  readonly policy: DesktopUpdatePolicy
+}
+
+export interface DesktopUpdateSnapshot {
+  readonly currentVersion: string
+  readonly lastCheckedAt?: string
+  readonly packaged: boolean
+  readonly status: DesktopUpdateStatus
+}
+
+export const DEFAULT_UPDATE_PREFERENCES: DesktopUpdatePreferences = { policy: 'notify' }
+export const STARTUP_UPDATE_CHECK_DELAY_MS = 10_000
 
 export type DesktopTrayItem = {
   id: string
@@ -16,6 +37,34 @@ export type DesktopTrayItem = {
 
 export const DESKTOP_UPDATE_WARNING = '下载完成后将重启并替换当前桌面应用，请先保存正在进行的工作。'
 export const DESKTOP_UPDATE_WARNING_EN = 'The app will restart and replace the current desktop build after download. Save your work first.'
+
+export function sanitizeUpdatePreferences(value: unknown): DesktopUpdatePreferences {
+  if (typeof value !== 'object' || value === null) return DEFAULT_UPDATE_PREFERENCES
+  const policy = (value as Partial<DesktopUpdatePreferences>).policy
+  return { policy: policy === 'notify' || policy === 'auto-download' || policy === 'manual' ? policy : DEFAULT_UPDATE_PREFERENCES.policy }
+}
+
+export function shouldCheckForUpdatesOnStartup(preferences: DesktopUpdatePreferences, packaged: boolean): boolean {
+  return packaged && preferences.policy !== 'manual'
+}
+
+export function shouldDownloadUpdateAutomatically(preferences: DesktopUpdatePreferences): boolean {
+  return preferences.policy === 'auto-download'
+}
+
+export async function loadUpdatePreferences(path: string): Promise<DesktopUpdatePreferences> {
+  try {
+    return sanitizeUpdatePreferences(JSON.parse(await readFile(path, 'utf8')))
+  } catch {
+    return DEFAULT_UPDATE_PREFERENCES
+  }
+}
+
+export async function saveUpdatePreferences(path: string, value: unknown): Promise<DesktopUpdatePreferences> {
+  const preferences = sanitizeUpdatePreferences(value)
+  await writeTextFileAtomic(path, JSON.stringify(preferences, null, 2) + '\n')
+  return preferences
+}
 
 export function desktopUpdateChannel(platform = process.platform, arch = process.arch): string | undefined {
   if (platform !== 'darwin') return undefined
