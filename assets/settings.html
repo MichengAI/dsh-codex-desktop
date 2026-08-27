@@ -224,6 +224,7 @@
       else if(kind==='error'){feedback=status.message||text('无法检查桌面端更新，请稍后重试。','Unable to check for desktop updates. Try again later.')}
       updateAction.dataset.action=action;updateAction.textContent=actionLabel;updateAction.disabled=disabled;updateFeedback.textContent=feedback;
     }
+    document.addEventListener('keydown',event=>{if(event.key!=='Escape'||document.querySelector('[role="listbox"]:not([hidden])')!==null)return;event.preventDefault();void api.closeDesktopSettings()},true);
     notificationsNav.addEventListener('click',()=>setPage('notifications'));updatesNav.addEventListener('click',()=>setPage('updates'));
     approvals.addEventListener('change',()=>void saveNotifications());questions.addEventListener('change',()=>void saveNotifications());
     updateAction.addEventListener('click',async()=>{if(updateAction.disabled)return;updateAction.disabled=true;const next=await api.desktopUpdateAction(updateAction.dataset.action||'check');if(next)renderUpdateState(next)});

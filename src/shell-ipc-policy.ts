@@ -31,10 +31,18 @@ export function mayReportDshTheme(kind: ShellRendererKind): boolean {
   return kind === 'dsh'
 }
 
+export function mayReportDshSettingsVisibility(kind: ShellRendererKind): boolean {
+  return kind === 'dsh'
+}
+
 export function mayAccessNotificationPreferences(kind: ShellRendererKind): boolean {
   return kind === 'settings'
 }
 
 export function mayAccessDesktopUpdates(kind: ShellRendererKind): boolean {
+  return kind === 'settings'
+}
+
+export function mayCloseDesktopSettings(kind: ShellRendererKind): boolean {
   return kind === 'settings'
 }

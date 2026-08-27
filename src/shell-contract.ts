@@ -11,6 +11,7 @@ export const SHELL_IPC = {
   dshAction: 'dsh-shell:dsh-action',
   dshLocale: 'dsh-shell:dsh-locale',
   dshTheme: 'dsh-shell:dsh-theme',
+  dshSettingsVisibility: 'dsh-shell:dsh-settings-visibility',
   dshOpenSession: 'dsh-shell:dsh-open-session',
   dshNotificationReply: 'dsh-shell:dsh-notification-reply',
   dshState: 'dsh-shell:dsh-state',
@@ -23,6 +24,7 @@ export const SHELL_IPC = {
   desktopUpdateAction: 'dsh-shell:desktop-update-action',
   desktopUpdateState: 'dsh-shell:desktop-update-state',
   settingsSection: 'dsh-shell:settings-section',
+  closeDesktopSettings: 'dsh-shell:close-desktop-settings',
 } as const
 
 export interface DshNavigationState {

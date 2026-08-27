@@ -14,6 +14,7 @@ const IPC = {
   desktopUpdateAction: 'dsh-shell:desktop-update-action',
   desktopUpdateState: 'dsh-shell:desktop-update-state',
   settingsSection: 'dsh-shell:settings-section',
+  closeDesktopSettings: 'dsh-shell:close-desktop-settings',
 } as const
 
 contextBridge.exposeInMainWorld('dshShell', {
@@ -26,6 +27,7 @@ contextBridge.exposeInMainWorld('dshShell', {
   updateUpdatePreferences: (value: unknown) => ipcRenderer.invoke(IPC.updateUpdatePreferences, value),
   getDesktopUpdateState: () => ipcRenderer.invoke(IPC.getDesktopUpdateState),
   desktopUpdateAction: (action: unknown) => ipcRenderer.invoke(IPC.desktopUpdateAction, action),
+  closeDesktopSettings: () => ipcRenderer.invoke(IPC.closeDesktopSettings),
   onState: (listener: (state: unknown) => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, state: unknown) => listener(state)
     ipcRenderer.on(IPC.state, wrapped)

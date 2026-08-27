@@ -6,19 +6,33 @@ export function isDshMarketOperationBusy(value: unknown): boolean {
   return typeof value === 'object' && value !== null && (value as { busy?: unknown }).busy === true
 }
 
+export interface DshMarketBatchWaitOptions {
+  readonly maxWaitMs: number
+  readonly pollIntervalMs: number
+}
+
 /**
- * A bulk update is a sequence of individual requests. The market releases
- * `busy` after replying to each item, and the browser schedules the next item
- * immediately afterwards. Require one quiet interval as well as an idle read
- * so Electron cannot observe that tiny handoff gap as the end of the batch.
+ * Wait for one quiet interval after dshmarket becomes idle. A deadline prevents
+ * a stuck market status endpoint from blocking the desktop restart forever.
+ * Returns false when that deadline expires.
  */
 export async function waitForDshMarketBatchToSettle(
   status: () => Promise<unknown>,
   pause: () => Promise<void>,
-): Promise<void> {
-  for (;;) {
-    while (isDshMarketOperationBusy(await status())) await pause()
+  options: DshMarketBatchWaitOptions,
+): Promise<boolean> {
+  let waitedMs = 0
+  const pauseWithinDeadline = async (): Promise<boolean> => {
+    if (waitedMs >= options.maxWaitMs) return false
     await pause()
-    if (!isDshMarketOperationBusy(await status())) return
+    waitedMs += options.pollIntervalMs
+    return true
+  }
+  for (;;) {
+    while (isDshMarketOperationBusy(await status())) {
+      if (!await pauseWithinDeadline()) return false
+    }
+    if (!await pauseWithinDeadline()) return false
+    if (!isDshMarketOperationBusy(await status())) return true
   }
 }

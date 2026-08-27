@@ -16,6 +16,7 @@ test('批量更新结束且跨过一个安静窗口后才允许桌面端继续�
   await waitForDshMarketBatchToSettle(
     async () => statuses.shift(),
     async () => { pauses += 1 },
+    { maxWaitMs: 3_000, pollIntervalMs: 1_000 },
   )
   assert.equal(pauses, 3)
 })
@@ -26,6 +27,18 @@ test('批量项之间短暂释放忙碌状态不会触发提前重启', async ()
   await waitForDshMarketBatchToSettle(
     async () => statuses.shift(),
     async () => { pauses += 1 },
+    { maxWaitMs: 4_000, pollIntervalMs: 1_000 },
   )
   assert.equal(pauses, 4)
+})
+
+test('市场持续忙碌时在等待上限后返回超时而非无限轮询', async () => {
+  let pauses = 0
+  const settled = await waitForDshMarketBatchToSettle(
+    async () => ({ busy: true }),
+    async () => { pauses += 1 },
+    { maxWaitMs: 2_000, pollIntervalMs: 1_000 },
+  )
+  assert.equal(settled, false)
+  assert.equal(pauses, 2)
 })

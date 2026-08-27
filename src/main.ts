@@ -20,10 +20,11 @@ import { extractPackagedRuntimes } from './extract-runtime.js'
 import { resolvePrebuiltOfficialRuntime } from './runtime-prebuilt.js'
 import { applyInitialWindowState } from './window-state.js'
 import { WindowNavigationCoordinator } from './window-navigation.js'
+import { escapeRoute } from './escape-routing.js'
 import { installDesktopBridge, resolveDesktopBridgeDir } from './desktop-host.js'
 import { isChineseLocale, localizedShellActions, localizedShellMenus, normalizeShellLocale, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId } from './shell-actions.js'
 import { SHELL_BAR_HEIGHT, SHELL_IPC, type DshNavigationState, type DshShellActionId, type ShellBootstrap, type ShellMenuPopupRequest, type ShellState } from './shell-contract.js'
-import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshLocale, mayReportDshNotification, mayReportDshState, mayReportDshTheme, type ShellRendererKind } from './shell-ipc-policy.js'
+import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayCloseDesktopSettings, mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshLocale, mayReportDshNotification, mayReportDshState, mayReportDshTheme, mayReportDshSettingsVisibility, type ShellRendererKind } from './shell-ipc-policy.js'
 import { DESKTOP_THEME_PALETTES, normalizeDesktopThemeSnapshot, type DesktopColorScheme, type DesktopThemePreference } from './desktop-theme.js'
 import { DSH_MARKET_STATUS_PATH, waitForDshMarketBatchToSettle } from './dshmarket-batch.js'
 import { DEFAULT_NOTIFICATION_PREFERENCES, buildWindowsReplyToastXml, loadNotificationPreferences, parseDesktopNotificationBridgeEvent, parseWindowsNotificationReplyActivation, saveNotificationPreferences, shouldShowDesktopNotification, windowsNotificationReplyArguments, type DesktopNotificationEvent, type DesktopNotificationPreferences } from './desktop-notifications.js'
@@ -70,6 +71,7 @@ let unreadCompletionCount = 0
 let activeDshLocale: 'zh' | 'en' | undefined
 let activeDshColorScheme: DesktopColorScheme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
 let activeDshThemePreference: DesktopThemePreference = 'system'
+let dshSettingsDialogVisible = false
 const shellActionIds = new Set<string>(SHELL_ACTIONS.map(action => action.id))
 
 function desktopLocale(): string {
@@ -346,6 +348,7 @@ function handleDshIpc(message: unknown): void {
 }
 
 const DSH_MARKET_BATCH_POLL_MS = 750
+const DSH_MARKET_BATCH_MAX_WAIT_MS = 10 * 60 * 1_000
 
 function scheduleProfileActivationRecycle(): void {
   if (isQuitting || isRecycling) return
@@ -375,10 +378,12 @@ async function recycleAfterDshMarketBatch(): Promise<void> {
   while (profileActivationRecyclePending && !isQuitting && !isRecycling) {
     profileActivationRecyclePending = false
     const generation = profileActivationRecycleGeneration
-    await waitForDshMarketBatchToSettle(
+    const settled = await waitForDshMarketBatchToSettle(
       dshMarketOperationStatus,
       () => new Promise(resolve => setTimeout(resolve, DSH_MARKET_BATCH_POLL_MS)),
+      { maxWaitMs: DSH_MARKET_BATCH_MAX_WAIT_MS, pollIntervalMs: DSH_MARKET_BATCH_POLL_MS },
     )
+    if (!settled) console.warn(`dshmarket 批量更新等待超时（${DSH_MARKET_BATCH_MAX_WAIT_MS}ms），继续重载插件。`)
     if (isQuitting || isRecycling) return
     // Another profile change or update-all IPC arrived during the quiet
     // check. Start the check over rather than restarting a just-continued
@@ -504,6 +509,7 @@ function createWindow(): BrowserWindow {
     if (isExternalOpenUrl(url, allowedOrigin)) runMainTask(shell.openExternal(url))
     return { action: 'deny' }
   })
+  view.webContents.on('did-start-navigation', () => { dshSettingsDialogVisible = false })
   view.webContents.on('will-navigate', (event, url) => {
     if (windowNavigation.isNavigating()) {
       event.preventDefault()
@@ -532,6 +538,7 @@ function createWindow(): BrowserWindow {
     if (mainWindow === window) {
       mainWindow = undefined
       dshView = undefined
+      dshSettingsDialogVisible = false
     }
   })
   return window
@@ -628,6 +635,7 @@ function installShellIpc(): void {
   ipcMain.removeHandler(SHELL_IPC.updateUpdatePreferences)
   ipcMain.removeHandler(SHELL_IPC.getDesktopUpdateState)
   ipcMain.removeHandler(SHELL_IPC.desktopUpdateAction)
+  ipcMain.removeHandler(SHELL_IPC.closeDesktopSettings)
   ipcMain.handle(SHELL_IPC.getBootstrap, event => {
     if (!mayGetShellBootstrap(shellRendererKind(event.sender))) return
     return shellBootstrap()
@@ -673,6 +681,10 @@ function installShellIpc(): void {
     await handleDesktopUpdateSettingsAction(value)
     return desktopUpdateSnapshot()
   })
+  ipcMain.handle(SHELL_IPC.closeDesktopSettings, event => {
+    if (!mayCloseDesktopSettings(shellRendererKind(event.sender))) return
+    settingsWindow?.close()
+  })
   ipcMain.removeAllListeners(SHELL_IPC.dshState)
   ipcMain.on(SHELL_IPC.dshState, (event, state: Partial<DshNavigationState>) => {
     if (!mayReportDshState(shellRendererKind(event.sender))) return
@@ -704,6 +716,11 @@ function installShellIpc(): void {
     if (!colorSchemeChanged && !preferenceChanged) return
     applyDesktopTheme(snapshot.colorScheme, snapshot.preference)
     if (colorSchemeChanged) broadcastShellBootstrap()
+  })
+  ipcMain.removeAllListeners(SHELL_IPC.dshSettingsVisibility)
+  ipcMain.on(SHELL_IPC.dshSettingsVisibility, (event, value: unknown) => {
+    if (!mayReportDshSettingsVisibility(shellRendererKind(event.sender))) return
+    dshSettingsDialogVisible = value === true
   })
   ipcMain.removeAllListeners(SHELL_IPC.dshNotification)
   ipcMain.on(SHELL_IPC.dshNotification, (event, value: unknown) => {
@@ -786,12 +803,17 @@ function popupShellMenu(request: ShellMenuPopupRequest): Promise<void> {
 }
 
 const DISMISS_DSH_SETTINGS_DIALOG_SCRIPT = `(() => {
-  const visible = (element) => element.offsetParent !== null
-  const dialog = [...document.querySelectorAll('[role="dialog"]')]
-    .find((element) => visible(element) && (element.getAttribute('aria-modal') === 'true' || element.querySelector('button') !== null))
+  const label = (element) => ((element.getAttribute('aria-label') || '') + ' ' + (element.textContent || '')).replace(/\s+/g, ' ').trim().toLowerCase()
+  const dialog = [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')]
+    .find((element) => {
+      if (element.offsetParent === null) return false
+      const titleId = element.getAttribute('aria-labelledby')
+      const title = titleId === null ? null : document.getElementById(titleId)
+      return title !== null && /^(设置|settings)$/i.test(label(title))
+    })
   if (!dialog) return false
   const close = [...dialog.querySelectorAll('button')]
-    .find((element) => /(?:关闭|close)/i.test((element.getAttribute('aria-label') || '') + ' ' + (element.textContent || '')))
+    .find((element) => /^(关闭|close)$/i.test(label(element)))
   if (!close) return false
   close.click()
   return true
@@ -807,17 +829,19 @@ function installShortcutHandler(contents: Electron.WebContents): void {
   contents.on('before-input-event', (event, input: Input) => {
     if (input.type !== 'keyDown') return
     const auxiliaryWindow = [shortcutsWindow, aboutWindow, settingsWindow].find(window => window?.webContents === contents)
-    // Electron auxiliary windows do not receive browser-level Escape handling.
-    // Close them here, before the menu accelerator mapping (which has no Esc).
-    if (input.key === 'Escape' && auxiliaryWindow !== undefined) {
+    const route = escapeRoute({
+      key: input.key,
+      isAuxiliaryWindow: auxiliaryWindow !== undefined,
+      isDesktopSettingsWindow: auxiliaryWindow === settingsWindow,
+      isMainShell: contents === mainWindow?.webContents,
+      isDshSettingsDialogVisible: dshSettingsDialogVisible,
+    })
+    if (route === 'close-auxiliary') {
       event.preventDefault()
-      auxiliaryWindow.close()
+      auxiliaryWindow?.close()
       return
     }
-    // A WebContentsView modal can leave focus on the surrounding shell. Route
-    // Escape from either layer back to the DSH view rather than letting the
-    // outer title-bar menu take the key focus.
-    if (input.key === 'Escape' && (contents === dshView?.webContents || contents === mainWindow?.webContents)) {
+    if (route === 'dismiss-dsh-settings') {
       event.preventDefault()
       dismissDshSettingsDialog()
       return

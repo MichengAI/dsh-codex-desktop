@@ -24,7 +24,7 @@ export const DESKTOP_THEME_PALETTES: Readonly<Record<DesktopColorScheme, Desktop
     // Match Codex's restrained mint-to-cyan title-bar wash. Electron's native
     // caption-button area accepts only a solid color, so use the gradient's
     // right-side resting color there and paint the full gradient in shell.html.
-    titleBarBackground: '#f0f4f3',
+    titleBarBackground: '#f1f4f3',
     titleBarSymbol: '#0f1115',
   },
   dark: {

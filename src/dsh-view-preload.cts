@@ -4,6 +4,7 @@ const IPC = {
   dshAction: 'dsh-shell:dsh-action',
   dshLocale: 'dsh-shell:dsh-locale',
   dshTheme: 'dsh-shell:dsh-theme',
+  dshSettingsVisibility: 'dsh-shell:dsh-settings-visibility',
   dshOpenSession: 'dsh-shell:dsh-open-session',
   dshNotificationReply: 'dsh-shell:dsh-notification-reply',
   dshState: 'dsh-shell:dsh-state',
@@ -110,26 +111,38 @@ function runDomAction(id: string): void {
   }
 }
 
-/**
- * The upstream settings panel is a dialog and normally listens for Escape
- * itself. The Electron WebContentsView can, however, lose that bubbling event
- * when a nested control consumes it. Capture Escape at the document boundary
- * and activate the panel's own Close button so React keeps ownership of state.
- */
+function exactLabel(element: Element): string {
+  return normalizedLabel(element).replace(/\s+/g, ' ').trim().toLowerCase()
+}
+
+function dshSettingsDialog(): HTMLElement | undefined {
+  return [...document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]')]
+    .find(candidate => {
+      if (candidate.offsetParent === null) return false
+      const titleId = candidate.getAttribute('aria-labelledby')
+      const title = titleId === null ? undefined : document.getElementById(titleId)
+      return title !== undefined && title !== null && /^(设置|settings)$/i.test(exactLabel(title))
+    })
+}
+
 function closeDshSettingsDialogOnEscape(event: KeyboardEvent): void {
   if (event.key !== 'Escape') return
-  // The upstream dialog is localized and its title changes across Settings
-  // sections, so do not depend on one exact heading. A visible modal dialog's
-  // own Close button remains the safest way to let React own the teardown.
-  const dialog = [...document.querySelectorAll<HTMLElement>('[role="dialog"]')]
-    .find(candidate => candidate.offsetParent !== null && (candidate.getAttribute('aria-modal') === 'true' || candidate.querySelector('button') !== null))
+  const dialog = dshSettingsDialog()
   if (dialog === undefined) return
   const close = [...dialog.querySelectorAll<HTMLElement>('button')]
-    .find(candidate => /(?:关闭|close)/i.test(normalizedLabel(candidate)))
+    .find(candidate => /^(关闭|close)$/i.test(exactLabel(candidate)))
   if (close === undefined) return
   event.preventDefault()
   event.stopImmediatePropagation()
   close.click()
+}
+
+let lastReportedDshSettingsVisibility: boolean | undefined
+function reportDshSettingsVisibility(): void {
+  const visible = dshSettingsDialog() !== undefined
+  if (visible === lastReportedDshSettingsVisibility) return
+  lastReportedDshSettingsVisibility = visible
+  ipcRenderer.send(IPC.dshSettingsVisibility, visible)
 }
 
 ipcRenderer.on(IPC.dshAction, (_event, id: string) => {
@@ -140,7 +153,9 @@ window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', scheduleTrackSelection, true)
   document.addEventListener('keydown', closeDshSettingsDialogOnEscape, true)
   new MutationObserver(scheduleTrackSelection).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected', 'class'] })
+  new MutationObserver(reportDshSettingsVisibility).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-modal', 'aria-labelledby', 'class', 'style'] })
   reportFallbackState()
+  reportDshSettingsVisibility()
   reportDocumentLocale()
   new MutationObserver(reportDocumentLocale).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
   reportDocumentTheme()

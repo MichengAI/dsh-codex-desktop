@@ -18,7 +18,6 @@ interface SessionList {
 
 interface ClientContext {
   effect(callback: () => void | (() => void), label?: string): void
-  on(event: 'theme/change', listener: () => void): void
   layout: { toggleSidebar(): void }
   locale: {
     getSnapshot(): { active: string }
@@ -40,9 +39,6 @@ interface ClientContext {
     scope(id: string): {
       get(name: 'conversation'): { send(text: string): Promise<void> } | undefined
     } | undefined
-  }
-  theme: {
-    getTheme(): { active: { colorScheme: 'light' | 'dark' }; preference: 'light' | 'dark' | 'system' }
   }
   workspaces: {
     create(input: { path: string }): Promise<{ id?: string; workspaceId?: string } | string>
@@ -69,7 +65,7 @@ interface DesktopShellBridge {
 }
 
 export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void; inject: string[] } {
-    const inject = ['sessions', 'workspaces', 'layout', 'locale', 'theme']
+    const inject = ['sessions', 'workspaces', 'layout', 'locale']
 
     const visibleSessionRows = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>('.dcu-wb-session[role="treeitem"][aria-selected]')]
       .filter(element => element.offsetParent !== null)
@@ -98,12 +94,6 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
       let selectedForDismiss: string | undefined
       const unreadCompletions = new Set<string>()
       let reportedBadgeCount: number | undefined
-
-      const reportTheme = (): void => {
-        const snapshot = ctx.theme.getTheme()
-        bridge.reportTheme({ colorScheme: snapshot.active.colorScheme, preference: snapshot.preference })
-      }
-      ctx.on('theme/change', reportTheme)
 
       const notificationKindForInteraction = (value: string | undefined): 'approval' | 'question' | undefined => {
         if (value === undefined) return undefined
@@ -272,7 +262,6 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected', 'class'] })
         trackCurrent()
         reportLocale()
-        reportTheme()
         return () => { stopAction(); stopOpenSession(); stopNotificationReply(); stopList(); stopLocale(); window.removeEventListener('focus', onWindowFocus); observer.disconnect() }
       }, 'desktop-shell bridge')
     }

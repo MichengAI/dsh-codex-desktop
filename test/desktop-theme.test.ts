@@ -11,7 +11,7 @@ test('桌面主题只接受 light/dark 解析结果和内置偏好', () => {
 })
 
 test('浅色和深色桌面调色板提供所有原生窗口背景', () => {
-  assert.equal(DESKTOP_THEME_PALETTES.light.titleBarBackground, '#f0f4f3')
+  assert.equal(DESKTOP_THEME_PALETTES.light.titleBarBackground, '#f1f4f3')
   assert.equal(DESKTOP_THEME_PALETTES.light.settingsBackground, '#ffffff')
   assert.equal(DESKTOP_THEME_PALETTES.dark.titleBarBackground, '#1f2020')
   assert.equal(DESKTOP_THEME_PALETTES.dark.shortcutsBackground, '#262827')

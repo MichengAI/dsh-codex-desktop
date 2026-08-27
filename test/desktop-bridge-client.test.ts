@@ -73,7 +73,6 @@ test('通知回复不把会话级 conversation 声明为根上下文注入', () 
 function clientContext(workspaces: Record<string, unknown>): Record<string, unknown> {
   return {
     effect(callback: () => void): void { callback() },
-    on(): void {},
     layout: { toggleSidebar(): void {} },
     locale: { getSnapshot: () => ({ active: 'zh' }), subscribe: () => () => {} },
     sessions: {
@@ -82,7 +81,6 @@ function clientContext(workspaces: Record<string, unknown>): Record<string, unkn
       open(): void {},
       scope: () => ({ get: (name: string) => name === 'conversation' ? { send: async () => {} } : undefined }),
     },
-    theme: { getTheme: () => ({ active: { colorScheme: 'dark' }, preference: 'system' }) },
     workspaces,
   }
 }
@@ -105,23 +103,12 @@ test('桌面外壳跟随 DSH locale 快照和后续切换', () => {
   assert.deepEqual(client.locales, ['zh', 'en'])
 })
 
-test('桌面外壳接收 DSH 主题偏好与解析后的配色', () => {
-  let snapshot: { active: { colorScheme: 'light' | 'dark' }; preference: 'light' | 'dark' | 'system' } = { active: { colorScheme: 'light' }, preference: 'light' }
-  let themeListener: (() => void) | undefined
+test('桌面桥不注入 theme；外壳主题由 DSH preload 的 document 样式上报', () => {
   const client = loadClient()
-  client.apply({
-    ...clientContext({ pickDirectory: async () => null, create: async () => ({}), startSession(): void {} }),
-    on: (event: string, listener: () => void) => { if (event === 'theme/change') themeListener = listener },
-    theme: { getTheme: () => snapshot },
-  })
-  assert.deepEqual(JSON.parse(JSON.stringify(client.themes)), [{ colorScheme: 'light', preference: 'light' }])
-  snapshot = { active: { colorScheme: 'dark' }, preference: 'system' }
-  assert.ok(themeListener)
-  themeListener()
-  assert.deepEqual(JSON.parse(JSON.stringify(client.themes)), [
-    { colorScheme: 'light', preference: 'light' },
-    { colorScheme: 'dark', preference: 'system' },
-  ])
+  client.apply(clientContext({ pickDirectory: async () => null, create: async () => ({}), startSession(): void {} }))
+  assert.equal(client.inject.includes('theme'), false)
+  assert.deepEqual(client.locales, ['zh'])
+  assert.deepEqual(client.themes, [])
 })
 
 test('打开文件夹缺少 workspaceId 时不得继承当前工作区', async () => {
