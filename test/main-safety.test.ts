@@ -21,6 +21,13 @@ test('主窗口导航完成前不结束启动或插件热重载', async () => {
   assert.match(source, /isRecycling = true\s+broadcastShellState\(\)\s+try \{\s+await showStartupWindow\(desktopText\('加载中', 'Loading'\)\)/)
   assert.match(source, /console\.error\('显示启动错误页面失败。'/)
   assert.match(source, /will-navigate'[\s\S]*?windowNavigation\.isNavigating\(\)[\s\S]*?event\.preventDefault\(\)/)
+  assert.match(source, /watchProfileActivation\(profileDir, scheduleProfileActivationRecycle/)
+  assert.match(source, /waitForDshMarketBatchToSettle\(/)
+  assert.match(source, /function handleDshIpc\(message: unknown\): void \{[\s\S]*?scheduleProfileActivationRecycle\(\)/)
+  assert.match(source, /profileActivationRecycleGeneration !== generation\) continue/)
+  assert.match(source, /input\.key === 'Escape' && auxiliaryWindow !== undefined/)
+  assert.match(source, /DISMISS_DSH_SETTINGS_DIALOG_SCRIPT/)
+  assert.match(source, /dismissDshSettingsDialog\(\)/)
 })
 
 test('桌面壳与 DSH 内容分层并复用托盘重载实现', async () => {
@@ -123,4 +130,37 @@ test('shell 在 macOS 为交通灯预留空间且状态早到不会读取空 boo
   assert.ok(shell.indexOf('document.documentElement.dataset.platform=window.dshShell.platform') < shell.indexOf('<style>'))
   assert.match(shell, /bootstrap\?\.locale/)
   assert.match(shell, /state\?\?value\.state/)
+})
+
+test('原生菜单关闭后才清理外壳菜单的选中状态', async () => {
+  const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
+  const shell = await readFile(new URL('../../assets/shell.html', import.meta.url), 'utf8')
+  assert.match(main, /function popupShellMenu\(request: ShellMenuPopupRequest\): Promise<void>/)
+  assert.match(main, /menu\.once\('menu-will-close', close\)/)
+  assert.match(main, /callback: close/)
+  assert.match(shell, /function clearOpenMenu\(button=openMenu\)/)
+  assert.match(shell, /try\{await api\.popupMenu\([\s\S]*?\)\}finally\{clearOpenMenu\(button\)\}/)
+  assert.match(shell, /document\.addEventListener\('pointerdown',[\s\S]*?clearOpenMenu\(\)/)
+  assert.doesNotMatch(shell, /:root\[data-color-scheme="light"\] \.menu:hover,:root\[data-color-scheme="light"\] \.menu\[aria-expanded="true"\]\{background/)
+})
+
+test('DSH 主题变化同步到桌面外壳、原生菜单和辅助窗口', async () => {
+  const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
+  const bridge = await readFile(new URL('../../src/desktop-bridge-client-source.ts', import.meta.url), 'utf8')
+  const shell = await readFile(new URL('../../assets/shell.html', import.meta.url), 'utf8')
+  const settings = await readFile(new URL('../../assets/settings.html', import.meta.url), 'utf8')
+  const shortcuts = await readFile(new URL('../../assets/shortcuts.html', import.meta.url), 'utf8')
+  const about = await readFile(new URL('../../assets/about.html', import.meta.url), 'utf8')
+  const startup = await readFile(new URL('../../assets/startup.html', import.meta.url), 'utf8')
+  assert.match(bridge, /reportTheme/)
+  assert.match(bridge, /'theme\/change'/)
+  assert.match(main, /nativeTheme\.themeSource = preference/)
+  assert.match(main, /setTitleBarOverlay/)
+  assert.match(shell, /linear-gradient\(90deg,#1f2121 0%,#1e2120 16%,#1c2221 29%,#1b2223 48%,#1b2222 61%,#1e2120 79%,#1f2020 100%\)/)
+  assert.match(shell, /linear-gradient\(105deg,#eff5f3/)
+  for (const source of [shell, settings, shortcuts, about, startup]) {
+    assert.match(source, /data-color-scheme="light"/)
+  }
+  for (const source of [shell, settings, shortcuts, about]) assert.match(source, /dataset\.colorScheme=value\.colorScheme/)
+  assert.match(main, /loadFile\(html, \{ query: \{ theme: activeDshColorScheme \} \}\)/)
 })

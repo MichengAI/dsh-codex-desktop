@@ -10,6 +10,7 @@ export const SHELL_IPC = {
   bootstrap: 'dsh-shell:bootstrap',
   dshAction: 'dsh-shell:dsh-action',
   dshLocale: 'dsh-shell:dsh-locale',
+  dshTheme: 'dsh-shell:dsh-theme',
   dshOpenSession: 'dsh-shell:dsh-open-session',
   dshNotificationReply: 'dsh-shell:dsh-notification-reply',
   dshState: 'dsh-shell:dsh-state',
@@ -39,6 +40,7 @@ export interface ShellState extends DshNavigationState {
 
 export interface ShellBootstrap {
   readonly actions: readonly LocalizedShellAction[]
+  readonly colorScheme: 'light' | 'dark'
   readonly locale: string
   readonly menus: readonly LocalizedShellMenu[]
   readonly platform: NodeJS.Platform

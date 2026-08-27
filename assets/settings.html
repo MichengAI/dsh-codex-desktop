@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>桌面端设置</title>
+  <script>document.documentElement.dataset.colorScheme=new URLSearchParams(location.search).get('theme')==='light'?'light':'dark'</script>
   <style>
     :root{color-scheme:dark;font-family:Inter,"Segoe UI","Microsoft YaHei UI",sans-serif;background:#202322;color:#eef0ef}
     *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#202322}
@@ -36,6 +37,38 @@
     .update-action{min-width:132px;min-height:36px;border:1px solid #555b58;border-radius:8px;padding:7px 14px;background:#e7eae8;color:#202322;font-size:12.5px;font-weight:650;cursor:pointer;outline:none;transition:background .14s,box-shadow .14s}.update-action:hover{background:#fff}.update-action:focus-visible{box-shadow:0 0 0 3px #aeb4b150}.update-action:disabled{border-color:#454946;background:#343735;color:#7e8481;cursor:default}
     .notes{margin-top:18px;padding:14px 16px;border:1px solid #363a38;border-radius:9px;background:#1d201f}.notes[hidden]{display:none}.notes-title{margin:0 0 8px;color:#cfd3d1;font-size:12px;font-weight:650}.notes-body{max-height:150px;margin:0;overflow:auto;white-space:pre-wrap;color:#969c99;font:12px/1.55 "Segoe UI",sans-serif;scrollbar-color:#505552 transparent}
     .update-feedback{min-height:20px;margin:14px 0 0;color:#979d9a;font-size:12px;line-height:1.5}.update-feedback.error{color:#e1bcbc}
+    :root[data-color-scheme="light"]{color-scheme:light;background:#fff;color:#0f1115}
+    :root[data-color-scheme="light"] body{background:#fff}
+    :root[data-color-scheme="light"] aside{border-right-color:#0000001a;background:#f9fafb}
+    :root[data-color-scheme="light"] .eyebrow,:root[data-color-scheme="light"] .status-line{color:#81858c}
+    :root[data-color-scheme="light"] .nav-item{color:#61666b}
+    :root[data-color-scheme="light"] .nav-item:hover{background:#2631480f;color:#0f1115}
+    :root[data-color-scheme="light"] .nav-item[aria-current="page"]{background:#ebeef2;color:#0f1115}
+    :root[data-color-scheme="light"] main{scrollbar-color:#d4d4d4 transparent}
+    :root[data-color-scheme="light"] .group{border-top-color:#0000001a}
+    :root[data-color-scheme="light"] .row,:root[data-color-scheme="light"] .version-block{border-bottom-color:#0000001a}
+    :root[data-color-scheme="light"] .label,:root[data-color-scheme="light"] .version,:root[data-color-scheme="light"] .notes-title{color:#0f1115}
+    :root[data-color-scheme="light"] .description,:root[data-color-scheme="light"] .update-feedback{color:#61666b}
+    :root[data-color-scheme="light"] .select-trigger{border-color:#00000029;background:#fff;color:#0f1115}
+    :root[data-color-scheme="light"] .select-trigger:hover,:root[data-color-scheme="light"] .select-trigger[aria-expanded="true"]{border-color:#979da6;background:#f9fafb}
+    :root[data-color-scheme="light"] .select-trigger img{filter:brightness(0);opacity:.62}
+    :root[data-color-scheme="light"] .select-menu{border-color:#0000001a;background:#fff;box-shadow:0 14px 34px #0000001f,0 2px 8px #00000014}
+    :root[data-color-scheme="light"] .select-option{color:#43454a}
+    :root[data-color-scheme="light"] .select-option:hover,:root[data-color-scheme="light"] .select-option:focus-visible{background:#f1f3f5;color:#0f1115}
+    :root[data-color-scheme="light"] .select-option[aria-selected="true"]{background:#ebeef2;color:#0f1115}
+    :root[data-color-scheme="light"] .track{border-color:#adb2b8;background:#e1e5ee}
+    :root[data-color-scheme="light"] .track::after{background:#fff;box-shadow:0 1px 2px #0003}
+    :root[data-color-scheme="light"] .switch input:checked+.track{border-color:#0f1115;background:#0f1115}
+    :root[data-color-scheme="light"] .switch input:checked+.track::after{background:#fff}
+    :root[data-color-scheme="light"] .badge{border-color:#0000001a;background:#f5f6f7;color:#61666b}
+    :root[data-color-scheme="light"] .badge.available,:root[data-color-scheme="light"] .badge.ready{border-color:#b7dec5;background:#eefaf2;color:#24613b}
+    :root[data-color-scheme="light"] .badge.error{border-color:#f2b8b8;background:#fff1f1;color:#a52b2b}
+    :root[data-color-scheme="light"] .update-action{border-color:#0f1115;background:#0f1115;color:#fff}
+    :root[data-color-scheme="light"] .update-action:hover{background:#353638}
+    :root[data-color-scheme="light"] .update-action:disabled{border-color:#e1e5ee;background:#f1f3f5;color:#adb2b8}
+    :root[data-color-scheme="light"] .notes{border-color:#0000001a;background:#f9fafb}
+    :root[data-color-scheme="light"] .notes-body{color:#61666b;scrollbar-color:#d4d4d4 transparent}
+    :root[data-color-scheme="light"] .update-feedback.error{color:#a52b2b}
     @media(max-width:720px){body{grid-template-columns:150px minmax(0,1fr)}main{padding:30px 28px}.row{gap:18px}.select-wrap{width:176px}}
   </style>
 </head>
@@ -196,9 +229,10 @@
     updateAction.addEventListener('click',async()=>{if(updateAction.disabled)return;updateAction.disabled=true;const next=await api.desktopUpdateAction(updateAction.dataset.action||'check');if(next)renderUpdateState(next)});
     Promise.all([api.getBootstrap(),api.getNotificationPreferences(),api.getUpdatePreferences(),api.getDesktopUpdateState()]).then(([bootstrap,notifications,preferences,state])=>{
       currentTurnMode=turnSelect.set(notifications.turnMode);approvals.checked=notifications.approvalsEnabled;questions.checked=notifications.questionsEnabled;
-      currentPolicy=policySelect.set(preferences.policy);localize(bootstrap.locale);renderUpdateState(state);
+      currentPolicy=policySelect.set(preferences.policy);applyBootstrap(bootstrap);renderUpdateState(state);
     });
-    api.onBootstrap(value=>localize(value.locale));api.onDesktopUpdateState(renderUpdateState);api.onSettingsSection(value=>setPage(value==='updates'?'updates':'notifications'));
+    function applyBootstrap(value){document.documentElement.dataset.colorScheme=value.colorScheme;document.documentElement.style.colorScheme=value.colorScheme;localize(value.locale)}
+    api.onBootstrap(applyBootstrap);api.onDesktopUpdateState(renderUpdateState);api.onSettingsSection(value=>setPage(value==='updates'?'updates':'notifications'));
   </script>
 </body>
 </html>

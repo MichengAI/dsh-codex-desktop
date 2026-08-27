@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Notification, Tray, WebContentsView, dialog, ipcMain, nativeImage, net, protocol, session, shell, type Input, type MenuItemConstructorOptions, type WebContents } from 'electron'
+import { app, BrowserWindow, Menu, Notification, Tray, WebContentsView, dialog, ipcMain, nativeImage, nativeTheme, net, protocol, session, shell, type Input, type MenuItemConstructorOptions, type WebContents } from 'electron'
 import { existsSync } from 'node:fs'
 import { writeFile as writeTextFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
@@ -23,8 +23,9 @@ import { WindowNavigationCoordinator } from './window-navigation.js'
 import { installDesktopBridge, resolveDesktopBridgeDir } from './desktop-host.js'
 import { isChineseLocale, localizedShellActions, localizedShellMenus, normalizeShellLocale, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId } from './shell-actions.js'
 import { SHELL_BAR_HEIGHT, SHELL_IPC, type DshNavigationState, type DshShellActionId, type ShellBootstrap, type ShellMenuPopupRequest, type ShellState } from './shell-contract.js'
-import { mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshState, type ShellRendererKind } from './shell-ipc-policy.js'
-import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayReportDshLocale, mayReportDshNotification } from './shell-ipc-policy.js'
+import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshLocale, mayReportDshNotification, mayReportDshState, mayReportDshTheme, type ShellRendererKind } from './shell-ipc-policy.js'
+import { DESKTOP_THEME_PALETTES, normalizeDesktopThemeSnapshot, type DesktopColorScheme, type DesktopThemePreference } from './desktop-theme.js'
+import { DSH_MARKET_STATUS_PATH, waitForDshMarketBatchToSettle } from './dshmarket-batch.js'
 import { DEFAULT_NOTIFICATION_PREFERENCES, buildWindowsReplyToastXml, loadNotificationPreferences, parseDesktopNotificationBridgeEvent, parseWindowsNotificationReplyActivation, saveNotificationPreferences, shouldShowDesktopNotification, windowsNotificationReplyArguments, type DesktopNotificationEvent, type DesktopNotificationPreferences } from './desktop-notifications.js'
 import { watchProfileActivation } from './profile-watch.js'
 import updater from 'electron-updater'
@@ -52,6 +53,9 @@ let isRecycling = false
 let lastStartOptions: Omit<StartDshOptions, 'onUnexpectedExit' | 'onIpcMessage'> | undefined
 let lastSeedOptions: Parameters<typeof applyPendingProfileUpdates>[0] | undefined
 let profileWatcher: { stop: () => void; sync: () => void } | undefined
+let profileActivationRecyclePending = false
+let profileActivationRecycleTask: Promise<void> | undefined
+let profileActivationRecycleGeneration = 0
 let updateStatus: DesktopUpdateStatus = { kind: 'idle' }
 let updatePreferences: DesktopUpdatePreferences = DEFAULT_UPDATE_PREFERENCES
 let lastUpdateCheckAt: string | undefined
@@ -64,6 +68,8 @@ let notificationPreferences: DesktopNotificationPreferences = DEFAULT_NOTIFICATI
 const activeNotifications = new Map<string, Notification>()
 let unreadCompletionCount = 0
 let activeDshLocale: 'zh' | 'en' | undefined
+let activeDshColorScheme: DesktopColorScheme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
+let activeDshThemePreference: DesktopThemePreference = 'system'
 const shellActionIds = new Set<string>(SHELL_ACTIONS.map(action => action.id))
 
 function desktopLocale(): string {
@@ -216,10 +222,7 @@ async function startApplication(): Promise<void> {
     server = started.result
     if (started.repaired.length > 0) console.log('已自我修复损坏的插件清单：' + started.repaired.join('、'))
     profileWatcher?.stop()
-    profileWatcher = watchProfileActivation(profileDir, () => {
-      if (isQuitting || isRecycling) return
-      runMainTask(recycleDshForPluginUpdate())
-    }, { onError: handleUnexpectedMainError })
+    profileWatcher = watchProfileActivation(profileDir, scheduleProfileActivationRecycle, { onError: handleUnexpectedMainError })
     await createMainWindow(server.url)
     scheduleStartupUpdateCheck()
   } catch (error) {
@@ -287,7 +290,7 @@ async function showStartupWindow(message: string): Promise<void> {
   if (html !== undefined) {
     await windowNavigation.navigate(
       view,
-      () => view.webContents.loadFile(html),
+      () => view.webContents.loadFile(html, { query: { theme: activeDshColorScheme } }),
       () => view.webContents.executeJavaScript('document.getElementById("msg").textContent = ' + JSON.stringify(message)),
     )
     return
@@ -336,7 +339,53 @@ function runMainTask(task: Promise<unknown>): void {
 
 function handleDshIpc(message: unknown): void {
   if (!isApplyPluginUpdatesIpc(message)) return
-  runMainTask(recycleDshForPluginUpdate())
+  // dsh-codex-ui uses this IPC after its own update-all flow. It has the
+  // same contract as a profile mutation, so letting it bypass the market
+  // queue would still interrupt a batch after its first item.
+  scheduleProfileActivationRecycle()
+}
+
+const DSH_MARKET_BATCH_POLL_MS = 750
+
+function scheduleProfileActivationRecycle(): void {
+  if (isQuitting || isRecycling) return
+  profileActivationRecyclePending = true
+  profileActivationRecycleGeneration += 1
+  if (profileActivationRecycleTask !== undefined) return
+  const task = recycleAfterDshMarketBatch()
+  profileActivationRecycleTask = task
+  runMainTask(task.finally(() => { profileActivationRecycleTask = undefined }))
+}
+
+async function dshMarketOperationStatus(): Promise<unknown> {
+  const url = server?.url
+  if (url === undefined) return undefined
+  try {
+    const response = await fetch(new URL(DSH_MARKET_STATUS_PATH, url), { signal: AbortSignal.timeout(1_000) })
+    if (!response.ok) return undefined
+    return await response.json()
+  } catch {
+    // dshmarket is optional. A missing, stopped, or old market should retain
+    // the normal profile-change restart behavior.
+    return undefined
+  }
+}
+
+async function recycleAfterDshMarketBatch(): Promise<void> {
+  while (profileActivationRecyclePending && !isQuitting && !isRecycling) {
+    profileActivationRecyclePending = false
+    const generation = profileActivationRecycleGeneration
+    await waitForDshMarketBatchToSettle(
+      dshMarketOperationStatus,
+      () => new Promise(resolve => setTimeout(resolve, DSH_MARKET_BATCH_POLL_MS)),
+    )
+    if (isQuitting || isRecycling) return
+    // Another profile change or update-all IPC arrived during the quiet
+    // check. Start the check over rather than restarting a just-continued
+    // batch from its first completion boundary.
+    if (profileActivationRecycleGeneration !== generation) continue
+    await recycleDshForPluginUpdate()
+  }
 }
 
 async function recycleDshForPluginUpdate(): Promise<void> {
@@ -415,6 +464,7 @@ function layoutDshView(window: BrowserWindow): void {
 
 function createWindow(): BrowserWindow {
   const windowIcon = resolveWindowIconImage()
+  const palette = DESKTOP_THEME_PALETTES[activeDshColorScheme]
   const window = new BrowserWindow({
     width: 1360,
     height: 900,
@@ -423,7 +473,11 @@ function createWindow(): BrowserWindow {
     show: true,
     title: DESKTOP_APP_NAME,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
-    ...(process.platform === 'darwin' ? {} : { titleBarOverlay: { color: '#1c1f1e', symbolColor: '#d7d9d8', height: SHELL_BAR_HEIGHT } }),
+    // The small Windows non-client edge is painted from this color. Keep it
+    // aligned with the title-bar wash instead of leaving a white seam above
+    // the CSS gradient.
+    backgroundColor: palette.titleBarBackground,
+    ...(process.platform === 'darwin' ? {} : { titleBarOverlay: { color: palette.titleBarBackground, symbolColor: palette.titleBarSymbol, height: SHELL_BAR_HEIGHT } }),
     ...(windowIcon === undefined ? {} : { icon: windowIcon }),
     webPreferences: {
       contextIsolation: true,
@@ -444,7 +498,7 @@ function createWindow(): BrowserWindow {
   window.on('resize', () => layoutDshView(window))
   window.on('maximize', () => layoutDshView(window))
   window.on('unmaximize', () => layoutDshView(window))
-  runMainTask(window.loadFile(resolveShellAsset('shell.html')))
+  runMainTask(window.loadFile(resolveShellAsset('shell.html'), { query: { theme: activeDshColorScheme } }))
 
   view.webContents.setWindowOpenHandler(({ url }) => {
     if (isExternalOpenUrl(url, allowedOrigin)) runMainTask(shell.openExternal(url))
@@ -498,6 +552,7 @@ function shellBootstrap(): ShellBootstrap {
   const locale = desktopLocale()
   return {
     actions: localizedShellActions(locale, process.platform),
+    colorScheme: activeDshColorScheme,
     locale,
     menus: localizedShellMenus(locale),
     platform: process.platform,
@@ -511,6 +566,26 @@ function broadcastShellBootstrap(): void {
   const bootstrap = shellBootstrap()
   for (const window of [mainWindow, shortcutsWindow, aboutWindow, settingsWindow]) {
     if (window !== undefined && !window.isDestroyed()) window.webContents.send(SHELL_IPC.bootstrap, bootstrap)
+  }
+}
+
+function setWindowBackground(window: BrowserWindow | undefined, color: string): void {
+  if (window !== undefined && !window.isDestroyed()) window.setBackgroundColor(color)
+}
+
+function applyDesktopTheme(colorScheme: DesktopColorScheme, preference?: DesktopThemePreference): void {
+  activeDshColorScheme = colorScheme
+  if (preference !== undefined) {
+    activeDshThemePreference = preference
+    nativeTheme.themeSource = preference
+  }
+  const palette = DESKTOP_THEME_PALETTES[colorScheme]
+  setWindowBackground(mainWindow, palette.titleBarBackground)
+  setWindowBackground(settingsWindow, palette.settingsBackground)
+  setWindowBackground(shortcutsWindow, palette.shortcutsBackground)
+  setWindowBackground(aboutWindow, palette.aboutBackground)
+  if (process.platform !== 'darwin' && mainWindow !== undefined && !mainWindow.isDestroyed()) {
+    mainWindow.setTitleBarOverlay({ color: palette.titleBarBackground, symbolColor: palette.titleBarSymbol, height: SHELL_BAR_HEIGHT })
   }
 }
 
@@ -619,6 +694,17 @@ function installShellIpc(): void {
     broadcastShellBootstrap()
     updateUnreadCompletionBadge(unreadCompletionCount)
   })
+  ipcMain.removeAllListeners(SHELL_IPC.dshTheme)
+  ipcMain.on(SHELL_IPC.dshTheme, (event, value: unknown) => {
+    if (!mayReportDshTheme(shellRendererKind(event.sender))) return
+    const snapshot = normalizeDesktopThemeSnapshot(value)
+    if (snapshot === undefined) return
+    const colorSchemeChanged = snapshot.colorScheme !== activeDshColorScheme
+    const preferenceChanged = snapshot.preference !== undefined && snapshot.preference !== activeDshThemePreference
+    if (!colorSchemeChanged && !preferenceChanged) return
+    applyDesktopTheme(snapshot.colorScheme, snapshot.preference)
+    if (colorSchemeChanged) broadcastShellBootstrap()
+  })
   ipcMain.removeAllListeners(SHELL_IPC.dshNotification)
   ipcMain.on(SHELL_IPC.dshNotification, (event, value: unknown) => {
     if (!mayReportDshNotification(shellRendererKind(event.sender))) return
@@ -658,40 +744,87 @@ function isActionEnabled(id: ShellActionId): boolean {
   return true
 }
 
-function popupShellMenu(request: ShellMenuPopupRequest): void {
-  if (request === null || typeof request !== 'object') return
-  if (!Number.isFinite(request.x) || !Number.isFinite(request.y)) return
-  const window = mainWindow
-  if (window === undefined || window.isDestroyed()) return
-  const menuId = request.menu as ShellMenuId
-  const actions = localizedShellActions(desktopLocale(), process.platform).filter(action => action.menu === menuId)
-  if (actions.length === 0) return
-  const template: MenuItemConstructorOptions[] = []
-  let group = actions[0]?.group
-  for (const action of actions) {
-    if (group !== undefined && action.group !== group) template.push({ type: 'separator' })
-    group = action.group
-    template.push({
-      label: action.label,
-      enabled: isActionEnabled(action.id),
-      ...(action.acceleratorLabel === undefined ? {} : { accelerator: action.acceleratorLabel }),
-      click: () => { runMainTask(Promise.resolve(executeShellAction(action.id))) },
+function popupShellMenu(request: ShellMenuPopupRequest): Promise<void> {
+  return new Promise(resolve => {
+    if (request === null || typeof request !== 'object') { resolve(); return }
+    if (!Number.isFinite(request.x) || !Number.isFinite(request.y)) { resolve(); return }
+    const window = mainWindow
+    if (window === undefined || window.isDestroyed()) { resolve(); return }
+    const menuId = request.menu as ShellMenuId
+    const actions = localizedShellActions(desktopLocale(), process.platform).filter(action => action.menu === menuId)
+    if (actions.length === 0) { resolve(); return }
+    const template: MenuItemConstructorOptions[] = []
+    let group = actions[0]?.group
+    for (const action of actions) {
+      if (group !== undefined && action.group !== group) template.push({ type: 'separator' })
+      group = action.group
+      template.push({
+        label: action.label,
+        enabled: isActionEnabled(action.id),
+        ...(action.acceleratorLabel === undefined ? {} : { accelerator: action.acceleratorLabel }),
+        click: () => { runMainTask(Promise.resolve(executeShellAction(action.id))) },
+      })
+    }
+    const menu = Menu.buildFromTemplate(template)
+    // `popup`'s callback is not delivered consistently when a native Windows
+    // menu is dismissed by clicking its owner window. `menu-will-close` is
+    // the close lifecycle event, so resolve from either signal exactly once.
+    let settled = false
+    const close = (): void => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+    menu.once('menu-will-close', close)
+    menu.popup({
+      window,
+      x: Math.round(request.x),
+      y: Math.round(request.y),
+      callback: close,
     })
-  }
-  Menu.buildFromTemplate(template).popup({
-    window,
-    x: Math.round(request.x),
-    y: Math.round(request.y),
   })
+}
+
+const DISMISS_DSH_SETTINGS_DIALOG_SCRIPT = `(() => {
+  const visible = (element) => element.offsetParent !== null
+  const dialog = [...document.querySelectorAll('[role="dialog"]')]
+    .find((element) => visible(element) && (element.getAttribute('aria-modal') === 'true' || element.querySelector('button') !== null))
+  if (!dialog) return false
+  const close = [...dialog.querySelectorAll('button')]
+    .find((element) => /(?:关闭|close)/i.test((element.getAttribute('aria-label') || '') + ' ' + (element.textContent || '')))
+  if (!close) return false
+  close.click()
+  return true
+})()`
+
+function dismissDshSettingsDialog(): void {
+  const contents = dshView?.webContents
+  if (contents === undefined || contents.isDestroyed()) return
+  void contents.executeJavaScript(DISMISS_DSH_SETTINGS_DIALOG_SCRIPT).catch(() => undefined)
 }
 
 function installShortcutHandler(contents: Electron.WebContents): void {
   contents.on('before-input-event', (event, input: Input) => {
     if (input.type !== 'keyDown') return
+    const auxiliaryWindow = [shortcutsWindow, aboutWindow, settingsWindow].find(window => window?.webContents === contents)
+    // Electron auxiliary windows do not receive browser-level Escape handling.
+    // Close them here, before the menu accelerator mapping (which has no Esc).
+    if (input.key === 'Escape' && auxiliaryWindow !== undefined) {
+      event.preventDefault()
+      auxiliaryWindow.close()
+      return
+    }
+    // A WebContentsView modal can leave focus on the surrounding shell. Route
+    // Escape from either layer back to the DSH view rather than letting the
+    // outer title-bar menu take the key focus.
+    if (input.key === 'Escape' && (contents === dshView?.webContents || contents === mainWindow?.webContents)) {
+      event.preventDefault()
+      dismissDshSettingsDialog()
+      return
+    }
     const id = shellActionForShortcut(input, process.platform)
     if (id === undefined || !isActionEnabled(id)) return
     event.preventDefault()
-    const auxiliaryWindow = [shortcutsWindow, aboutWindow, settingsWindow].find(window => window?.webContents === contents)
     if (id === 'close-window' && auxiliaryWindow !== undefined) {
       auxiliaryWindow.close()
       return
@@ -963,7 +1096,7 @@ function showDesktopSettingsWindow(section: DesktopSettingsSection = 'notificati
     minHeight: 540,
     title: desktopText('桌面端设置', 'Desktop Settings'),
     autoHideMenuBar: true,
-    backgroundColor: '#202322',
+    backgroundColor: DESKTOP_THEME_PALETTES[activeDshColorScheme].settingsBackground,
     webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
   })
   removeNativeWindowMenu(window)
@@ -974,7 +1107,7 @@ function showDesktopSettingsWindow(section: DesktopSettingsSection = 'notificati
     window.webContents.send(SHELL_IPC.settingsSection, section)
     window.webContents.send(SHELL_IPC.desktopUpdateState, desktopUpdateSnapshot())
   })
-  runMainTask(window.loadFile(resolveShellAsset('settings.html')))
+  runMainTask(window.loadFile(resolveShellAsset('settings.html'), { query: { theme: activeDshColorScheme } }))
 }
 
 function showShortcutsWindow(): void {
@@ -990,14 +1123,14 @@ function showShortcutsWindow(): void {
     minHeight: 480,
     title: desktopText('键盘快捷键', 'Keyboard Shortcuts'),
     autoHideMenuBar: true,
-    backgroundColor: '#262827',
+    backgroundColor: DESKTOP_THEME_PALETTES[activeDshColorScheme].shortcutsBackground,
     webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
   })
   removeNativeWindowMenu(window)
   shortcutsWindow = window
   window.on('closed', () => { if (shortcutsWindow === window) shortcutsWindow = undefined })
   installShortcutHandler(window.webContents)
-  runMainTask(window.loadFile(resolveShellAsset('shortcuts.html')))
+  runMainTask(window.loadFile(resolveShellAsset('shortcuts.html'), { query: { theme: activeDshColorScheme } }))
 }
 
 function showAboutWindow(): void {
@@ -1023,7 +1156,7 @@ function showAboutWindow(): void {
     fullscreenable: false,
     title: desktopText(`关于 ${DESKTOP_APP_NAME}`, `About ${DESKTOP_APP_NAME}`),
     autoHideMenuBar: true,
-    backgroundColor: '#202322',
+    backgroundColor: DESKTOP_THEME_PALETTES[activeDshColorScheme].aboutBackground,
     ...(icon === undefined ? {} : { icon }),
     webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
   })
@@ -1031,7 +1164,7 @@ function showAboutWindow(): void {
   aboutWindow = window
   window.on('closed', () => { if (aboutWindow === window) aboutWindow = undefined })
   installShortcutHandler(window.webContents)
-  runMainTask(window.loadFile(resolveShellAsset('about.html')))
+  runMainTask(window.loadFile(resolveShellAsset('about.html'), { query: { theme: activeDshColorScheme } }))
 }
 
 function configureDesktopUpdater(): void {

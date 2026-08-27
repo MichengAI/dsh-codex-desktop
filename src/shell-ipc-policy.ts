@@ -27,6 +27,10 @@ export function mayReportDshLocale(kind: ShellRendererKind): boolean {
   return kind === 'dsh'
 }
 
+export function mayReportDshTheme(kind: ShellRendererKind): boolean {
+  return kind === 'dsh'
+}
+
 export function mayAccessNotificationPreferences(kind: ShellRendererKind): boolean {
   return kind === 'settings'
 }

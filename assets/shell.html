@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>DSH Codex Desktop</title>
-  <script>document.documentElement.dataset.platform=window.dshShell.platform</script>
+  <script>document.documentElement.dataset.platform=window.dshShell.platform;document.documentElement.dataset.colorScheme=new URLSearchParams(location.search).get('theme')==='light'?'light':'dark'</script>
   <style>
     :root{color-scheme:dark;font-family:Inter,"Segoe UI","Microsoft YaHei UI",sans-serif;background:#171918;color:#d7d9d8}
     *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}
-    .bar{-webkit-app-region:drag;height:40px;display:flex;align-items:center;gap:4px;padding:0 154px 0 6px;background:#1c1f1e;border-bottom:1px solid #292c2b;user-select:none}
+    .bar{-webkit-app-region:drag;height:40px;display:flex;align-items:center;gap:4px;padding:0 154px 0 6px;background:linear-gradient(90deg,#1f2121 0%,#1e2120 16%,#1c2221 29%,#1b2223 48%,#1b2222 61%,#1e2120 79%,#1f2020 100%);border-bottom:1px solid #292c2b;user-select:none}
     html[data-platform="darwin"] .bar{padding-left:78px;padding-right:12px}
     button{-webkit-app-region:no-drag;font:inherit;color:inherit;border:0;background:transparent}
     .nav{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;opacity:.82;transition:background .12s,opacity .12s}
@@ -16,8 +16,15 @@
     .nav img{width:14px;height:14px;filter:invert(91%) sepia(5%) saturate(80%) hue-rotate(80deg)}
     .divider{width:1px;height:18px;background:#363938;margin:0 3px}
     .menu{height:30px;padding:0 10px;border-radius:7px;font-size:14px;color:#8f9492}
-    .menu:hover,.menu[aria-expanded="true"]{background:#2b2e2d;color:#c9cdcb}
+    .menu:hover{color:#c9cdcb}.menu[aria-expanded="true"]{background:#2b2e2d;color:#c9cdcb}
     .status{margin-left:auto;font-size:12px;color:#8f9592;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+    :root[data-color-scheme="light"]{color-scheme:light;background:#fff;color:#0f1115}
+    :root[data-color-scheme="light"] .bar{background:linear-gradient(105deg,#eff5f3 0%,#ecf7f4 21%,#e8f8f7 38%,#eaf7f9 57%,#e8f8f6 73%,#eef5f3 89%,#f1f4f3 100%);border-bottom-color:transparent}
+    :root[data-color-scheme="light"] .nav:hover:not(:disabled),:root[data-color-scheme="light"] .menu[aria-expanded="true"]{background:#2631480f}
+    :root[data-color-scheme="light"] .nav img{filter:brightness(0);opacity:.72}
+    :root[data-color-scheme="light"] .divider{background:#0000001a}
+    :root[data-color-scheme="light"] .menu,:root[data-color-scheme="light"] .status{color:#61666b}
+    :root[data-color-scheme="light"] .menu:hover,:root[data-color-scheme="light"] .menu[aria-expanded="true"]{color:#0f1115}
     @media(max-width:720px){.status{display:none}.bar{padding-right:144px}.menu{padding:0 7px}}
   </style>
 </head>
@@ -33,8 +40,12 @@
     const api=window.dshShell;let bootstrap;let state;let openMenu;
     const menuHost=document.getElementById('menus');const status=document.getElementById('status');
     function applyState(next){state=next;document.getElementById('back').disabled=!next.canBack;document.getElementById('forward').disabled=!next.canForward;const zh=bootstrap?.locale?.startsWith('zh')??navigator.language.toLowerCase().startsWith('zh');status.textContent=next.reloading?(zh?'正在重新加载…':'Reloading…'):''}
-    function applyBootstrap(value){bootstrap=value;document.documentElement.lang=value.locale;const zh=value.locale.startsWith('zh');const back=document.getElementById('back');const forward=document.getElementById('forward');back.title=back.ariaLabel=zh?'返回':'Back';forward.title=forward.ariaLabel=zh?'前进':'Forward';menuHost.setAttribute('aria-label',zh?'应用菜单':'Application menu');menuHost.replaceChildren();for(const menu of value.menus){const button=document.createElement('button');button.className='menu';button.textContent=menu.label;button.setAttribute('aria-haspopup','menu');button.setAttribute('aria-expanded','false');button.addEventListener('click',()=>showMenu(button,menu.id));menuHost.append(button)}applyState(state??value.state)}
-    async function showMenu(button,menu){document.querySelectorAll('.menu').forEach(x=>x.setAttribute('aria-expanded','false'));button.setAttribute('aria-expanded','true');openMenu=button;const rect=button.getBoundingClientRect();await api.popupMenu({menu,x:Math.round(rect.left),y:Math.round(rect.bottom)});button.setAttribute('aria-expanded','false');if(openMenu===button)openMenu=undefined}
+    function applyBootstrap(value){bootstrap=value;document.documentElement.lang=value.locale;document.documentElement.dataset.colorScheme=value.colorScheme;document.documentElement.style.colorScheme=value.colorScheme;const zh=value.locale.startsWith('zh');const back=document.getElementById('back');const forward=document.getElementById('forward');back.title=back.ariaLabel=zh?'返回':'Back';forward.title=forward.ariaLabel=zh?'前进':'Forward';menuHost.setAttribute('aria-label',zh?'应用菜单':'Application menu');menuHost.replaceChildren();for(const menu of value.menus){const button=document.createElement('button');button.className='menu';button.textContent=menu.label;button.setAttribute('aria-haspopup','menu');button.setAttribute('aria-expanded','false');button.addEventListener('click',()=>showMenu(button,menu.id));menuHost.append(button)}applyState(state??value.state)}
+    function clearOpenMenu(button=openMenu){if(!button)return;button.setAttribute('aria-expanded','false');if(openMenu===button)openMenu=undefined}
+    async function showMenu(button,menu){clearOpenMenu();button.setAttribute('aria-expanded','true');openMenu=button;const rect=button.getBoundingClientRect();try{await api.popupMenu({menu,x:Math.round(rect.left),y:Math.round(rect.bottom)})}finally{clearOpenMenu(button)}}
+    // Native Windows menus can consume the initial outside click. If the
+    // click is subsequently delivered to the shell, clear immediately too.
+    document.addEventListener('pointerdown',event=>{if(openMenu&&event.target!==openMenu)clearOpenMenu()},true);window.addEventListener('blur',()=>clearOpenMenu());
     document.querySelectorAll('[data-action]').forEach(button=>button.addEventListener('click',()=>api.action(button.dataset.action)));
     api.getBootstrap().then(value=>{document.documentElement.dataset.platform=value.platform;applyBootstrap(value)});api.onBootstrap(applyBootstrap);
     api.onState(applyState);

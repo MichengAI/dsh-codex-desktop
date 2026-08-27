@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron') as typeof import('ele
 const IPC = {
   dshAction: 'dsh-shell:dsh-action',
   dshLocale: 'dsh-shell:dsh-locale',
+  dshTheme: 'dsh-shell:dsh-theme',
   dshOpenSession: 'dsh-shell:dsh-open-session',
   dshNotificationReply: 'dsh-shell:dsh-notification-reply',
   dshState: 'dsh-shell:dsh-state',
@@ -79,6 +80,11 @@ function reportDocumentLocale(): void {
   if (locale !== '') ipcRenderer.send(IPC.dshLocale, locale)
 }
 
+function reportDocumentTheme(): void {
+  const value = document.documentElement.style.colorScheme.trim().toLowerCase()
+  if (value === 'light' || value === 'dark') ipcRenderer.send(IPC.dshTheme, { colorScheme: value })
+}
+
 function runDomAction(id: string): void {
   if (id === 'new-chat') clickMatching([/^新建任务$|^new task$/i, /^新聊天$|^new chat$/i])
   else if (id === 'open-folder') clickMatching([/添加工作区|打开文件夹|add workspace|open folder/i])
@@ -104,16 +110,41 @@ function runDomAction(id: string): void {
   }
 }
 
+/**
+ * The upstream settings panel is a dialog and normally listens for Escape
+ * itself. The Electron WebContentsView can, however, lose that bubbling event
+ * when a nested control consumes it. Capture Escape at the document boundary
+ * and activate the panel's own Close button so React keeps ownership of state.
+ */
+function closeDshSettingsDialogOnEscape(event: KeyboardEvent): void {
+  if (event.key !== 'Escape') return
+  // The upstream dialog is localized and its title changes across Settings
+  // sections, so do not depend on one exact heading. A visible modal dialog's
+  // own Close button remains the safest way to let React own the teardown.
+  const dialog = [...document.querySelectorAll<HTMLElement>('[role="dialog"]')]
+    .find(candidate => candidate.offsetParent !== null && (candidate.getAttribute('aria-modal') === 'true' || candidate.querySelector('button') !== null))
+  if (dialog === undefined) return
+  const close = [...dialog.querySelectorAll<HTMLElement>('button')]
+    .find(candidate => /(?:关闭|close)/i.test(normalizedLabel(candidate)))
+  if (close === undefined) return
+  event.preventDefault()
+  event.stopImmediatePropagation()
+  close.click()
+}
+
 ipcRenderer.on(IPC.dshAction, (_event, id: string) => {
   setTimeout(() => { if (clientBridgeRegistrations === 0) runDomAction(id) }, 60)
 })
 
 window.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', scheduleTrackSelection, true)
+  document.addEventListener('keydown', closeDshSettingsDialogOnEscape, true)
   new MutationObserver(scheduleTrackSelection).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected', 'class'] })
   reportFallbackState()
   reportDocumentLocale()
   new MutationObserver(reportDocumentLocale).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
+  reportDocumentTheme()
+  new MutationObserver(reportDocumentTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['style'] })
 })
 
 contextBridge.exposeInMainWorld('dshDesktopShell', {
@@ -147,5 +178,8 @@ contextBridge.exposeInMainWorld('dshDesktopShell', {
   },
   reportLocale: (locale: unknown) => {
     ipcRenderer.send(IPC.dshLocale, locale)
+  },
+  reportTheme: (colorScheme: unknown) => {
+    ipcRenderer.send(IPC.dshTheme, colorScheme)
   },
 })
