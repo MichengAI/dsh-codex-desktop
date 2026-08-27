@@ -34,7 +34,7 @@ async function main(): Promise<void> {
     if (asset.status !== 200) throw new Error(`前端资源返回 HTTP ${asset.status}。`)
   } finally {
     await stopApplication(application)
-    if (bootstrapProcessId !== undefined && isProcessRunning(bootstrapProcessId)) {
+    if (bootstrapProcessId !== undefined && !await waitForProcessExit(bootstrapProcessId, 10_000)) {
       throw new Error(`DSH 引导进程 ${bootstrapProcessId} 未在应用退出后结束。`)
     }
   }
@@ -111,6 +111,12 @@ function isProcessRunning(processId: number): boolean {
   } catch {
     return false
   }
+}
+
+async function waitForProcessExit(processId: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  while (isProcessRunning(processId) && Date.now() < deadline) await delay(250)
+  return !isProcessRunning(processId)
 }
 
 function delay(milliseconds: number): Promise<void> {
