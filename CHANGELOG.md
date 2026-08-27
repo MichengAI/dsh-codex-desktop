@@ -4,6 +4,15 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.37 — 2026-08-27
+
+- Synced the light and dark desktop title bars with the Codex-style gradient and the active DSH color scheme, including Desktop Settings, Keyboard Shortcuts, and About windows.
+- Cleared native title-bar menu selection after a dismissed popup, so menu buttons no longer remain visually active after clicking elsewhere.
+- Restored Escape behavior across the DSH view and desktop settings: ordinary DSH popups keep their own Escape handling, while only the visible Settings dialog is closed by the desktop fallback.
+- Made marketplace bulk updates wait for the complete batch before recycling the DSH runtime, with a bounded timeout and safe reload fallback.
+
+Release tag: [`v1.0.37`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.37).
+
 ## 1.0.36 — 2026-08-27
 
 - Updated the bundled desktop runtime to Node.js 24.20.0 and pnpm 11.24.0, including verified executable checksums for every supported platform.
