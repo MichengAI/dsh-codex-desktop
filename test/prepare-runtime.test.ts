@@ -27,7 +27,7 @@ test('项目配置包含 Linux x64 的随包 Node SHA256', async () => {
   }
   assert.equal(
     resolveBundledNodeSha256(manifest.config?.bundledNodeSha256, 'linux', 'x64'),
-    'BC17C508FFEED0EC622934F9B7FA72F8E78DA65350E63C3ECEB56FA688AA5E12',
+    '89AF8424DD53E560B1933F87BA650D8BF57C83CA5A04600EEFB31F416AABBAE7',
   )
 })
 
@@ -241,7 +241,12 @@ test('Windows 冒烟在启动应用前复用安装器的运行时解压入口', 
 
 test('正式标签缺少签名凭据时仍允许生成带 ad-hoc 签名的多平台测试版', async () => {
   const workflow = await readFile(new URL('../../.github/workflows/desktop-package.yml', import.meta.url), 'utf8')
-  assert.match(workflow, /version: 11\.22\.0/)
+  assert.match(workflow, /version: 11\.24\.0/)
+  assert.match(workflow, /actions\/checkout@v7/)
+  assert.match(workflow, /actions\/setup-node@v7/)
+  assert.match(workflow, /actions\/upload-artifact@v7/)
+  assert.match(workflow, /actions\/download-artifact@v8/)
+  assert.match(workflow, /pnpm\/action-setup@v6/)
   assert.match(workflow, /未配置 Windows 代码签名凭据，继续生成未签名测试版/)
   assert.match(workflow, /未配置 macOS 签名证书，将生成 ad-hoc 签名测试版/)
   assert.doesNotMatch(workflow, /正式标签发布必须配置 (?:Windows|macOS)/)

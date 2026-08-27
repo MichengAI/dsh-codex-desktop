@@ -38,17 +38,17 @@ jobs:
             buildArguments: --linux --x64
     steps:
       - name: 检出桌面启动器
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 配置 Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 24.19.0
+          node-version: 24.20.0
 
       - name: 配置 pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
-          version: 11.22.0
+          version: 11.24.0
 
       - name: 安装 Linux 冒烟依赖
         if: matrix.platform == 'linux-x64'
@@ -180,7 +180,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: 上传平台制品
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-${{ matrix.platform }}
           path: release/**
@@ -194,15 +194,15 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: 检出发布元数据
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 配置 Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 24.19.0
+          node-version: 24.20.0
 
       - name: 下载各平台制品
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: desktop-*
           path: release

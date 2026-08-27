@@ -4,6 +4,15 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.36 — 2026-08-27
+
+- 将桌面端内置运行时更新到 Node.js 24.20.0 与 pnpm 11.24.0，并校验全部支持平台的可执行文件哈希。
+- 将桌面工具链更新到 Electron 44.0.0、TypeScript 7.0.2、`@electron/notarize` 3.1.1 与 `@types/node` 26.4.0。
+- 将 Codex UI 更新到 0.2.89、Automation 更新到 0.1.21、Skills Manager 更新到 0.1.25、Archive Manager 更新到 0.1.16、`dsh-context` 更新到 0.33.1、MCP Connector 更新到 0.2.24，并将 `dshmarket` 更新到 1.31.1。
+- 将打包工作流升级到 Checkout、Setup Node、pnpm Setup、Upload Artifact 与 Download Artifact 的当前主版本；其余直接依赖和内置依赖也已核对为最新版。
+
+发布标签：[`v1.0.36`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.36)。
+
 ## 1.0.35 — 2026-08-26
 
 - 移除“桌面端设置”“键盘快捷键”和“关于”窗口中的 Electron 原生菜单栏，按下 Alt 时不再在已经国际化的桌面外壳上方显示英文 `File / Edit / View / Window` 菜单。
@@ -35,14 +44,3 @@
 - 扩展首次启动离线插件目录，新旧桌面 profile 都会通过既有自修复补种流程获得这两个生态插件。
 
 发布标签：[`v1.0.32`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.32)。
-
-## 1.0.31 — 2026-08-26
-
-- 新增 Codex 风格任务通知，覆盖任务完成、审批和问题提醒，并提供按任务统计的任务栏标记与通知偏好。
-- 新增原生内联回复，将输入准确发送回产生通知的任务；Windows Action Center 与冷启动激活也可可靠处理。
-- 新增 DSH Codex Desktop 通知身份、紧凑来源图标、带任务名称的标题，以及国际化的“回复”和“关闭”操作。
-- 新增独立“通知”设置页，包括带样式的任务完成通知菜单，以及独立的审批和问题通知控制。
-- 整个桌面外壳改为跟随 DeepSeek Harness 内部选择的语言，包括菜单、设置、键盘快捷键、关于、托盘、通知、标记和更新对话框。
-- 修复任务完成通知错误显示任务最早内容而不是最新助手结果的问题。
-
-发布标签：[`v1.0.31`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.31)。

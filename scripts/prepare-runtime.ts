@@ -13,7 +13,7 @@ const nodeRoot = join(projectRoot, 'runtime-node')
 const pluginRoot = join(projectRoot, 'runtime-plugins')
 const officialRuntimeRoot = join(projectRoot, 'runtime-dsh')
 const officialRuntimePatch = join(projectRoot, 'patches', 'dsh-0.1.1-rc.2-permission-localization.patch')
-const bundledPnpmVersion = '11.22.0'
+const bundledPnpmVersion = '11.24.0'
 const patchedOfficialRuntimeVersion = '0.1.1-rc.2'
 
 export async function removePreparedPath(target: string): Promise<void> {

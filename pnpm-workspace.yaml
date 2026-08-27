@@ -2,5 +2,7 @@ allowBuilds:
   electron-winstaller: false
 ignoredBuiltDependencies:
   - electron-winstaller
+minimumReleaseAgeExclude:
+  - '@types/node@26.4.0'
 overrides:
   app-builder-lib>@electron/get: 3.1.0

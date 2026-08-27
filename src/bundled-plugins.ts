@@ -26,16 +26,16 @@ export const OFFICIAL_LAUNCH_PEERS: readonly BundledPlugin[] = [
 ]
 /** 随桌面端离线仓库分发的九个社区插件和插件市场。 */
 export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
-  { packageName: '@michengai/dsh-codex-ui', version: '0.2.88' },
+  { packageName: '@michengai/dsh-codex-ui', version: '0.2.89' },
   { packageName: '@michengai/dsh-im-connect', version: '0.1.24' },
-  { packageName: '@michengai/dsh-automation', version: '0.1.18' },
-  { packageName: '@michengai/dsh-skills-manager', version: '0.1.24' },
-  { packageName: '@michengai/dsh-archive-manager', version: '0.1.14' },
+  { packageName: '@michengai/dsh-automation', version: '0.1.21' },
+  { packageName: '@michengai/dsh-skills-manager', version: '0.1.25' },
+  { packageName: '@michengai/dsh-archive-manager', version: '0.1.16' },
   { packageName: '@michengai/dsh-agency-agents', version: '0.1.21' },
-  { packageName: 'dsh-context', version: '0.32.0' },
+  { packageName: 'dsh-context', version: '0.33.1' },
   { packageName: 'dsh-better-sidebar', version: '0.16.1' },
-  { packageName: 'dsh-mcp-connector', version: '0.2.21' },
-  { packageName: 'dshmarket', version: '1.29.2' },
+  { packageName: 'dsh-mcp-connector', version: '0.2.24' },
+  { packageName: 'dshmarket', version: '1.31.1' },
 ]
 
 /** 离线 store 只放社区插件，官方运行时单独预装，避免安装包把同一份依赖打两遍。 */

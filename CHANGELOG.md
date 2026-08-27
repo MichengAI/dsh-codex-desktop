@@ -4,6 +4,15 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.36 — 2026-08-27
+
+- Updated the bundled desktop runtime to Node.js 24.20.0 and pnpm 11.24.0, including verified executable checksums for every supported platform.
+- Updated the desktop toolchain to Electron 44.0.0, TypeScript 7.0.2, `@electron/notarize` 3.1.1, and `@types/node` 26.4.0.
+- Updated Codex UI to 0.2.89, Automation to 0.1.21, Skills Manager to 0.1.25, Archive Manager to 0.1.16, `dsh-context` to 0.33.1, MCP Connector to 0.2.24, and `dshmarket` to 1.31.1.
+- Updated the packaging workflow to the current major releases of Checkout, Setup Node, pnpm Setup, Upload Artifact, and Download Artifact; all other direct and bundled dependencies were verified as current.
+
+Release tag: [`v1.0.36`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.36).
+
 ## 1.0.35 — 2026-08-26
 
 - Removed Electron's native menu bar from Desktop Settings, Keyboard Shortcuts, and About windows so pressing Alt can no longer reveal an English `File / Edit / View / Window` menu over the localized desktop shell.
@@ -35,14 +44,3 @@ Release tag: [`v1.0.33`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Extended the offline first-launch catalog so new and existing desktop profiles receive the two ecosystem plugins through the normal self-healing seed path.
 
 Release tag: [`v1.0.32`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.32).
-
-## 1.0.31 — 2026-08-26
-
-- Added Codex-style task notifications for completed work, approvals, and questions, with per-task taskbar badges and notification preferences.
-- Added native inline replies that return text to the exact task that produced the notification, including reliable Windows Action Center and cold-start activation handling.
-- Added the DSH Codex Desktop notification identity, compact source icon, task-aware titles, and localized Reply and Close actions.
-- Added a dedicated Notifications settings page with a styled completion-notification menu and independent approval and question controls.
-- Made the entire desktop shell follow the language selected inside DeepSeek Harness, covering menus, Settings, Keyboard Shortcuts, About, the tray, notifications, badges, and updater dialogs.
-- Fixed completion notifications showing a task's earliest text instead of its latest assistant result.
-
-Release tag: [`v1.0.31`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.31).
