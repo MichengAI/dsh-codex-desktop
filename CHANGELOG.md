@@ -4,6 +4,15 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.38 — 2026-08-30
+
+- Updated the six bundled MichengAI products to Codex UI 0.2.94, IM Connect 0.1.26, Automation 0.1.22, Skills Manager 0.1.31, Archive Manager 0.1.19, and Agency Agents 0.1.22.
+- Updated the bundled ecosystem components to `dsh-context` 0.38.3, DSH Better Sidebar 0.17.1, MCP Connector 0.2.29, and `dshmarket` 1.38.0.
+- Refreshed the offline plugin catalog used by fresh installs and missing-package repair. Existing profiles can apply the same versions through the plugin market without the desktop silently overriding user-selected package versions.
+- Kept the bundled official DSH runtime on the current npm release, 0.1.1-rc.2; the source-only 0.1.2 Alpha remains outside the stable desktop channel.
+
+Release tag: [`v1.0.38`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.38).
+
 ## 1.0.37 — 2026-08-27
 
 - Synced the light and dark desktop title bars with the Codex-style gradient and the active DSH color scheme, including Desktop Settings, Keyboard Shortcuts, and About windows.
@@ -37,19 +46,3 @@ Release tag: [`v1.0.35`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Aligned community-store assembly with the Web profile's isolated official-runtime model so prerelease DSH peers are not duplicated into the plugin profile.
 
 Release tag: [`v1.0.34`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.34).
-
-## 1.0.33 — 2026-08-26
-
-- Added a product preview showing `dsh-context` context management alongside the DSH Better Sidebar file explorer.
-- Retried transient Windows file replacement failures so profile updates are not interrupted by short-lived file locks.
-
-Release tag: [`v1.0.33`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.33).
-
-## 1.0.32 — 2026-08-26
-
-- Added `dsh-context` 0.32.0 for context inspection and management, and `dsh-better-sidebar` 0.16.1 for an extensible workspace sidebar.
-- Updated the bundled MichengAI products to Codex UI 0.2.87, IM Connect 0.1.24, Automation 0.1.18, Skills Manager 0.1.24, Archive Manager 0.1.14, and Agency Agents 0.1.21.
-- Updated the bundled plugin market to `dshmarket` 1.29.2.
-- Extended the offline first-launch catalog so new and existing desktop profiles receive the two ecosystem plugins through the normal self-healing seed path.
-
-Release tag: [`v1.0.32`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.32).

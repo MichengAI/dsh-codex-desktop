@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { BUNDLED_PLUGINS, OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, compareReleaseVersions, isDeepSeekOfficialPackage, isOfficialDshPackage, officialDshVersionOverrides, officialRuntimeDependencies, officialRuntimePnpmConfig, planOfficialRuntimeTarget, pnpmAllowBuildsManifest, pnpmWorkspaceYaml, SUITE_PACKAGE, bundledPluginNames, seededPackageNames } from '../src/bundled-plugins.js'
 
-test('内置目录包含九个社区插件和插件市场', () => {
+test('内置目录包含十个社区插件和市场组件', () => {
   assert.deepEqual(bundledPluginNames(), [
     '@michengai/dsh-codex-ui',
     '@michengai/dsh-im-connect',
@@ -36,18 +36,18 @@ test('每个内置插件都钉死精确版本', () => {
       true,
     )
   }
-  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.31.1')
+  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.38.0')
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
-    '@michengai/dsh-codex-ui': '0.2.89',
-    '@michengai/dsh-im-connect': '0.1.24',
-    '@michengai/dsh-automation': '0.1.21',
-    '@michengai/dsh-skills-manager': '0.1.25',
-    '@michengai/dsh-archive-manager': '0.1.16',
-    '@michengai/dsh-agency-agents': '0.1.21',
-    'dsh-context': '0.33.1',
-    'dsh-better-sidebar': '0.16.1',
-    'dsh-mcp-connector': '0.2.24',
-    dshmarket: '1.31.1',
+    '@michengai/dsh-codex-ui': '0.2.94',
+    '@michengai/dsh-im-connect': '0.1.26',
+    '@michengai/dsh-automation': '0.1.22',
+    '@michengai/dsh-skills-manager': '0.1.31',
+    '@michengai/dsh-archive-manager': '0.1.19',
+    '@michengai/dsh-agency-agents': '0.1.22',
+    'dsh-context': '0.38.3',
+    'dsh-better-sidebar': '0.17.1',
+    'dsh-mcp-connector': '0.2.29',
+    dshmarket: '1.38.0',
   })
 })
 

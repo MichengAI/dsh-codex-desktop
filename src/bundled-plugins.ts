@@ -24,24 +24,24 @@ export const OFFICIAL_LAUNCH_PEERS: readonly BundledPlugin[] = [
   { packageName: '@deepseek-ai/dsh-timeout', version: OFFICIAL_DSH_VERSION },
   { packageName: '@deepseek-ai/dsh-invariants', version: OFFICIAL_DSH_VERSION },
 ]
-/** 随桌面端离线仓库分发的九个社区插件和插件市场。 */
+/** 随桌面端离线仓库分发的十个社区插件和插件市场组件。 */
 export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
-  { packageName: '@michengai/dsh-codex-ui', version: '0.2.89' },
-  { packageName: '@michengai/dsh-im-connect', version: '0.1.24' },
-  { packageName: '@michengai/dsh-automation', version: '0.1.21' },
-  { packageName: '@michengai/dsh-skills-manager', version: '0.1.25' },
-  { packageName: '@michengai/dsh-archive-manager', version: '0.1.16' },
-  { packageName: '@michengai/dsh-agency-agents', version: '0.1.21' },
-  { packageName: 'dsh-context', version: '0.33.1' },
-  { packageName: 'dsh-better-sidebar', version: '0.16.1' },
-  { packageName: 'dsh-mcp-connector', version: '0.2.24' },
-  { packageName: 'dshmarket', version: '1.31.1' },
+  { packageName: '@michengai/dsh-codex-ui', version: '0.2.94' },
+  { packageName: '@michengai/dsh-im-connect', version: '0.1.26' },
+  { packageName: '@michengai/dsh-automation', version: '0.1.22' },
+  { packageName: '@michengai/dsh-skills-manager', version: '0.1.31' },
+  { packageName: '@michengai/dsh-archive-manager', version: '0.1.19' },
+  { packageName: '@michengai/dsh-agency-agents', version: '0.1.22' },
+  { packageName: 'dsh-context', version: '0.38.3' },
+  { packageName: 'dsh-better-sidebar', version: '0.17.1' },
+  { packageName: 'dsh-mcp-connector', version: '0.2.29' },
+  { packageName: 'dshmarket', version: '1.38.0' },
 ]
 
 /** 离线 store 只放社区插件，官方运行时单独预装，避免安装包把同一份依赖打两遍。 */
 export const STORE_PACKAGES: readonly BundledPlugin[] = BUNDLED_PLUGINS
 
-/** 首次补种的完整清单：官方运行时、九个社区插件和插件市场。 */
+/** 首次补种的完整清单：官方运行时和十个社区插件/市场组件。 */
 export const SEEDED_PACKAGES: readonly BundledPlugin[] = [OFFICIAL_RUNTIME, ...BUNDLED_PLUGINS]
 
 export const OFFICIAL_PROFILE_BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] as const
