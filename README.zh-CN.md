@@ -15,7 +15,7 @@
 [![桌面端打包](https://github.com/MichengAI/dsh-codex-desktop/actions/workflows/desktop-package.yml/badge.svg?branch=main)](https://github.com/MichengAI/dsh-codex-desktop/actions/workflows/desktop-package.yml)
 ![Windows x64](https://img.shields.io/badge/Windows-x64-0078D4?logo=windows&logoColor=white)
 ![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white)
-![Linux x64](https://img.shields.io/badge/Linux-x64-FCC624?logo=linux&logoColor=black)
+![Linux](https://img.shields.io/badge/Linux-x64%20%7C%20ARM64-FCC624?logo=linux&logoColor=black)
 
 </div>
 
@@ -31,7 +31,7 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | --- | --- | --- |
 | Windows x64 | `.exe` 安装器或 `.zip` 压缩包 | 运行安装器，然后从开始菜单打开 **DSH Codex Desktop**。 |
 | macOS Apple Silicon / Intel | `.dmg` 安装器 | 打开磁盘映像，将应用拖入“应用程序”后启动。 |
-| Linux x64 | `.AppImage` 或 Debian / Ubuntu `.deb` | 运行 AppImage 或安装 deb 包后启动应用。 |
+| Linux x64 / ARM64 | `.AppImage` 或 Debian / Ubuntu `.deb` | 下载与 CPU 架构匹配的 AppImage，或安装对应的 deb 包后启动应用。 |
 
 1. 下载对应平台的安装包。
 2. 安装并打开 **DSH Codex Desktop**。
@@ -126,7 +126,7 @@ DSH Codex Desktop 把核心运行时、功能产品和插件市场组合成一�
 | 项目 | 要求 |
 | --- | --- |
 | 操作系统 | Windows 10/11、macOS 或 Linux |
-| 架构 | Windows x64、macOS arm64/x64 或 Linux x64 |
+| 架构 | Windows x64、macOS arm64/x64 或 Linux x64/arm64 |
 | Node.js | 终端用户无需安装，应用已内置 |
 | 网络 | 仅在使用你配置的模型供应商、插件下载和工具时需要 |
 
@@ -150,7 +150,7 @@ pnpm test
 pnpm run dist
 ```
 
-本地构建制品写入 `release\`，不会提交。推送 `vX.Y.Z` 标签后，工作流会打包 Windows x64、macOS arm64/x64，以及 Linux x64 的 AppImage / deb 制品。
+本地构建制品写入 `release\`，不会提交。推送 `vX.Y.Z` 标签后，工作流会打包 Windows x64、macOS arm64/x64，以及 Linux x64/arm64 的 AppImage / deb 制品。
 
 ## 项目文档
 

@@ -36,6 +36,14 @@ jobs:
             platform: linux-x64
             runner: ubuntu-24.04
             buildArguments: --linux --x64
+            unpackedDirectory: linux-unpacked
+            updateMetadata: latest-linux.yml
+          - name: Linux ARM64
+            platform: linux-arm64
+            runner: ubuntu-24.04-arm
+            buildArguments: --linux --arm64
+            unpackedDirectory: linux-arm64-unpacked
+            updateMetadata: latest-linux-arm64.yml
     steps:
       - name: 检出桌面启动器
         uses: actions/checkout@v7
@@ -51,7 +59,7 @@ jobs:
           version: 11.24.0
 
       - name: 安装 Linux 冒烟依赖
-        if: matrix.platform == 'linux-x64'
+        if: startsWith(matrix.platform, 'linux-')
         shell: pwsh
         run: |
           [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -140,6 +148,13 @@ jobs:
           pnpm exec electron-builder --publish never @buildArguments
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+          if ('${{ matrix.platform }}'.StartsWith('linux-')) {
+            $updateMetadataPath = Join-Path 'release' '${{ matrix.updateMetadata }}'
+            if (-not (Test-Path -LiteralPath $updateMetadataPath -PathType Leaf)) {
+              throw "未找到 Linux 更新元数据：$updateMetadataPath"
+            }
+          }
+
           if ('${{ matrix.platform }}' -eq 'macos-arm64') {
             Move-Item -LiteralPath 'release/latest-mac.yml' -Destination 'release/latest-arm64-mac.yml'
           }
@@ -169,12 +184,12 @@ jobs:
           pnpm run smoke:mac -- --application-path $applicationPath
 
       - name: 冒烟检查 Linux 打包应用
-        if: matrix.platform == 'linux-x64'
+        if: startsWith(matrix.platform, 'linux-')
         shell: pwsh
         run: |
           [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
           $OutputEncoding = [System.Text.Encoding]::UTF8
-          $applicationPath = Join-Path $env:GITHUB_WORKSPACE 'release/linux-unpacked/dsh-codex-desktop'
+          $applicationPath = Join-Path $env:GITHUB_WORKSPACE 'release/${{ matrix.unpackedDirectory }}/dsh-codex-desktop'
           if (-not (Test-Path -LiteralPath $applicationPath -PathType Leaf)) { throw '未找到 Linux 应用可执行文件。' }
           & xvfb-run -a pnpm run smoke:linux -- --application-path $applicationPath
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

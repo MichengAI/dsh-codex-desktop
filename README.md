@@ -15,7 +15,7 @@
 [![Desktop package](https://github.com/MichengAI/dsh-codex-desktop/actions/workflows/desktop-package.yml/badge.svg?branch=main)](https://github.com/MichengAI/dsh-codex-desktop/actions/workflows/desktop-package.yml)
 ![Windows x64](https://img.shields.io/badge/Windows-x64-0078D4?logo=windows&logoColor=white)
 ![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white)
-![Linux x64](https://img.shields.io/badge/Linux-x64-FCC624?logo=linux&logoColor=black)
+![Linux](https://img.shields.io/badge/Linux-x64%20%7C%20ARM64-FCC624?logo=linux&logoColor=black)
 
 </div>
 
@@ -31,7 +31,7 @@ Get the current installer from [GitHub Releases](https://github.com/MichengAI/ds
 | --- | --- | --- |
 | Windows x64 | `.exe` installer or `.zip` archive | Run the installer, then open **DSH Codex Desktop** from the Start menu. |
 | macOS Apple Silicon / Intel | `.dmg` installer | Open the disk image, move the app to Applications, then launch it. |
-| Linux x64 | `.AppImage` or Debian / Ubuntu `.deb` | Run the AppImage or install the deb package, then launch the app. |
+| Linux x64 / ARM64 | `.AppImage` or Debian / Ubuntu `.deb` | Run the package matching your CPU architecture, or install the deb package, then launch the app. |
 
 1. Download the package for your platform.
 2. Install and open **DSH Codex Desktop**.
@@ -126,7 +126,7 @@ DSH Codex Desktop combines the core runtime, feature products, and plugin market
 | Item | Requirement |
 | --- | --- |
 | Operating system | Windows 10/11, macOS, or Linux |
-| Architecture | Windows x64, macOS arm64/x64, or Linux x64 |
+| Architecture | Windows x64, macOS arm64/x64, or Linux x64/arm64 |
 | Node.js | Not required for end users; bundled with the application |
 | Network | Required only for the model providers, plugin downloads, and tools you choose to use |
 
@@ -150,7 +150,7 @@ pnpm test
 pnpm run dist
 ```
 
-Local build artifacts are written to `release\` and are not committed. Pushing a `vX.Y.Z` tag starts the packaging workflow for Windows x64, macOS arm64/x64, and Linux x64 AppImage / deb artifacts.
+Local build artifacts are written to `release\` and are not committed. Pushing a `vX.Y.Z` tag starts the packaging workflow for Windows x64, macOS arm64/x64, and Linux x64/arm64 AppImage / deb artifacts.
 
 ## Project documentation
 

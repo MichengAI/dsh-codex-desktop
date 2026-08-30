@@ -14,20 +14,26 @@ test('按目标平台选择随包 Node 的 SHA256', () => {
     'win32-x64': 'WINDOWS',
     'darwin-arm64': 'APPLE_SILICON',
     'darwin-x64': 'INTEL',
+    'linux-arm64': 'LINUX_ARM64',
     'linux-x64': 'LINUX',
   }
   assert.equal(resolveBundledNodeSha256(checksums, 'darwin', 'arm64'), 'APPLE_SILICON')
   assert.equal(resolveBundledNodeSha256(checksums, 'darwin', 'x64'), 'INTEL')
+  assert.equal(resolveBundledNodeSha256(checksums, 'linux', 'arm64'), 'LINUX_ARM64')
   assert.equal(resolveBundledNodeSha256(checksums, 'linux', 'x64'), 'LINUX')
 })
 
-test('项目配置包含 Linux x64 的随包 Node SHA256', async () => {
+test('项目配置包含 Linux x64 与 ARM64 的随包 Node SHA256', async () => {
   const manifest = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as {
     config?: { bundledNodeSha256?: unknown }
   }
   assert.equal(
     resolveBundledNodeSha256(manifest.config?.bundledNodeSha256, 'linux', 'x64'),
     '89AF8424DD53E560B1933F87BA650D8BF57C83CA5A04600EEFB31F416AABBAE7',
+  )
+  assert.equal(
+    resolveBundledNodeSha256(manifest.config?.bundledNodeSha256, 'linux', 'arm64'),
+    '23A5637C2470FDE09FCC1ACC77C1B92E04E3D7E3E6E80FF7DF6F5831958D1477',
   )
 })
 
@@ -317,4 +323,18 @@ test('macOS 双架构使用各自的更新通道元数据', async () => {
   const workflow = await readFile(new URL('../../.github/workflows/desktop-package.yml', import.meta.url), 'utf8')
   assert.match(workflow, /latest-arm64-mac\.yml/)
   assert.match(workflow, /latest-x64-mac\.yml/)
+})
+
+test('Linux ARM64 使用原生 runner、独立更新元数据与双格式制品', async () => {
+  const workflow = await readFile(new URL('../../.github/workflows/desktop-package.yml', import.meta.url), 'utf8')
+  assert.match(workflow, /platform: linux-arm64/)
+  assert.match(workflow, /runner: ubuntu-24\.04-arm/)
+  assert.match(workflow, /buildArguments: --linux --arm64/)
+  assert.match(workflow, /unpackedDirectory: linux-arm64-unpacked/)
+  assert.match(workflow, /updateMetadata: latest-linux-arm64\.yml/)
+
+  const manifest = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as {
+    build?: { linux?: { target?: string[] } }
+  }
+  assert.deepEqual(manifest.build?.linux?.target, ['AppImage', 'deb'])
 })
