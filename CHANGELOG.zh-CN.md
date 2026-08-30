@@ -4,6 +4,15 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.39 — 2026-08-30
+
+- 为 Ubuntu、Debian 及其他兼容发行版新增原生 Linux ARM64 / aarch64 安装包，同时提供 `.deb` 与 `.AppImage` 制品。
+- 新增 GitHub 托管的原生 ARM64 打包任务与打包应用冒烟测试，不依赖未经验证的交叉编译。
+- 新增经过校验的 Node.js 24.20.0 Linux ARM64 可执行文件哈希，并在发布前检查架构专属的 `latest-linux-arm64.yml` 更新元数据。
+- 更新中英文下载说明、系统要求与开发文档，使 Linux x64 / ARM64 支持保持一致。
+
+发布标签：[`v1.0.39`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.39)。
+
 ## 1.0.38 — 2026-08-30
 
 - 将内置的六个 MichengAI 产品更新到 Codex UI 0.2.94、IM Connect 0.1.26、Automation 0.1.22、Skills Manager 0.1.31、Archive Manager 0.1.19 和 Agency Agents 0.1.22。
@@ -36,13 +45,3 @@
 - 移除“桌面端设置”“键盘快捷键”和“关于”窗口中的 Electron 原生菜单栏，按下 Alt 时不再在已经国际化的桌面外壳上方显示英文 `File / Edit / View / Window` 菜单。
 
 发布标签：[`v1.0.35`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.35)。
-
-## 1.0.34 — 2026-08-26
-
-- 将 `dsh-mcp-connector` 0.2.21 加入内置离线目录，支持通过 OAuth、API Key、HTTP、stdio 与 JSON 配置管理 MCP 连接。
-- 新增独立“更新”设置页，提供“自动检查并提醒”“自动下载，安装前提醒”和“仅手动检查”三种策略。
-- 为打包版本新增延迟且不阻塞启动的更新检查；发现新版本时在后台提醒，安装和重启始终需要用户明确操作。
-- 将 Codex UI 更新到 0.2.88，并刷新兼容的开发依赖。
-- 让社区插件仓库装配方式与 Web profile 的官方运行时隔离模型保持一致，不再把预发布 DSH peer 重复安装进插件 profile。
-
-发布标签：[`v1.0.34`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.34)。

@@ -4,6 +4,15 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.39 — 2026-08-30
+
+- Added native Linux ARM64 / aarch64 packages for Ubuntu, Debian, and other compatible distributions, with both `.deb` and `.AppImage` artifacts.
+- Added a native GitHub-hosted ARM64 packaging job and packaged-app smoke test instead of relying on unverified cross-compilation.
+- Added the verified Node.js 24.20.0 Linux ARM64 executable checksum and a release guard for the architecture-specific `latest-linux-arm64.yml` update metadata.
+- Updated the English and Chinese download, system-requirement, and development documentation for Linux x64 / ARM64 parity.
+
+Release tag: [`v1.0.39`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.39).
+
 ## 1.0.38 — 2026-08-30
 
 - Updated the six bundled MichengAI products to Codex UI 0.2.94, IM Connect 0.1.26, Automation 0.1.22, Skills Manager 0.1.31, Archive Manager 0.1.19, and Agency Agents 0.1.22.
@@ -36,13 +45,3 @@ Release tag: [`v1.0.36`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Removed Electron's native menu bar from Desktop Settings, Keyboard Shortcuts, and About windows so pressing Alt can no longer reveal an English `File / Edit / View / Window` menu over the localized desktop shell.
 
 Release tag: [`v1.0.35`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.35).
-
-## 1.0.34 — 2026-08-26
-
-- Added `dsh-mcp-connector` 0.2.21 to the bundled offline catalog for OAuth, API-key, HTTP, stdio, and JSON-based MCP connection management.
-- Added a dedicated Updates settings page with automatic check-and-notify, automatic download with install confirmation, and manual-only policies.
-- Added a delayed, non-blocking startup update check for packaged builds. New versions notify in the background, while installation and restart always require an explicit user action.
-- Updated Codex UI to 0.2.88 and refreshed compatible development dependencies.
-- Aligned community-store assembly with the Web profile's isolated official-runtime model so prerelease DSH peers are not duplicated into the plugin profile.
-
-Release tag: [`v1.0.34`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.34).
