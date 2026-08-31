@@ -4,6 +4,15 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.41 — 2026-08-31
+
+- 修复离线包缺少官方 DSH 启动所需 peer 依赖的问题，确保随包运行时无需联网即可完整启动。
+- 将便携版首次运行时的校验、解压和大量文件复制移入独立子进程，并展示分阶段进度，避免初始化期间窗口长时间未响应。
+- 将运行时与插件仓库的解压完成标记绑定到随包归档 SHA256；覆盖升级或复用旧便携目录时，空标记和陈旧标记会自动触发重新解压，离线首启不再缺少插件。
+- 将 Windows、macOS 与 Linux 打包冒烟测试统一为强制离线，并在隔离 Profile 中核对全部十个随包插件及其固定版本。
+
+发布标签：[`v1.0.41`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.41)。
+
 ## 1.0.40 — 2026-08-31
 
 - 将内置官方 DSH 运行时及其启动依赖升级到 `0.1.2-alpha.2`，适配启动 Token 鉴权与 alpha.2 所需的原生安装脚本。
@@ -39,12 +48,3 @@
 - 插件市场批量更新会等待整个批次完成后再重启 DSH 运行时，并加入有界超时和安全重载回退。
 
 发布标签：[`v1.0.37`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.37)。
-
-## 1.0.36 — 2026-08-27
-
-- 将桌面端内置运行时更新到 Node.js 24.20.0 与 pnpm 11.24.0，并校验全部支持平台的可执行文件哈希。
-- 将桌面工具链更新到 Electron 44.0.0、TypeScript 7.0.2、`@electron/notarize` 3.1.1 与 `@types/node` 26.4.0。
-- 将 Codex UI 更新到 0.2.89、Automation 更新到 0.1.21、Skills Manager 更新到 0.1.25、Archive Manager 更新到 0.1.16、`dsh-context` 更新到 0.33.1、MCP Connector 更新到 0.2.24，并将 `dshmarket` 更新到 1.31.1。
-- 将打包工作流升级到 Checkout、Setup Node、pnpm Setup、Upload Artifact 与 Download Artifact 的当前主版本；其余直接依赖和内置依赖也已核对为最新版。
-
-发布标签：[`v1.0.36`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.36)。

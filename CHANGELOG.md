@@ -4,6 +4,15 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.41 — 2026-08-31
+
+- Fixed the offline bundle so it includes every peer required to launch the official DSH runtime without network access.
+- Moved portable first-run verification, extraction, and bulk file copying into a separate child process with staged progress, preventing the window from becoming unresponsive during initialization.
+- Bound runtime and plugin-store completion markers to the bundled archive SHA256. Empty or stale markers from overwritten or reused portable directories now trigger re-extraction, so offline first launch no longer starts without plugins.
+- Made Windows, macOS, and Linux packaged-app smoke tests force offline mode and verify all ten bundled plugins and their pinned versions in an isolated profile.
+
+Release tag: [`v1.0.41`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.41).
+
 ## 1.0.40 — 2026-08-31
 
 - Upgraded the bundled official DSH runtime and its launch peers to `0.1.2-alpha.2`, including authenticated startup-token handling and the alpha.2 native-script requirements.
@@ -39,12 +48,3 @@ Release tag: [`v1.0.38`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Made marketplace bulk updates wait for the complete batch before recycling the DSH runtime, with a bounded timeout and safe reload fallback.
 
 Release tag: [`v1.0.37`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.37).
-
-## 1.0.36 — 2026-08-27
-
-- Updated the bundled desktop runtime to Node.js 24.20.0 and pnpm 11.24.0, including verified executable checksums for every supported platform.
-- Updated the desktop toolchain to Electron 44.0.0, TypeScript 7.0.2, `@electron/notarize` 3.1.1, and `@types/node` 26.4.0.
-- Updated Codex UI to 0.2.89, Automation to 0.1.21, Skills Manager to 0.1.25, Archive Manager to 0.1.16, `dsh-context` to 0.33.1, MCP Connector to 0.2.24, and `dshmarket` to 1.31.1.
-- Updated the packaging workflow to the current major releases of Checkout, Setup Node, pnpm Setup, Upload Artifact, and Download Artifact; all other direct and bundled dependencies were verified as current.
-
-Release tag: [`v1.0.36`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.36).
