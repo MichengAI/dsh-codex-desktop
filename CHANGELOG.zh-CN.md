@@ -4,6 +4,15 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.40 — 2026-08-31
+
+- 将内置官方 DSH 运行时及其启动依赖升级到 `0.1.2-alpha.2`，适配启动 Token 鉴权与 alpha.2 所需的原生安装脚本。
+- 将内置生态组件更新到 IM Connect 0.1.27、Skills Manager 0.1.32、Archive Manager 0.1.21、Agency Agents 0.1.23、`dsh-context` 0.38.5、DSH Better Sidebar 0.18.0-alpha.0、MCP Connector 0.2.31 和 `dshmarket` 1.38.1。
+- 将 `electron-builder` 升级到 26.15.7，并刷新供全新安装和缺包自修复使用的离线运行时与插件仓库装配流程。
+- 让 Windows、macOS 与 Linux 打包应用冒烟测试适配 alpha.2 鉴权：在隔离 Profile 中校验预期的未鉴权响应、进程存活、启动诊断以及主窗口创建后的就绪标记。
+
+发布标签：[`v1.0.40`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.40)。
+
 ## 1.0.39 — 2026-08-30
 
 - 为 Ubuntu、Debian 及其他兼容发行版新增原生 Linux ARM64 / aarch64 安装包，同时提供 `.deb` 与 `.AppImage` 制品。
@@ -39,9 +48,3 @@
 - 将打包工作流升级到 Checkout、Setup Node、pnpm Setup、Upload Artifact 与 Download Artifact 的当前主版本；其余直接依赖和内置依赖也已核对为最新版。
 
 发布标签：[`v1.0.36`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.36)。
-
-## 1.0.35 — 2026-08-26
-
-- 移除“桌面端设置”“键盘快捷键”和“关于”窗口中的 Electron 原生菜单栏，按下 Alt 时不再在已经国际化的桌面外壳上方显示英文 `File / Edit / View / Window` 菜单。
-
-发布标签：[`v1.0.35`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.35)。

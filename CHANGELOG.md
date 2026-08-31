@@ -4,6 +4,15 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.40 — 2026-08-31
+
+- Upgraded the bundled official DSH runtime and its launch peers to `0.1.2-alpha.2`, including authenticated startup-token handling and the alpha.2 native-script requirements.
+- Updated the bundled ecosystem to IM Connect 0.1.27, Skills Manager 0.1.32, Archive Manager 0.1.21, Agency Agents 0.1.23, `dsh-context` 0.38.5, DSH Better Sidebar 0.18.0-alpha.0, MCP Connector 0.2.31, and `dshmarket` 1.38.1.
+- Upgraded `electron-builder` to 26.15.7 and refreshed the offline runtime and plugin-store assembly for fresh installs and missing-package repair.
+- Aligned Windows, macOS, and Linux packaged-app smoke tests with alpha.2 authentication by verifying the expected unauthenticated response, process liveness, startup diagnostics, and the post-window ready marker in isolated profiles.
+
+Release tag: [`v1.0.40`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.40).
+
 ## 1.0.39 — 2026-08-30
 
 - Added native Linux ARM64 / aarch64 packages for Ubuntu, Debian, and other compatible distributions, with both `.deb` and `.AppImage` artifacts.
@@ -39,9 +48,3 @@ Release tag: [`v1.0.37`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Updated the packaging workflow to the current major releases of Checkout, Setup Node, pnpm Setup, Upload Artifact, and Download Artifact; all other direct and bundled dependencies were verified as current.
 
 Release tag: [`v1.0.36`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.36).
-
-## 1.0.35 — 2026-08-26
-
-- Removed Electron's native menu bar from Desktop Settings, Keyboard Shortcuts, and About windows so pressing Alt can no longer reveal an English `File / Edit / View / Window` menu over the localized desktop shell.
-
-Release tag: [`v1.0.35`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.35).
