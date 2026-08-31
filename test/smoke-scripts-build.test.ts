@@ -14,5 +14,7 @@ test('构建产物包含所有平台冒烟脚本', () => {
     assert.match(source, /startup-ready/)
     assert.match(source, /dsh web authentication required/)
     assert.match(source, /page\.status === 401/)
+    assert.match(source, /stdout\.matchAll\(\/127\\\.0\\\.0\\\.1:/)
+    assert.match(source, /response\.status === 200 \|\| \(response\.status === 401/)
   }
 })

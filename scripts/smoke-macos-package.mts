@@ -84,8 +84,8 @@ async function waitForHealthyServer(
     }
     const bootstrapProcessId = await findBootstrapProcessId(application.pid)
     if (bootstrapProcessId !== undefined) {
-      const port = await findListeningPort(bootstrapProcessId)
-      if (port !== undefined) return `http://127.0.0.1:${port}`
+      const baseUrl = await findHealthyBaseUrl(bootstrapProcessId)
+      if (baseUrl !== undefined) return baseUrl
     }
     await delay(500)
   }
@@ -137,14 +137,29 @@ async function findBootstrapProcessId(applicationProcessId: number): Promise<num
   return undefined
 }
 
-async function findListeningPort(processId: number): Promise<number | undefined> {
+async function findListeningPorts(processId: number): Promise<number[]> {
   try {
     const { stdout } = await execFileAsync('lsof', ['-a', '-p', String(processId), '-iTCP', '-sTCP:LISTEN', '-n', '-P'])
-    const port = /127\.0\.0\.1:(\d+)/.exec(stdout)?.[1]
-    return port ? Number(port) : undefined
+    return [...stdout.matchAll(/127\.0\.0\.1:(\d+)/g)].map(match => Number(match[1]))
   } catch {
-    return undefined
+    return []
   }
+}
+
+async function findHealthyBaseUrl(processId: number): Promise<string | undefined> {
+  for (const port of await findListeningPorts(processId)) {
+    const baseUrl = `http://127.0.0.1:${port}`
+    try {
+      const response = await fetch(`${baseUrl}/`, { redirect: 'manual', signal: AbortSignal.timeout(1_000) })
+      const content = await response.text()
+      if (response.status === 200 || (response.status === 401 && content.includes('dsh web authentication required'))) {
+        return baseUrl
+      }
+    } catch {
+      // The listener may still be starting, or it may be an unrelated bootstrap endpoint.
+    }
+  }
+  return undefined
 }
 
 async function stopApplication(application: ChildProcess): Promise<void> {

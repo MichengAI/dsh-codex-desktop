@@ -40,10 +40,19 @@ try {
     } | Select-Object -First 1
     if ($null -ne $bootstrap) {
       $bootstrapProcessId = $bootstrap.ProcessId
-      $listener = Get-NetTCPConnection -OwningProcess $bootstrapProcessId -State Listen -ErrorAction SilentlyContinue |
-        Where-Object { $_.LocalAddress -eq '127.0.0.1' } |
-        Select-Object -First 1
-      if ($null -ne $listener) { $port = $listener.LocalPort }
+      $listeners = Get-NetTCPConnection -OwningProcess $bootstrapProcessId -State Listen -ErrorAction SilentlyContinue |
+        Where-Object { $_.LocalAddress -eq '127.0.0.1' }
+      foreach ($listener in $listeners) {
+        try {
+          $candidate = Invoke-WebRequest -Uri "http://127.0.0.1:$($listener.LocalPort)/" -UseBasicParsing -SkipHttpErrorCheck -TimeoutSec 2
+          if ($candidate.StatusCode -eq 200 -or ($candidate.StatusCode -eq 401 -and $candidate.Content -match 'dsh web authentication required')) {
+            $port = $listener.LocalPort
+            break
+          }
+        } catch {
+          # 监听端口可能仍在启动，也可能是 bootstrap 的其他内部端点。
+        }
+      }
     }
     if ($null -eq $port) { Start-Sleep -Milliseconds 500 }
   }
