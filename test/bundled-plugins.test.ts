@@ -42,7 +42,7 @@ test('每个内置插件都钉死精确版本', () => {
     '@michengai/dsh-im-connect': '0.1.27',
     '@michengai/dsh-automation': '0.1.22',
     '@michengai/dsh-skills-manager': '0.1.32',
-    '@michengai/dsh-archive-manager': '0.1.20',
+    '@michengai/dsh-archive-manager': '0.1.21',
     '@michengai/dsh-agency-agents': '0.1.23',
     'dsh-context': '0.38.5',
     'dsh-better-sidebar': '0.18.0-alpha.0',

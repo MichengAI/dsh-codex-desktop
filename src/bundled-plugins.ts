@@ -30,7 +30,7 @@ export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
   { packageName: '@michengai/dsh-im-connect', version: '0.1.27' },
   { packageName: '@michengai/dsh-automation', version: '0.1.22' },
   { packageName: '@michengai/dsh-skills-manager', version: '0.1.32' },
-  { packageName: '@michengai/dsh-archive-manager', version: '0.1.20' },
+  { packageName: '@michengai/dsh-archive-manager', version: '0.1.21' },
   { packageName: '@michengai/dsh-agency-agents', version: '0.1.23' },
   { packageName: 'dsh-context', version: '0.38.5' },
   { packageName: 'dsh-better-sidebar', version: '0.18.0-alpha.0' },
