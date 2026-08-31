@@ -17,8 +17,8 @@ test('待更新清单会保留官方包，但社区合并时忽略它们', () =>
   ])
   assert.deepEqual(partitionPackageUpdates(updates).official, [{ packageName: '@deepseek-ai/dsh', version: '0.1.0-rc.8' }])
   assert.equal(officialRuntimeUpdateVersion(updates), '0.1.0-rc.8')
-  assert.deepEqual(partitionPackageUpdates([{ packageName: '@deepseek-ai/cordis-plugin-group', version: '1.0.1' }]).official.length, 1)
-  assert.equal(officialRuntimeUpdateVersion([{ packageName: '@deepseek-ai/cordis-plugin-group', version: '1.0.1' }]), undefined)
+  assert.deepEqual(partitionPackageUpdates([{ packageName: '@deepseek-ai/cordis-plugin-group', version: '1.0.2' }]).official.length, 1)
+  assert.equal(officialRuntimeUpdateVersion([{ packageName: '@deepseek-ai/cordis-plugin-group', version: '1.0.2' }]), undefined)
 })
 
 test('已落地的版本不会重复安装', () => {

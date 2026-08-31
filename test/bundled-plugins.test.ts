@@ -29,35 +29,35 @@ test('所有 DeepSeek 官方作用域包使用同一套隔离判定', () => {
 
 test('每个内置插件都钉死精确版本', () => {
   for (const plugin of BUNDLED_PLUGINS) {
-    assert.match(plugin.version, /^\d+\.\d+\.\d+$/)
+    assert.match(plugin.version, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/)
     assert.equal(
       plugin.packageName.startsWith('@michengai/')
         || ['dsh-context', 'dsh-better-sidebar', 'dsh-mcp-connector', 'dshmarket'].includes(plugin.packageName),
       true,
     )
   }
-  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.38.0')
+  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.38.1')
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
     '@michengai/dsh-codex-ui': '0.2.94',
-    '@michengai/dsh-im-connect': '0.1.26',
+    '@michengai/dsh-im-connect': '0.1.27',
     '@michengai/dsh-automation': '0.1.22',
-    '@michengai/dsh-skills-manager': '0.1.31',
-    '@michengai/dsh-archive-manager': '0.1.19',
-    '@michengai/dsh-agency-agents': '0.1.22',
-    'dsh-context': '0.38.3',
-    'dsh-better-sidebar': '0.17.1',
-    'dsh-mcp-connector': '0.2.29',
-    dshmarket: '1.38.0',
+    '@michengai/dsh-skills-manager': '0.1.32',
+    '@michengai/dsh-archive-manager': '0.1.20',
+    '@michengai/dsh-agency-agents': '0.1.23',
+    'dsh-context': '0.38.5',
+    'dsh-better-sidebar': '0.18.0-alpha.0',
+    'dsh-mcp-connector': '0.2.31',
+    dshmarket: '1.38.1',
   })
 })
 
 test('官方 DSH 家族锁在同一个精确版本', () => {
   assert.equal(OFFICIAL_RUNTIME.packageName, '@deepseek-ai/dsh')
   assert.equal(OFFICIAL_RUNTIME.version, OFFICIAL_DSH_VERSION)
-  assert.equal(OFFICIAL_DSH_VERSION, '0.1.1-rc.2')
+  assert.equal(OFFICIAL_DSH_VERSION, '0.1.2-alpha.2')
   assert.equal(seededPackageNames()[0], '@deepseek-ai/dsh')
   assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.packageName, '@deepseek-ai/cordis-plugin-group')
-  assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.version, '1.0.1')
+  assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.version, '1.0.2')
   assert.equal(officialRuntimeDependencies()['@deepseek-ai/dsh-invariants'], OFFICIAL_DSH_VERSION)
   assert.deepEqual(officialDshVersionOverrides(), {
     '@deepseek-ai/dsh': OFFICIAL_DSH_VERSION,

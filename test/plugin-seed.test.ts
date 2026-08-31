@@ -204,7 +204,7 @@ test('官方运行时已装但缺少启动 peer 时会补齐', async () => {
         }
       },
     })
-    assert.equal(calls.some(item => item.some(arg => arg.includes('@deepseek-ai/cordis-plugin-group@1.0.1'))), true)
+    assert.equal(calls.some(item => item.some(arg => arg.includes('@deepseek-ai/cordis-plugin-group@1.0.2'))), true)
     assert.equal(isOfficialRuntimeLaunchable(runtime), true)
   } finally {
     await rm(root, { recursive: true, force: true })

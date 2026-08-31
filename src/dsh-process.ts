@@ -169,15 +169,29 @@ async function waitForHttpHealth(url: string, timeoutMs: number): Promise<void> 
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(Math.min(1_000, Math.max(1, deadline - Date.now()))) })
-      if (response.ok) {
-        await response.body?.cancel()
-        return
-      }
+      // alpha.2 的 token URL 会先 303 并用 Set-Cookie 建立浏览器会话。
+      // Node fetch 不保存 Cookie；若自动跟随，会在第二跳得到 401，因此这里手动检查首跳。
+      const response = await fetch(url, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(Math.min(1_000, Math.max(1, deadline - Date.now()))),
+      })
+      const healthy = response.ok || isAuthenticatedBootstrapRedirect(url, response)
+      await response.body?.cancel()
+      if (healthy) return
     } catch {
       // 就绪行可能早于 HTTP 监听完成，超时前继续轮询。
     }
     await new Promise<void>(resolve => setTimeout(resolve, 50))
   }
   throw new Error('HTTP 健康检查超时。')
+}
+
+function isAuthenticatedBootstrapRedirect(url: string, response: Response): boolean {
+  if (response.status < 300 || response.status > 399 || !response.headers.has('set-cookie')) return false
+  const source = new URL(url)
+  if (!source.searchParams.has('token')) return false
+  const location = response.headers.get('location')
+  if (location === null) return false
+  const target = new URL(location, source)
+  return target.origin === source.origin && target.protocol === 'http:' && target.hostname === '127.0.0.1'
 }

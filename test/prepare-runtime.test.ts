@@ -201,8 +201,9 @@ test('官方运行时使用 npm 安装以兼容预发布 peer 依赖', () => {
     '--package-lock=false',
     '--no-audit',
     '--no-fund',
+    '--allow-scripts=@deepseek-ai/dsh-subprocess-local,@google/genai,koffi,node-pty,protobufjs',
     '--registry=https://registry.npmjs.org/',
-    '@deepseek-ai/dsh@0.1.1-rc.2',
+    '@deepseek-ai/dsh@0.1.2-alpha.2',
   ])
 })
 
@@ -213,25 +214,14 @@ test('npm 全局安装目录按平台归一化', () => {
 
 test('官方运行时仅以 DSH 入口包作为 npm 顶层依赖', () => {
   assert.deepEqual(officialRuntimeNpmDependencies(), {
-    '@deepseek-ai/dsh': '0.1.1-rc.2',
+    '@deepseek-ai/dsh': '0.1.2-alpha.2',
   })
 })
 
-test('桌面装配阶段给 rc.2 权限菜单应用中文补丁，且不包含本机绝对路径', async () => {
+test('alpha.2 已内置权限本地化，不再应用旧 rc.2 桌面补丁', async () => {
   const prepare = await readFile(new URL('../../scripts/prepare-runtime.ts', import.meta.url), 'utf8')
-  const patch = await readFile(
-    new URL('../../patches/dsh-0.1.1-rc.2-permission-localization.patch', import.meta.url),
-    'utf8',
-  )
-  const stageAt = prepare.indexOf('await stageOfficialRuntime(officialRuntimeRoot')
-  const patchAt = prepare.indexOf('applyOfficialRuntimePatch(officialRuntimeRoot)')
-  const packAt = prepare.indexOf('packDirectoryToTarGz(officialRuntimeRoot')
-  assert.equal(stageAt < patchAt && patchAt < packAt, true)
-  assert.match(patch, /dsh-client-ui-permission-presets\/lib\/client\.js/)
-  assert.match(patch, /dsh-client-ui-conversation\/lib\/client\.js/)
-  assert.match(patch, /"preset\.readOnly": "仅可查看"/)
-  assert.match(patch, /"access\.preset\.readOnly": "仅可查看"/)
-  assert.doesNotMatch(patch, /[A-Z]:\\\\Tools\\\\/i)
+  assert.doesNotMatch(prepare, /applyOfficialRuntimePatch/)
+  assert.equal(existsSync(new URL('../../patches/dsh-0.1.1-rc.2-permission-localization.patch', import.meta.url)), false)
 })
 
 test('Windows 冒烟在启动应用前复用安装器的运行时解压入口', async () => {
@@ -243,6 +233,15 @@ test('Windows 冒烟在启动应用前复用安装器的运行时解压入口', 
   assert.equal(extractAt < startAt, true)
   assert.match(script, /--user-data-dir=/)
   assert.match(main, /--user-data-dir=/)
+})
+
+test('Windows 冒烟兼容 alpha.2 启动 token 鉴权', async () => {
+  const script = await readFile(new URL('../../scripts/smoke-package.ps1', import.meta.url), 'utf8')
+  assert.match(script, /SkipHttpErrorCheck/)
+  assert.match(script, /dsh web authentication required/)
+  assert.match(script, /startup-error\.log/)
+  assert.match(script, /DSH_DESKTOP_SMOKE_READY_FILE/)
+  assert.match(script, /startup-ready/)
 })
 
 test('正式标签缺少签名凭据时仍允许生成带 ad-hoc 签名的多平台测试版', async () => {

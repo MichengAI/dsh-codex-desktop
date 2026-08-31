@@ -22,6 +22,18 @@ if (mode === 'silent' || mode === 'unhealthy') {
   setInterval(() => undefined, 1_000)
 } else {
   server = createServer((request, response) => {
+    if (mode === 'authenticated') {
+      if (request.url === '/?token=desktop-secret') {
+        response.writeHead(303, { location: '/', 'set-cookie': 'dsh-auth=ready; HttpOnly; SameSite=Strict' })
+        response.end()
+        return
+      }
+      if (!request.headers.cookie?.includes('dsh-auth=ready')) {
+        response.writeHead(401, { 'content-type': 'text/plain' })
+        response.end('authentication required')
+        return
+      }
+    }
     if (request.url === '/asset.js') {
       response.writeHead(200, { 'content-type': 'application/javascript' })
       response.end('export {}')
@@ -35,6 +47,11 @@ if (mode === 'silent' || mode === 'unhealthy') {
     const address = server.address()
     if (address === null || typeof address === 'string') throw new Error('未获取 HTTP 监听端口。')
     const ready = `dsh web: http://127.0.0.1:${address.port}`
+    if (mode === 'authenticated') {
+      process.stdout.write(`${ready}/`)
+      setTimeout(() => process.stdout.write('?token=desktop-secret\n'), 10)
+      return
+    }
     if (mode === 'chunked') {
       process.stdout.write(ready.slice(0, 24))
       setTimeout(() => process.stdout.write(`${ready.slice(24)}\n`), 10)

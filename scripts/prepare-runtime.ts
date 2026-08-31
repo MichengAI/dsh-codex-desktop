@@ -5,16 +5,14 @@ import { cp, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'nod
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { OFFICIAL_RUNTIME, officialRuntimePnpmConfig, pnpmWorkspaceYaml, STORE_PACKAGES } from '../src/bundled-plugins.js'
+import { ALLOWED_BUILD_PACKAGES, OFFICIAL_RUNTIME, officialRuntimePnpmConfig, pnpmWorkspaceYaml, STORE_PACKAGES } from '../src/bundled-plugins.js'
 import { extractTarGz, packDirectoryToTarGz, writeFileSha256 } from '../src/runtime-archive.js'
 
 const projectRoot = resolve(import.meta.dirname, '..', '..')
 const nodeRoot = join(projectRoot, 'runtime-node')
 const pluginRoot = join(projectRoot, 'runtime-plugins')
 const officialRuntimeRoot = join(projectRoot, 'runtime-dsh')
-const officialRuntimePatch = join(projectRoot, 'patches', 'dsh-0.1.1-rc.2-permission-localization.patch')
 const bundledPnpmVersion = '11.24.0'
-const patchedOfficialRuntimeVersion = '0.1.1-rc.2'
 
 export async function removePreparedPath(target: string): Promise<void> {
   if (!existsSync(target)) return
@@ -71,7 +69,6 @@ async function main(): Promise<void> {
   await stageBundledPlugins(pluginRoot, nodeRoot)
   const officialStore = join(officialRuntimeRoot, '.store')
   await stageOfficialRuntime(officialRuntimeRoot, nodeRoot, officialStore)
-  applyOfficialRuntimePatch(officialRuntimeRoot)
   await removePreparedPath(officialStore)
   packDirectoryToTarGz(join(pluginRoot, 'store'), join(pluginRoot, 'store.tgz'))
   packDirectoryToTarGz(officialRuntimeRoot, join(projectRoot, 'runtime-dsh.tgz'))
@@ -204,60 +201,6 @@ export async function stageOfficialRuntime(destinationRoot: string, nodeRoot: st
   }
 }
 
-/** 仅在桌面安装包装配阶段恢复 rc.2 的权限预设本地化，不修改全局 Web 运行时。 */
-export function applyOfficialRuntimePatch(destinationRoot: string): void {
-  if (!destinationRoot.startsWith(projectRoot + sep)) throw new Error(`拒绝修补项目外运行时：${destinationRoot}`)
-  const dshRoot = join(destinationRoot, 'node_modules', '@deepseek-ai', 'dsh')
-  const packageRoots = [
-    dshRoot,
-    join(dshRoot, 'node_modules', '@deepseek-ai', 'dsh-client-ui-permission-presets'),
-    join(dshRoot, 'node_modules', '@deepseek-ai', 'dsh-client-ui-conversation'),
-  ]
-  for (const packageRoot of packageRoots) {
-    const manifestPath = join(packageRoot, 'package.json')
-    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { name?: unknown, version?: unknown }
-    if (manifest.version !== patchedOfficialRuntimeVersion) {
-      throw new Error(`权限本地化补丁仅支持 ${patchedOfficialRuntimeVersion}：${manifestPath}`)
-    }
-  }
-
-  const relativeRuntime = relative(projectRoot, destinationRoot).replaceAll('\\', '/')
-  const relativePatch = relative(projectRoot, officialRuntimePatch).replaceAll('\\', '/')
-  const commonArgs = ['--whitespace=nowarn', `--directory=${relativeRuntime}`, relativePatch]
-  const checked = spawnSync('git', ['apply', '--check', ...commonArgs], {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    windowsHide: true,
-  })
-  if (checked.status !== 0) {
-    throw new Error(`桌面权限本地化补丁校验失败：${checked.stderr || checked.stdout}`)
-  }
-  const applied = spawnSync('git', ['apply', ...commonArgs], {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    windowsHide: true,
-  })
-  if (applied.status !== 0) {
-    throw new Error(`桌面权限本地化补丁应用失败：${applied.stderr || applied.stdout}`)
-  }
-
-  const clients = [
-    join(packageRoots[1], 'lib', 'client.js'),
-    join(packageRoots[2], 'lib', 'client.js'),
-  ]
-  const expectedLabels = [
-    '"preset.readOnly": "仅可查看"',
-    '"access.preset.readOnly": "仅可查看"',
-  ]
-  clients.forEach((client, index) => {
-    if (!readFileSync(client, 'utf8').includes(expectedLabels[index])) {
-      throw new Error(`桌面权限本地化补丁未生成预期中文标签：${client}`)
-    }
-    const syntax = spawnSync(process.execPath, ['--check', client], { encoding: 'utf8', windowsHide: true })
-    if (syntax.status !== 0) throw new Error(`修补后的 DSH 客户端语法无效：${syntax.stderr || syntax.stdout}`)
-  })
-}
-
 /** 官方预发布包存在 pnpm 无法解析的 peer 范围，运行时打包统一改用 npm。 */
 export function officialRuntimeNpmDependencies(): Record<string, string> {
   return { [OFFICIAL_RUNTIME.packageName]: OFFICIAL_RUNTIME.version }
@@ -272,6 +215,7 @@ export function officialRuntimeNpmInstallArgs(destinationRoot: string): string[]
     '--package-lock=false',
     '--no-audit',
     '--no-fund',
+    '--allow-scripts=' + ALLOWED_BUILD_PACKAGES.join(','),
     '--registry=https://registry.npmjs.org/',
     `${OFFICIAL_RUNTIME.packageName}@${OFFICIAL_RUNTIME.version}`,
   ]

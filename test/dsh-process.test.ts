@@ -28,6 +28,19 @@ test('DSH 未输出就绪地址时超时', async () => {
   await assertFixtureStoppedAfterFailure('silent', /DSH 启动超时/)
 })
 
+test('等待 alpha.2 分片输出完整 token 后再做健康检查', async () => {
+  const server = await startFixture('authenticated')
+  try {
+    assert.match(server.url, /\?token=desktop-secret$/)
+    const response = await fetch(server.url, { redirect: 'manual' })
+    assert.equal(response.status, 303)
+    assert.equal(response.headers.get('location'), '/')
+    assert.equal(response.headers.has('set-cookie'), true)
+  } finally {
+    await server.stop()
+  }
+})
+
 test('DSH 健康检查失败时会先结束子进程再报错', async () => {
   await assertFixtureStoppedAfterFailure('unhealthy', /未通过健康检查/)
 })
@@ -37,7 +50,7 @@ test('重复关闭同一 DSH 子进程是安全的', async () => {
   await Promise.all([server.stop(), server.stop()])
 })
 
-function startFixture(mode: 'chunked' | 'exit' | 'healthy' | 'silent' | 'unhealthy', startupTimeoutMs = 1_000, environment: NodeJS.ProcessEnv = {}): Promise<DshServer> {
+function startFixture(mode: 'authenticated' | 'chunked' | 'exit' | 'healthy' | 'silent' | 'unhealthy', startupTimeoutMs = 1_000, environment: NodeJS.ProcessEnv = {}): Promise<DshServer> {
   return startDsh({
     bootstrapPath,
     environment: { ...process.env, ...environment, DSH_FIXTURE_MODE: mode },

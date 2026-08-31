@@ -226,6 +226,10 @@ async function startApplication(): Promise<void> {
     profileWatcher?.stop()
     profileWatcher = watchProfileActivation(profileDir, scheduleProfileActivationRecycle, { onError: handleUnexpectedMainError })
     await createMainWindow(server.url)
+    const smokeReadyFile = process.env.DSH_DESKTOP_SMOKE_READY_FILE
+    if (smokeReadyFile !== undefined && smokeReadyFile !== '') {
+      await writeTextFile(smokeReadyFile, 'ready\n', 'utf8')
+    }
     scheduleStartupUpdateCheck()
   } catch (error) {
     await reportStartupFailure(error)
