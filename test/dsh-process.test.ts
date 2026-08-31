@@ -59,6 +59,10 @@ test('仅接受同源 loopback token 引导重定向', () => {
     status: 303,
     headers: { location: 'http://example.com/', 'set-cookie': 'dsh_session=desktop; Path=/; HttpOnly' },
   })), false)
+  assert.equal(isAuthenticatedBootstrapRedirect(bootstrapUrl, new Response(null, {
+    status: 303,
+    headers: { location: '//evil.example/', 'set-cookie': 'dsh_session=desktop; Path=/; HttpOnly' },
+  })), false)
 })
 
 test('DSH 健康检查失败时会先结束子进程再报错', async () => {

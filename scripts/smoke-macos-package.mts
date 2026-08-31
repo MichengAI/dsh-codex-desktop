@@ -42,7 +42,7 @@ async function main(): Promise<void> {
   application.stderr?.on('data', captureOutput)
   let bootstrapProcessId: number | undefined
   try {
-    const baseUrl = await waitForHealthyServer(application, () => applicationOutput, deadline)
+    const baseUrl = await waitForHealthyServer(application, () => applicationOutput, deadline, startupErrorFile)
     bootstrapProcessId = await findBootstrapProcessId(application.pid)
     const page = await fetch(`${baseUrl}/`, { signal: AbortSignal.timeout(10_000) })
     const content = await page.text()
@@ -71,7 +71,12 @@ function readArgument(name: string): string {
   return value
 }
 
-async function waitForHealthyServer(application: ChildProcess, getApplicationOutput: () => string, deadline: number): Promise<string> {
+async function waitForHealthyServer(
+  application: ChildProcess,
+  getApplicationOutput: () => string,
+  deadline: number,
+  startupErrorFile: string,
+): Promise<string> {
   if (!application.pid) throw new Error('未获取到应用进程 ID。')
   while (Date.now() < deadline) {
     if (application.exitCode !== null) {
@@ -84,7 +89,13 @@ async function waitForHealthyServer(application: ChildProcess, getApplicationOut
     }
     await delay(500)
   }
-  throw new Error(`打包应用在 ${startupTimeoutMs / 1_000} 秒内未启动本机 HTTP 服务。${getApplicationOutput()}`)
+  const startupError = readStartupError(startupErrorFile)
+  throw new Error(`打包应用在 ${startupTimeoutMs / 1_000} 秒内未启动本机 HTTP 服务。${startupError === undefined ? getApplicationOutput() : ` 启动诊断：${startupError}`}`)
+}
+
+function readStartupError(startupErrorFile: string): string | undefined {
+  if (!existsSync(startupErrorFile)) return undefined
+  return readFileSync(startupErrorFile, 'utf8').trim()
 }
 
 async function waitForApplicationReady(
@@ -94,16 +105,14 @@ async function waitForApplicationReady(
   deadline: number,
   getApplicationOutput: () => string,
 ): Promise<void> {
-  if (existsSync(startupErrorFile)) {
-    throw new Error(`桌面应用启动失败：${readFileSync(startupErrorFile, 'utf8').trim()}`)
-  }
+  const initialStartupError = readStartupError(startupErrorFile)
+  if (initialStartupError !== undefined) throw new Error(`桌面应用启动失败：${initialStartupError}`)
   if (application.exitCode !== null) {
     throw new Error(`桌面应用在报告启动完成前退出（退出码 ${application.exitCode}）。${getApplicationOutput()}`)
   }
   while (Date.now() < deadline && !existsSync(smokeReadyFile)) {
-    if (existsSync(startupErrorFile)) {
-      throw new Error(`桌面应用启动失败：${readFileSync(startupErrorFile, 'utf8').trim()}`)
-    }
+    const startupError = readStartupError(startupErrorFile)
+    if (startupError !== undefined) throw new Error(`桌面应用启动失败：${startupError}`)
     if (application.exitCode !== null) {
       throw new Error(`桌面应用在报告启动完成前退出（退出码 ${application.exitCode}）。${getApplicationOutput()}`)
     }
