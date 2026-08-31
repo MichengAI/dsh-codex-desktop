@@ -16,7 +16,7 @@ import { applyPendingProfileUpdates, resolvePnpmStoreDir, seedBundledPlugins, re
 import { parseUnresolvedBundleError, removeProfileBundle, startWithProfileSelfRepair } from './profile-repair.js'
 import { resolveBundledPluginStore, resolvePluginBinDir } from './plugin-toolchain.js'
 import { resolveDshBootstrap, resolveDshRuntime, resolveNodeExecutable } from './runtime.js'
-import { extractPackagedRuntimes } from './extract-runtime.js'
+import { extractPackagedRuntimesInChild, packagedRuntimesNeedExtraction, type RuntimeExtractionProgress } from './extract-runtime.js'
 import { resolvePrebuiltOfficialRuntime } from './runtime-prebuilt.js'
 import { applyInitialWindowState } from './window-state.js'
 import { WindowNavigationCoordinator } from './window-navigation.js'
@@ -145,7 +145,7 @@ async function startApplication(): Promise<void> {
   Menu.setApplicationMenu(null)
   configureDesktopUpdater()
   createTray()
-  await showStartupWindow(desktopText('加载中', 'Loading'))
+  await showStartupWindow(desktopText('正在启动', 'Starting'))
 
   try {
     const runtimeOptions = {
@@ -161,8 +161,23 @@ async function startApplication(): Promise<void> {
       execPath: process.execPath,
     })
     const extractedStoreDir = app.isPackaged ? join(dirname(desktopRuntimeDir), 'plugins', 'store') : undefined
+    const nodeExecutable = resolveNodeExecutable(runtimeOptions)
     if (app.isPackaged) {
-      extractPackagedRuntimes(process.resourcesPath, desktopRuntimeDir, extractedStoreDir!)
+      const firstInitialization = packagedRuntimesNeedExtraction(process.resourcesPath, desktopRuntimeDir, extractedStoreDir!)
+      if (firstInitialization) {
+        await updateStartupMessage(firstInitializationMessage())
+        await extractPackagedRuntimesInChild({
+          nodeExecutable,
+          scriptPath: join(process.resourcesPath, 'extract-runtime.mjs'),
+          installDir: dirname(desktopRuntimeDir),
+          resourcesDir: process.resourcesPath,
+          onProgress: progress => { void updateStartupMessage(runtimeExtractionMessage(progress)) },
+        })
+        await updateStartupMessage(desktopText(
+          '正在初始化插件和工作区…\n首次启动可能需要 1–3 分钟，请勿关闭应用。',
+          'Initializing plugins and workspace…\nThe first launch may take 1–3 minutes. Please keep the app open.',
+        ))
+      }
     }
     const pluginStoreDir = resolveBundledPluginStore({
       ...runtimeOptions,
@@ -170,7 +185,6 @@ async function startApplication(): Promise<void> {
     })
     const profileStoreDir = resolvePnpmStoreDir(profileDir, pluginStoreDir)
     const prebuiltRuntimeDir = resolvePrebuiltOfficialRuntime(runtimeOptions)
-    const nodeExecutable = resolveNodeExecutable(runtimeOptions)
     const seedOptions = {
       nodeExecutable,
       profileDir,
@@ -306,6 +320,28 @@ async function showStartupWindow(message: string): Promise<void> {
     view,
     () => view.webContents.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<main style="font-family:sans-serif;padding:48px"><h1>DSH Codex Desktop</h1><p>' + escaped + '</p></main>')),
   )
+}
+
+async function updateStartupMessage(message: string): Promise<void> {
+  const view = requireDshView()
+  if (view.webContents.isDestroyed()) return
+  await view.webContents.executeJavaScript(`document.getElementById('msg')?.replaceChildren(document.createTextNode(${JSON.stringify(message)}))`)
+    .catch(() => undefined)
+}
+
+function firstInitializationMessage(): string {
+  return desktopText(
+    '首次启动，正在准备运行环境…\n可能需要 1–3 分钟，请勿关闭应用。',
+    'Preparing the runtime for the first launch…\nThis may take 1–3 minutes. Please keep the app open.',
+  )
+}
+
+function runtimeExtractionMessage(progress: RuntimeExtractionProgress): string {
+  const hint = desktopText('\n首次启动可能需要 1–3 分钟，请勿关闭应用。', '\nThe first launch may take 1–3 minutes. Please keep the app open.')
+  if (progress.phase === 'runtime') {
+    return desktopText('正在校验并解压 DSH 运行环境…', 'Verifying and extracting the DSH runtime…') + hint
+  }
+  return desktopText('正在准备内置插件仓库…', 'Preparing the bundled plugin store…') + hint
 }
 
 let allowedOrigin = ''

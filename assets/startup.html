@@ -24,6 +24,12 @@
       gap: 22px;
       animation: fade-in .45s ease both;
     }
+    .status {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
     .icon {
       width: 72px;
       height: 72px;
@@ -72,7 +78,10 @@
   <main class="stage">
     <img class="icon" src="./icon.png" alt="DSH Codex Desktop">
     <div class="spinner" aria-hidden="true"></div>
-    <p id="msg">加载中</p>
+    <section class="status" role="status" aria-live="polite" aria-atomic="true">
+      <h1>DSH Codex Desktop</h1>
+      <p id="msg">正在启动</p>
+    </section>
   </main>
 </body>
 </html>

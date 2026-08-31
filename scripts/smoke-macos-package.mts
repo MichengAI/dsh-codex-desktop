@@ -2,8 +2,10 @@ import { execFile, spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { basename, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
+
+import { verifyBundledPluginsInstalled } from './smoke-packaged-plugins.mjs'
 
 const execFileAsync = promisify(execFile)
 const startupTimeoutMs = 180_000
@@ -31,6 +33,7 @@ async function main(): Promise<void> {
       ...process.env,
       DSH_HOME: dshHome,
       DSH_DESKTOP_SMOKE_READY_FILE: smokeReadyFile,
+      npm_config_offline: 'true',
     },
   })
   if (!application.pid) throw new Error('未获取到应用进程 ID。')
@@ -49,13 +52,15 @@ async function main(): Promise<void> {
     if (page.status === 401) {
       if (!content.includes('dsh web authentication required')) throw new Error('根页面返回了未知的 HTTP 401 响应。')
       await waitForApplicationReady(application, smokeReadyFile, startupErrorFile, deadline, () => applicationOutput)
-      return
+    } else {
+      if (page.status !== 200) throw new Error(`根页面返回 HTTP ${page.status}。`)
+      const assetPath = /(?:src|href)=["'](?<path>\/[^"']+\.(?:js|css))/.exec(content)?.groups?.path
+      if (!assetPath) throw new Error('根页面未找到可验证的前端资源。')
+      const asset = await fetch(baseUrl + assetPath, { signal: AbortSignal.timeout(10_000) })
+      if (asset.status !== 200) throw new Error(`前端资源返回 HTTP ${asset.status}。`)
+      await waitForApplicationReady(application, smokeReadyFile, startupErrorFile, deadline, () => applicationOutput)
     }
-    if (page.status !== 200) throw new Error(`根页面返回 HTTP ${page.status}。`)
-    const assetPath = /(?:src|href)=["'](?<path>\/[^"']+\.(?:js|css))/.exec(content)?.groups?.path
-    if (!assetPath) throw new Error('根页面未找到可验证的前端资源。')
-    const asset = await fetch(baseUrl + assetPath, { signal: AbortSignal.timeout(10_000) })
-    if (asset.status !== 200) throw new Error(`前端资源返回 HTTP ${asset.status}。`)
+    await verifyBundledPluginsInstalled(dshHome)
   } finally {
     await stopApplication(application)
     const bootstrapStillRunning = bootstrapProcessId !== undefined && !await waitForProcessExit(bootstrapProcessId, 10_000)

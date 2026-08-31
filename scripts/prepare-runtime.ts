@@ -5,7 +5,7 @@ import { cp, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'nod
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { ALLOWED_BUILD_PACKAGES, OFFICIAL_RUNTIME, officialRuntimePnpmConfig, pnpmWorkspaceYaml, STORE_PACKAGES } from '../src/bundled-plugins.js'
+import { ALLOWED_BUILD_PACKAGES, officialRuntimeDependencies, officialRuntimePnpmConfig, pnpmWorkspaceYaml, STORE_PACKAGES } from '../src/bundled-plugins.js'
 import { extractTarGz, packDirectoryToTarGz, writeFileSha256 } from '../src/runtime-archive.js'
 
 const projectRoot = resolve(import.meta.dirname, '..', '..')
@@ -196,14 +196,12 @@ export async function stageOfficialRuntime(destinationRoot: string, nodeRoot: st
   }
   const entry = join(destinationRoot, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
   if (!existsSync(entry)) throw new Error('预装官方运行时后仍未找到入口。')
-  if (!existsSync(join(destinationRoot, 'node_modules', ...OFFICIAL_RUNTIME.packageName.split('/'), 'package.json'))) {
-    throw new Error(`预装官方运行时缺少依赖：${OFFICIAL_RUNTIME.packageName}`)
-  }
+  validateOfficialRuntimeLayout(destinationRoot)
 }
 
 /** 官方预发布包存在 pnpm 无法解析的 peer 范围，运行时打包统一改用 npm。 */
 export function officialRuntimeNpmDependencies(): Record<string, string> {
-  return { [OFFICIAL_RUNTIME.packageName]: OFFICIAL_RUNTIME.version }
+  return officialRuntimeDependencies()
 }
 
 export function officialRuntimeNpmInstallArgs(destinationRoot: string): string[] {
@@ -217,8 +215,20 @@ export function officialRuntimeNpmInstallArgs(destinationRoot: string): string[]
     '--no-fund',
     '--allow-scripts=' + ALLOWED_BUILD_PACKAGES.join(','),
     '--registry=https://registry.npmjs.org/',
-    `${OFFICIAL_RUNTIME.packageName}@${OFFICIAL_RUNTIME.version}`,
+    ...Object.entries(officialRuntimeNpmDependencies()).map(([packageName, version]) => `${packageName}@${version}`),
   ]
+}
+
+/** 打包产物必须把启动 peer 放在运行时顶层，避免离线首启再回退到 npm。 */
+export function validateOfficialRuntimeLayout(destinationRoot: string): void {
+  for (const [packageName, expectedVersion] of Object.entries(officialRuntimeNpmDependencies())) {
+    const manifestPath = join(destinationRoot, 'node_modules', ...packageName.split('/'), 'package.json')
+    if (!existsSync(manifestPath)) throw new Error(`预装官方运行时缺少顶层依赖：${packageName}`)
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { version?: unknown }
+    if (manifest.version !== expectedVersion) {
+      throw new Error(`预装官方运行时依赖版本不匹配：${packageName}，需要 ${expectedVersion}，实际 ${String(manifest.version ?? '未知')}`)
+    }
+  }
 }
 
 /** npm 全局安装在 Unix 位于 lib/node_modules，Windows 则直接位于 node_modules。 */

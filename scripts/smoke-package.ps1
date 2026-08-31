@@ -9,14 +9,6 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Stop'
 
 $resolvedApplication = (Resolve-Path -LiteralPath $ApplicationPath).Path
-$installDir = Split-Path -Parent $resolvedApplication
-$resourcesDir = Join-Path $installDir 'resources'
-$bundledNode = Join-Path $resourcesDir 'node\node.exe'
-$runtimeExtractor = Join-Path $resourcesDir 'extract-runtime.mjs'
-if ((Test-Path -LiteralPath $bundledNode) -and (Test-Path -LiteralPath $runtimeExtractor)) {
-  & $bundledNode $runtimeExtractor $installDir $resourcesDir
-  if ($LASTEXITCODE -ne 0) { throw "随包运行时解压失败，退出码：$LASTEXITCODE" }
-}
 $tempBase = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
 $tempRoot = Join-Path $tempBase ("dsh-desktop-smoke-$([guid]::NewGuid().ToString('N'))")
 $userDataDir = Join-Path $tempRoot 'user-data'
@@ -24,17 +16,31 @@ $dshHome = Join-Path $tempRoot 'dsh-home'
 New-Item -ItemType Directory -Path $userDataDir, $dshHome -Force | Out-Null
 $previousDshHome = $env:DSH_HOME
 $previousSmokeReadyFile = $env:DSH_DESKTOP_SMOKE_READY_FILE
+$previousNpmOffline = $env:npm_config_offline
 $env:DSH_HOME = $dshHome
+$env:npm_config_offline = 'true'
 $smokeReadyFile = Join-Path $userDataDir 'startup-ready'
 $env:DSH_DESKTOP_SMOKE_READY_FILE = $smokeReadyFile
 $application = $null
 $bootstrapProcessId = $null
+$startupTimeoutSeconds = 180
+$unresponsiveSince = $null
 
 try {
   $application = Start-Process -FilePath $resolvedApplication -ArgumentList "--user-data-dir=$userDataDir" -PassThru
-  $deadline = (Get-Date).AddSeconds(60)
+  $deadline = (Get-Date).AddSeconds($startupTimeoutSeconds)
   $port = $null
   while ((Get-Date) -lt $deadline -and $null -eq $port) {
+    $application.Refresh()
+    if ($application.HasExited) { throw '打包应用在初始化期间意外退出。' }
+    if ($application.MainWindowHandle -ne 0 -and -not $application.Responding) {
+      if ($null -eq $unresponsiveSince) { $unresponsiveSince = Get-Date }
+      if (((Get-Date) - $unresponsiveSince).TotalSeconds -ge 10) {
+        throw '便携版首启窗口连续 10 秒未响应。'
+      }
+    } else {
+      $unresponsiveSince = $null
+    }
     $bootstrap = Get-CimInstance Win32_Process | Where-Object {
       $_.ParentProcessId -eq $application.Id -and $_.CommandLine -like '*bootstrap.mjs*'
     } | Select-Object -First 1
@@ -56,7 +62,7 @@ try {
     }
     if ($null -eq $port) { Start-Sleep -Milliseconds 500 }
   }
-  if ($null -eq $port) { throw '打包应用在 60 秒内未启动本机 HTTP 服务。' }
+  if ($null -eq $port) { throw "打包应用在 $startupTimeoutSeconds 秒内未启动本机 HTTP 服务。" }
 
   $baseUrl = "http://127.0.0.1:$port"
   $page = Invoke-WebRequest -Uri "$baseUrl/" -UseBasicParsing -SkipHttpErrorCheck
@@ -77,13 +83,33 @@ try {
       if ($application.HasExited) { throw '桌面应用在报告启动完成前意外退出。' }
       Start-Sleep -Milliseconds 250
     }
-    if (-not (Test-Path -LiteralPath $smokeReadyFile)) { throw '桌面应用未在 60 秒内报告启动完成。' }
+    if (-not (Test-Path -LiteralPath $smokeReadyFile)) { throw "桌面应用未在 $startupTimeoutSeconds 秒内报告启动完成。" }
   } else {
     if ($page.StatusCode -ne 200) { throw "根页面返回 HTTP $($page.StatusCode)。" }
     $asset = [regex]::Match($page.Content, '(?:src|href)=["''](?<path>/[^"'']+\.(?:js|css))')
     if (-not $asset.Success) { throw '根页面未找到可验证的前端资源。' }
     $assetResponse = Invoke-WebRequest -Uri "$baseUrl$($asset.Groups['path'].Value)" -UseBasicParsing
     if ($assetResponse.StatusCode -ne 200) { throw "前端资源返回 HTTP $($assetResponse.StatusCode)。" }
+  }
+
+  $expectedPlugins = [ordered]@{
+    '@michengai/dsh-codex-ui' = '0.2.94'
+    '@michengai/dsh-im-connect' = '0.1.27'
+    '@michengai/dsh-automation' = '0.1.22'
+    '@michengai/dsh-skills-manager' = '0.1.32'
+    '@michengai/dsh-archive-manager' = '0.1.21'
+    '@michengai/dsh-agency-agents' = '0.1.23'
+    'dsh-context' = '0.38.5'
+    'dsh-better-sidebar' = '0.18.0-alpha.0'
+    'dsh-mcp-connector' = '0.2.31'
+    'dshmarket' = '1.38.1'
+  }
+  $profileDir = Join-Path $dshHome 'profiles\web'
+  foreach ($entry in $expectedPlugins.GetEnumerator()) {
+    $manifestPath = Join-Path $profileDir ("node_modules\$($entry.Key.Replace('/', '\'))\package.json")
+    if (-not (Test-Path -LiteralPath $manifestPath)) { throw "强制离线首启缺少插件：$($entry.Key)" }
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+    if ($manifest.version -ne $entry.Value) { throw "强制离线首启插件版本错误：$($entry.Key)=$($manifest.version)" }
   }
 } finally {
   if ($null -ne $application) {
@@ -105,6 +131,7 @@ try {
   }
   $env:DSH_HOME = $previousDshHome
   $env:DSH_DESKTOP_SMOKE_READY_FILE = $previousSmokeReadyFile
+  $env:npm_config_offline = $previousNpmOffline
   $resolvedTempRoot = [System.IO.Path]::GetFullPath($tempRoot)
   if ($resolvedTempRoot.StartsWith($tempBase, [System.StringComparison]::OrdinalIgnoreCase)) {
     Remove-Item -LiteralPath $resolvedTempRoot -Recurse -Force -ErrorAction SilentlyContinue
