@@ -7,6 +7,12 @@ test('构建产物包含所有平台冒烟脚本', () => {
   for (const script of ['smoke-macos-package.mjs', 'smoke-linux-package.mjs']) {
     const scriptPath = join('dist', 'scripts', script)
     assert.equal(existsSync(scriptPath), true, `缺少构建产物：${script}`)
-    assert.match(readFileSync(scriptPath, 'utf8'), /await waitForProcessExit\(bootstrapProcessId, 10_000\)/)
+    const source = readFileSync(scriptPath, 'utf8')
+    assert.match(source, /await waitForProcessExit\(bootstrapProcessId, 10_000\)/)
+    assert.match(source, /--user-data-dir=/)
+    assert.match(source, /DSH_DESKTOP_SMOKE_READY_FILE/)
+    assert.match(source, /startup-ready/)
+    assert.match(source, /dsh web authentication required/)
+    assert.match(source, /page\.status === 401/)
   }
 })

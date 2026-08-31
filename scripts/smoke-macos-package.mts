@@ -1,5 +1,7 @@
 import { execFile, spawn, type ChildProcess } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
@@ -16,7 +18,21 @@ async function main(): Promise<void> {
   const applicationExecutable = resolveMacApplicationExecutable(applicationBundle)
   if (!existsSync(applicationExecutable)) throw new Error(`未找到 macOS 应用可执行文件：${applicationExecutable}`)
 
-  const application = spawn(applicationExecutable, [], { stdio: ['ignore', 'pipe', 'pipe'] })
+  const tempRoot = await mkdtemp(join(tmpdir(), 'dsh-desktop-smoke-'))
+  const userDataDir = join(tempRoot, 'user-data')
+  const dshHome = join(tempRoot, 'dsh-home')
+  const smokeReadyFile = join(userDataDir, 'startup-ready')
+  const startupErrorFile = join(userDataDir, 'startup-error.log')
+  await Promise.all([mkdir(userDataDir, { recursive: true }), mkdir(dshHome, { recursive: true })])
+  const deadline = Date.now() + startupTimeoutMs
+  const application = spawn(applicationExecutable, [`--user-data-dir=${userDataDir}`], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      DSH_HOME: dshHome,
+      DSH_DESKTOP_SMOKE_READY_FILE: smokeReadyFile,
+    },
+  })
   if (!application.pid) throw new Error('未获取到应用进程 ID。')
   let applicationOutput = ''
   const captureOutput = (chunk: Buffer): void => {
@@ -26,20 +42,25 @@ async function main(): Promise<void> {
   application.stderr?.on('data', captureOutput)
   let bootstrapProcessId: number | undefined
   try {
-    const baseUrl = await waitForHealthyServer(application, () => applicationOutput)
+    const baseUrl = await waitForHealthyServer(application, () => applicationOutput, deadline)
     bootstrapProcessId = await findBootstrapProcessId(application.pid)
-    const page = await fetch(`${baseUrl}/`)
-    if (page.status !== 200) throw new Error(`根页面返回 HTTP ${page.status}。`)
+    const page = await fetch(`${baseUrl}/`, { signal: AbortSignal.timeout(10_000) })
     const content = await page.text()
+    if (page.status === 401) {
+      if (!content.includes('dsh web authentication required')) throw new Error('根页面返回了未知的 HTTP 401 响应。')
+      await waitForApplicationReady(application, smokeReadyFile, startupErrorFile, deadline, () => applicationOutput)
+      return
+    }
+    if (page.status !== 200) throw new Error(`根页面返回 HTTP ${page.status}。`)
     const assetPath = /(?:src|href)=["'](?<path>\/[^"']+\.(?:js|css))/.exec(content)?.groups?.path
     if (!assetPath) throw new Error('根页面未找到可验证的前端资源。')
-    const asset = await fetch(baseUrl + assetPath)
+    const asset = await fetch(baseUrl + assetPath, { signal: AbortSignal.timeout(10_000) })
     if (asset.status !== 200) throw new Error(`前端资源返回 HTTP ${asset.status}。`)
   } finally {
     await stopApplication(application)
-    if (bootstrapProcessId !== undefined && !await waitForProcessExit(bootstrapProcessId, 10_000)) {
-      throw new Error(`DSH 引导进程 ${bootstrapProcessId} 未在应用退出后结束。`)
-    }
+    const bootstrapStillRunning = bootstrapProcessId !== undefined && !await waitForProcessExit(bootstrapProcessId, 10_000)
+    await rm(tempRoot, { recursive: true, force: true })
+    if (bootstrapStillRunning) throw new Error(`DSH 引导进程 ${bootstrapProcessId} 未在应用退出后结束。`)
   }
 }
 
@@ -50,9 +71,8 @@ function readArgument(name: string): string {
   return value
 }
 
-async function waitForHealthyServer(application: ChildProcess, getApplicationOutput: () => string): Promise<string> {
+async function waitForHealthyServer(application: ChildProcess, getApplicationOutput: () => string, deadline: number): Promise<string> {
   if (!application.pid) throw new Error('未获取到应用进程 ID。')
-  const deadline = Date.now() + startupTimeoutMs
   while (Date.now() < deadline) {
     if (application.exitCode !== null) {
       throw new Error(`打包应用提前退出（退出码 ${application.exitCode}）。${getApplicationOutput()}`)
@@ -65,6 +85,32 @@ async function waitForHealthyServer(application: ChildProcess, getApplicationOut
     await delay(500)
   }
   throw new Error(`打包应用在 ${startupTimeoutMs / 1_000} 秒内未启动本机 HTTP 服务。${getApplicationOutput()}`)
+}
+
+async function waitForApplicationReady(
+  application: ChildProcess,
+  smokeReadyFile: string,
+  startupErrorFile: string,
+  deadline: number,
+  getApplicationOutput: () => string,
+): Promise<void> {
+  if (existsSync(startupErrorFile)) {
+    throw new Error(`桌面应用启动失败：${readFileSync(startupErrorFile, 'utf8').trim()}`)
+  }
+  if (application.exitCode !== null) {
+    throw new Error(`桌面应用在报告启动完成前退出（退出码 ${application.exitCode}）。${getApplicationOutput()}`)
+  }
+  while (Date.now() < deadline && !existsSync(smokeReadyFile)) {
+    if (existsSync(startupErrorFile)) {
+      throw new Error(`桌面应用启动失败：${readFileSync(startupErrorFile, 'utf8').trim()}`)
+    }
+    if (application.exitCode !== null) {
+      throw new Error(`桌面应用在报告启动完成前退出（退出码 ${application.exitCode}）。${getApplicationOutput()}`)
+    }
+    await delay(250)
+  }
+  if (!existsSync(smokeReadyFile)) throw new Error(`桌面应用未在 ${startupTimeoutMs / 1_000} 秒内报告启动完成。${getApplicationOutput()}`)
+  if (application.exitCode !== null) throw new Error(`桌面应用在启动标记后退出（退出码 ${application.exitCode}）。${getApplicationOutput()}`)
 }
 
 async function findBootstrapProcessId(applicationProcessId: number): Promise<number | undefined> {

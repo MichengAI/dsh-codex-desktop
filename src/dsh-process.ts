@@ -186,7 +186,7 @@ async function waitForHttpHealth(url: string, timeoutMs: number): Promise<void> 
   throw new Error('HTTP 健康检查超时。')
 }
 
-function isAuthenticatedBootstrapRedirect(url: string, response: Response): boolean {
+export function isAuthenticatedBootstrapRedirect(url: string, response: Response): boolean {
   if (response.status < 300 || response.status > 399 || !response.headers.has('set-cookie')) return false
   const source = new URL(url)
   if (!source.searchParams.has('token')) return false

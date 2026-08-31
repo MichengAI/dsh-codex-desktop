@@ -4,7 +4,7 @@ import test from 'node:test'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 
-import { APPLY_PLUGIN_UPDATES_IPC, DSH_WEB_LAUNCH_ARGS, isApplyPluginUpdatesIpc, resolveDesktopWebPort, startDsh, type DshServer } from '../src/dsh-process.js'
+import { APPLY_PLUGIN_UPDATES_IPC, DSH_WEB_LAUNCH_ARGS, isApplyPluginUpdatesIpc, isAuthenticatedBootstrapRedirect, resolveDesktopWebPort, startDsh, type DshServer } from '../src/dsh-process.js'
 
 const projectRoot = resolve(import.meta.dirname, '..', '..')
 const fixtureEntry = join(projectRoot, 'test', 'fixtures', 'dsh-fixture.mjs')
@@ -39,6 +39,26 @@ test('等待 alpha.2 分片输出完整 token 后再做健康检查', async () =
   } finally {
     await server.stop()
   }
+})
+
+test('仅接受同源 loopback token 引导重定向', () => {
+  const bootstrapUrl = 'http://127.0.0.1:31337/?token=desktop-secret'
+  assert.equal(isAuthenticatedBootstrapRedirect(bootstrapUrl, new Response(null, {
+    status: 303,
+    headers: { location: '/', 'set-cookie': 'dsh_session=desktop; Path=/; HttpOnly' },
+  })), true)
+  assert.equal(isAuthenticatedBootstrapRedirect('http://127.0.0.1:31337/', new Response(null, {
+    status: 303,
+    headers: { location: '/', 'set-cookie': 'dsh_session=desktop; Path=/; HttpOnly' },
+  })), false)
+  assert.equal(isAuthenticatedBootstrapRedirect(bootstrapUrl, new Response(null, {
+    status: 303,
+    headers: { location: '/' },
+  })), false)
+  assert.equal(isAuthenticatedBootstrapRedirect(bootstrapUrl, new Response(null, {
+    status: 303,
+    headers: { location: 'http://example.com/', 'set-cookie': 'dsh_session=desktop; Path=/; HttpOnly' },
+  })), false)
 })
 
 test('DSH 健康检查失败时会先结束子进程再报错', async () => {
