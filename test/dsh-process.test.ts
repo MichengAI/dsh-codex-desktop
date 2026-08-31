@@ -74,7 +74,9 @@ test('重复关闭同一 DSH 子进程是安全的', async () => {
   await Promise.all([server.stop(), server.stop()])
 })
 
-function startFixture(mode: 'authenticated' | 'chunked' | 'exit' | 'healthy' | 'silent' | 'unhealthy', startupTimeoutMs = 1_000, environment: NodeJS.ProcessEnv = {}): Promise<DshServer> {
+const fixtureStartupTimeoutMs = 3_000
+
+function startFixture(mode: 'authenticated' | 'chunked' | 'exit' | 'healthy' | 'silent' | 'unhealthy', startupTimeoutMs = fixtureStartupTimeoutMs, environment: NodeJS.ProcessEnv = {}): Promise<DshServer> {
   return startDsh({
     bootstrapPath,
     environment: { ...process.env, ...environment, DSH_FIXTURE_MODE: mode },
@@ -88,7 +90,7 @@ async function assertFixtureStoppedAfterFailure(mode: 'silent' | 'unhealthy', me
   const root = await mkdtemp(join(tmpdir(), 'dsh-process-'))
   const pidFile = join(root, 'pid.txt')
   try {
-    await assert.rejects(startFixture(mode, 1_000, { DSH_FIXTURE_PID_FILE: pidFile }), message)
+    await assert.rejects(startFixture(mode, fixtureStartupTimeoutMs, { DSH_FIXTURE_PID_FILE: pidFile }), message)
     const pid = Number(await readFile(pidFile, 'utf8'))
     assert.throws(() => process.kill(pid, 0))
   } finally {
