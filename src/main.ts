@@ -51,6 +51,8 @@ let server: DshServer | undefined
 let tray: Tray | undefined
 let isQuitting = false
 let isRecycling = false
+let runtimeExtractionAbortController: AbortController | undefined
+let runtimeExtractionTask: Promise<void> | undefined
 let lastStartOptions: Omit<StartDshOptions, 'onUnexpectedExit' | 'onIpcMessage'> | undefined
 let lastSeedOptions: Parameters<typeof applyPendingProfileUpdates>[0] | undefined
 let profileWatcher: { stop: () => void; sync: () => void } | undefined
@@ -126,6 +128,9 @@ async function shutdownDesktop(exit: () => void): Promise<void> {
       profileWatcher = undefined
     },
     stopServer: async () => {
+      const extraction = runtimeExtractionTask
+      runtimeExtractionAbortController?.abort()
+      await extraction?.catch(() => undefined)
       const current = server
       server = undefined
       await current?.stop()
@@ -166,13 +171,23 @@ async function startApplication(): Promise<void> {
       const firstInitialization = packagedRuntimesNeedExtraction(process.resourcesPath, desktopRuntimeDir, extractedStoreDir!)
       if (firstInitialization) {
         await updateStartupMessage(firstInitializationMessage())
-        await extractPackagedRuntimesInChild({
+        const controller = new AbortController()
+        runtimeExtractionAbortController = controller
+        const extraction = extractPackagedRuntimesInChild({
           nodeExecutable,
           scriptPath: join(process.resourcesPath, 'extract-runtime.mjs'),
           installDir: dirname(desktopRuntimeDir),
           resourcesDir: process.resourcesPath,
+          signal: controller.signal,
           onProgress: progress => { void updateStartupMessage(runtimeExtractionMessage(progress)) },
         })
+        runtimeExtractionTask = extraction
+        try {
+          await extraction
+        } finally {
+          if (runtimeExtractionTask === extraction) runtimeExtractionTask = undefined
+          if (runtimeExtractionAbortController === controller) runtimeExtractionAbortController = undefined
+        }
         await updateStartupMessage(desktopText(
           '正在初始化插件和工作区…\n首次启动可能需要 1–3 分钟，请勿关闭应用。',
           'Initializing plugins and workspace…\nThe first launch may take 1–3 minutes. Please keep the app open.',
@@ -246,7 +261,7 @@ async function startApplication(): Promise<void> {
     }
     scheduleStartupUpdateCheck()
   } catch (error) {
-    await reportStartupFailure(error)
+    if (!isQuitting) await reportStartupFailure(error)
   }
 }
 

@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { BUNDLED_PLUGINS } from '../src/bundled-plugins.js'
 
@@ -23,4 +24,11 @@ export async function verifyBundledPluginsInstalled(dshHome: string): Promise<vo
       throw new Error(`强制离线首启插件版本错误：${plugin.packageName}=${String(manifest.version)}`)
     }
   }
+}
+
+const self = fileURLToPath(import.meta.url)
+if (process.argv[1] && resolve(process.argv[1]) === self) {
+  const dshHome = process.argv[2]
+  if (dshHome === undefined || dshHome === '') throw new Error('缺少待校验的 DSH_HOME。')
+  await verifyBundledPluginsInstalled(dshHome)
 }

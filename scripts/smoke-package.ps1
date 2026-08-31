@@ -74,16 +74,6 @@ try {
     # 外部冒烟请求没有它时必须被拒绝，同时应用必须仍保持运行。
     $application.Refresh()
     if ($application.HasExited) { throw '根页面通过鉴权拒绝后桌面应用意外退出。' }
-    $startupError = Join-Path $userDataDir 'startup-error.log'
-    while ((Get-Date) -lt $deadline -and -not (Test-Path -LiteralPath $smokeReadyFile)) {
-      if (Test-Path -LiteralPath $startupError) {
-        throw "桌面应用启动失败：$((Get-Content -LiteralPath $startupError -Raw).Trim())"
-      }
-      $application.Refresh()
-      if ($application.HasExited) { throw '桌面应用在报告启动完成前意外退出。' }
-      Start-Sleep -Milliseconds 250
-    }
-    if (-not (Test-Path -LiteralPath $smokeReadyFile)) { throw "桌面应用未在 $startupTimeoutSeconds 秒内报告启动完成。" }
   } else {
     if ($page.StatusCode -ne 200) { throw "根页面返回 HTTP $($page.StatusCode)。" }
     $asset = [regex]::Match($page.Content, '(?:src|href)=["''](?<path>/[^"'']+\.(?:js|css))')
@@ -92,25 +82,21 @@ try {
     if ($assetResponse.StatusCode -ne 200) { throw "前端资源返回 HTTP $($assetResponse.StatusCode)。" }
   }
 
-  $expectedPlugins = [ordered]@{
-    '@michengai/dsh-codex-ui' = '0.2.94'
-    '@michengai/dsh-im-connect' = '0.1.27'
-    '@michengai/dsh-automation' = '0.1.22'
-    '@michengai/dsh-skills-manager' = '0.1.32'
-    '@michengai/dsh-archive-manager' = '0.1.21'
-    '@michengai/dsh-agency-agents' = '0.1.23'
-    'dsh-context' = '0.38.5'
-    'dsh-better-sidebar' = '0.18.0-alpha.0'
-    'dsh-mcp-connector' = '0.2.31'
-    'dshmarket' = '1.38.1'
+  $startupError = Join-Path $userDataDir 'startup-error.log'
+  while ((Get-Date) -lt $deadline -and -not (Test-Path -LiteralPath $smokeReadyFile)) {
+    if (Test-Path -LiteralPath $startupError) {
+      throw "桌面应用启动失败：$((Get-Content -LiteralPath $startupError -Raw).Trim())"
+    }
+    $application.Refresh()
+    if ($application.HasExited) { throw '桌面应用在报告启动完成前意外退出。' }
+    Start-Sleep -Milliseconds 250
   }
-  $profileDir = Join-Path $dshHome 'profiles\web'
-  foreach ($entry in $expectedPlugins.GetEnumerator()) {
-    $manifestPath = Join-Path $profileDir ("node_modules\$($entry.Key.Replace('/', '\'))\package.json")
-    if (-not (Test-Path -LiteralPath $manifestPath)) { throw "强制离线首启缺少插件：$($entry.Key)" }
-    $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-    if ($manifest.version -ne $entry.Value) { throw "强制离线首启插件版本错误：$($entry.Key)=$($manifest.version)" }
-  }
+  if (-not (Test-Path -LiteralPath $smokeReadyFile)) { throw "桌面应用未在 $startupTimeoutSeconds 秒内报告启动完成。" }
+
+  $verifierPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'dist\scripts\smoke-packaged-plugins.mjs'
+  if (-not (Test-Path -LiteralPath $verifierPath -PathType Leaf)) { throw "未找到内置插件校验脚本：$verifierPath" }
+  & node $verifierPath $dshHome
+  if ($LASTEXITCODE -ne 0) { throw "内置插件校验失败，退出码：$LASTEXITCODE" }
 } finally {
   if ($null -ne $application) {
     $application.Refresh()

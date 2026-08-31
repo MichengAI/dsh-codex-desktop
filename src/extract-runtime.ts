@@ -4,6 +4,7 @@ import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { extractTarGz, verifyFileSha256 } from './runtime-archive.js'
+import { terminateProcessTree } from './process-control.js'
 
 export const RUNTIME_EXTRACTION_PROGRESS_PREFIX = 'DSH_EXTRACT_PROGRESS '
 
@@ -18,6 +19,7 @@ interface RuntimeExtractionProcessOptions {
   installDir: string
   resourcesDir: string
   timeoutMs?: number
+  signal?: AbortSignal
   onProgress?: (progress: RuntimeExtractionProgress) => void
 }
 
@@ -53,6 +55,7 @@ export function packagedRuntimesNeedExtraction(resourcesDir: string, officialDes
  * 否则 Electron 主进程无法派发 Windows 消息，会被系统标记为“未响应”。
  */
 export function extractPackagedRuntimesInChild(options: RuntimeExtractionProcessOptions): Promise<void> {
+  if (options.signal?.aborted === true) return Promise.reject(new Error('随包运行时初始化已取消。'))
   return new Promise((resolvePromise, reject) => {
     const child = spawn(options.nodeExecutable, [
       options.scriptPath,
@@ -61,20 +64,36 @@ export function extractPackagedRuntimesInChild(options: RuntimeExtractionProcess
       '--progress-json',
     ], {
       cwd: options.installDir,
+      detached: process.platform !== 'win32',
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     let output = ''
     let pending = ''
     let settled = false
+    let terminationError: Error | undefined
+    let killDeadline: ReturnType<typeof setTimeout> | undefined
+    let timeout: ReturnType<typeof setTimeout> | undefined
 
     const finish = (error?: Error): void => {
       if (settled) return
       settled = true
       clearTimeout(timeout)
+      clearTimeout(killDeadline)
+      options.signal?.removeEventListener('abort', abort)
       if (error === undefined) resolvePromise()
       else reject(error)
     }
+    const terminate = (error: Error): void => {
+      if (settled || terminationError !== undefined) return
+      terminationError = error
+      terminateProcessTree(child, { processGroup: process.platform !== 'win32' })
+      killDeadline = setTimeout(() => {
+        terminateProcessTree(child, { processGroup: process.platform !== 'win32' })
+        finish(error)
+      }, 2_000)
+    }
+    const abort = (): void => terminate(new Error('随包运行时初始化已取消。'))
     const consumeLine = (line: string): void => {
       if (!line.startsWith(RUNTIME_EXTRACTION_PROGRESS_PREFIX)) return
       try {
@@ -98,15 +117,16 @@ export function extractPackagedRuntimesInChild(options: RuntimeExtractionProcess
     child.stderr.setEncoding('utf8')
     child.stderr.on('data', (chunk: string) => { output = (output + chunk).slice(-8_000) })
     child.once('error', error => finish(new Error(`无法启动随包运行时初始化进程：${error.message}`)))
-    child.once('exit', code => {
+    child.once('close', code => {
       if (pending !== '') consumeLine(pending)
-      if (code === 0) finish()
+      if (terminationError !== undefined) finish(terminationError)
+      else if (code === 0) finish()
       else finish(new Error(output.replace(/\s+/g, ' ').trim() || `随包运行时初始化失败，退出码：${code ?? 'unknown'}`))
     })
-    const timeout = setTimeout(() => {
-      child.kill()
-      finish(new Error('随包运行时初始化超时，请重新启动应用后重试。'))
-    }, options.timeoutMs ?? 15 * 60_000)
+    options.signal?.addEventListener('abort', abort, { once: true })
+    timeout = setTimeout(() => terminate(new Error('随包运行时初始化超时，请重新启动应用后重试。')), options.timeoutMs ?? 15 * 60_000)
+    timeout.unref?.()
+    if (options.signal?.aborted === true) abort()
   })
 }
 
