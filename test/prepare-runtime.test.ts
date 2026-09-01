@@ -334,14 +334,40 @@ test('打包态从 desktop-bridge 加载 DSH 主进程模块', async () => {
   assert.doesNotMatch(host, /from '\.\/dsh-process\.js'/)
 })
 
+function extractionScriptExtraResources(manifest: {
+  build?: { extraResources?: Array<{ from?: string; to?: string; filter?: string[] }> }
+}): Array<{ from: string; to: string }> {
+  return (manifest.build?.extraResources ?? []).flatMap((item) => {
+    if (typeof item.from !== 'string' || typeof item.to !== 'string' || item.filter !== undefined) return []
+    if (!item.from.startsWith('dist/src/')) return []
+    return [{ from: item.from, to: item.to }]
+  })
+}
+
 test('安装阶段解压脚本带上自己的运行依赖', async () => {
   const manifest = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as {
-    build?: { extraResources?: { from?: string; to?: string }[] }
+    build?: { extraResources?: Array<{ from?: string; to?: string; filter?: string[] }> }
   }
-  assert.equal(
-    manifest.build?.extraResources?.some(item => item.from === 'dist/src/runtime-archive.js' && item.to === 'runtime-archive.js'),
-    true,
-  )
+  const extra = extractionScriptExtraResources(manifest)
+  assert.equal(extra.some(item => item.from === 'dist/src/extract-runtime.js' && item.to === 'extract-runtime.mjs'), true)
+  assert.equal(extra.some(item => item.from === 'dist/src/runtime-archive.js' && item.to === 'runtime-archive.js'), true)
+  assert.equal(extra.some(item => item.from === 'dist/src/process-control.js' && item.to === 'process-control.js'), true)
+})
+
+test('安装阶段解压脚本独立目录可以完成 ESM 导入', async () => {
+  const manifest = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as {
+    build?: { extraResources?: Array<{ from?: string; to?: string; filter?: string[] }> }
+  }
+  const extra = extractionScriptExtraResources(manifest)
+  const root = await mkdtemp(join(tmpdir(), 'dsh-extract-import-'))
+  try {
+    for (const item of extra) {
+      await copyFile(new URL(`../../${item.from}`, import.meta.url), join(root, item.to))
+    }
+    await import(`${pathToFileURL(join(root, 'extract-runtime.mjs')).href}?test=${Date.now()}`)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })
 
 test('desktop-bridge 资源清单包含完整运行依赖闭包', async () => {

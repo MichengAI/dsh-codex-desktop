@@ -1,6 +1,6 @@
 {
   "name": "deepseek-harness-desktop",
-  "version": "1.0.42",
+  "version": "1.0.43",
   "description": "DeepSeek Harness 原生桌面启动器",
   "author": "MichengAI",
   "desktopName": "DSH Codex Desktop",
@@ -81,6 +81,10 @@
       {
         "from": "dist/src/runtime-archive.js",
         "to": "runtime-archive.js"
+      },
+      {
+        "from": "dist/src/process-control.js",
+        "to": "process-control.js"
       },
       {
         "from": "runtime-plugins/store.tgz",

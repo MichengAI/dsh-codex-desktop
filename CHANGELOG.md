@@ -4,6 +4,12 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.43 — 2026-09-01
+
+- Included `process-control.js` with the packaged first-launch extraction script so portable and installed apps can start the official runtime without a missing-module crash.
+
+Release tag: [`v1.0.43`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.43).
+
 ## 1.0.42 — 2026-09-01
 
 - Upgraded the bundled official DSH runtime and its launch peers to `0.1.2-alpha.3`.
@@ -38,12 +44,3 @@ Release tag: [`v1.0.40`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Updated the English and Chinese download, system-requirement, and development documentation for Linux x64 / ARM64 parity.
 
 Release tag: [`v1.0.39`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.39).
-
-## 1.0.38 — 2026-08-30
-
-- Updated the six bundled MichengAI products to Codex UI 0.2.94, IM Connect 0.1.26, Automation 0.1.22, Skills Manager 0.1.31, Archive Manager 0.1.19, and Agency Agents 0.1.22.
-- Updated the bundled ecosystem components to `dsh-context` 0.38.3, DSH Better Sidebar 0.17.1, MCP Connector 0.2.29, and `dshmarket` 1.38.0.
-- Refreshed the offline plugin catalog used by fresh installs and missing-package repair. Existing profiles can apply the same versions through the plugin market without the desktop silently overriding user-selected package versions.
-- Kept the bundled official DSH runtime on the current npm release, 0.1.1-rc.2; the source-only 0.1.2 Alpha remains outside the stable desktop channel.
-
-Release tag: [`v1.0.38`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.38).
