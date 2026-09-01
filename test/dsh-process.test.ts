@@ -28,7 +28,7 @@ test('DSH 未输出就绪地址时超时', async () => {
   await assertFixtureStoppedAfterFailure('silent', /DSH 启动超时/)
 })
 
-test('等待 alpha.2 分片输出完整 token 后再做健康检查', async () => {
+test('等待 alpha.2+ 分片输出完整 token 后再做健康检查', async () => {
   const server = await startFixture('authenticated')
   try {
     assert.match(server.url, /\?token=desktop-secret$/)

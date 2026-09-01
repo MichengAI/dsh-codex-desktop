@@ -203,11 +203,11 @@ test('官方运行时使用 npm 安装以兼容预发布 peer 依赖', () => {
     '--no-fund',
     '--allow-scripts=@deepseek-ai/dsh-subprocess-local,@google/genai,koffi,node-pty,protobufjs',
     '--registry=https://registry.npmjs.org/',
-    '@deepseek-ai/dsh@0.1.2-alpha.2',
+    '@deepseek-ai/dsh@0.1.2-alpha.3',
     '@deepseek-ai/cordis-plugin-group@1.0.2',
-    '@deepseek-ai/dsh-scope@0.1.2-alpha.2',
-    '@deepseek-ai/dsh-timeout@0.1.2-alpha.2',
-    '@deepseek-ai/dsh-invariants@0.1.2-alpha.2',
+    '@deepseek-ai/dsh-scope@0.1.2-alpha.3',
+    '@deepseek-ai/dsh-timeout@0.1.2-alpha.3',
+    '@deepseek-ai/dsh-invariants@0.1.2-alpha.3',
   ])
 })
 
@@ -218,11 +218,11 @@ test('npm 全局安装目录按平台归一化', () => {
 
 test('官方运行时把 DSH 和启动 peer 一起装成 npm 顶层依赖', () => {
   assert.deepEqual(officialRuntimeNpmDependencies(), {
-    '@deepseek-ai/dsh': '0.1.2-alpha.2',
+    '@deepseek-ai/dsh': '0.1.2-alpha.3',
     '@deepseek-ai/cordis-plugin-group': '1.0.2',
-    '@deepseek-ai/dsh-scope': '0.1.2-alpha.2',
-    '@deepseek-ai/dsh-timeout': '0.1.2-alpha.2',
-    '@deepseek-ai/dsh-invariants': '0.1.2-alpha.2',
+    '@deepseek-ai/dsh-scope': '0.1.2-alpha.3',
+    '@deepseek-ai/dsh-timeout': '0.1.2-alpha.3',
+    '@deepseek-ai/dsh-invariants': '0.1.2-alpha.3',
   })
 })
 
@@ -250,7 +250,7 @@ test('打包校验拒绝只嵌套在 DSH 内部的启动 peer', async () => {
   }
 })
 
-test('alpha.2 已内置权限本地化，不再应用旧 rc.2 桌面补丁', async () => {
+test('alpha.2+ 已内置权限本地化，不再应用旧 rc.2 桌面补丁', async () => {
   const prepare = await readFile(new URL('../../scripts/prepare-runtime.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(prepare, /applyOfficialRuntimePatch/)
   assert.equal(existsSync(new URL('../../patches/dsh-0.1.1-rc.2-permission-localization.patch', import.meta.url)), false)
@@ -287,7 +287,7 @@ test('首启页面会向辅助技术播报初始化阶段', async () => {
   assert.match(startup, /<h1>DSH Codex Desktop<\/h1>/)
 })
 
-test('Windows 冒烟兼容 alpha.2 启动 token 鉴权', async () => {
+test('Windows 冒烟兼容 alpha.2+ 启动 token 鉴权', async () => {
   const script = await readFile(new URL('../../scripts/smoke-package.ps1', import.meta.url), 'utf8')
   assert.match(script, /SkipHttpErrorCheck/)
   assert.match(script, /dsh web authentication required/)

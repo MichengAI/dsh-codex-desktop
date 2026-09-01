@@ -70,7 +70,7 @@ try {
     if ($page.Content -notmatch 'dsh web authentication required') {
       throw '根页面返回了未知的 HTTP 401 响应。'
     }
-    # DSH 0.1.2-alpha.2 会把随机启动 token 只交给桌面 WebContents；
+    # DSH 0.1.2-alpha.2+ 会把随机启动 token 只交给桌面 WebContents；
     # 外部冒烟请求没有它时必须被拒绝，同时应用必须仍保持运行。
     $application.Refresh()
     if ($application.HasExited) { throw '根页面通过鉴权拒绝后桌面应用意外退出。' }

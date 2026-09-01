@@ -169,7 +169,7 @@ async function waitForHttpHealth(url: string, timeoutMs: number): Promise<void> 
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     try {
-      // alpha.2 的 token URL 会先 303 并用 Set-Cookie 建立浏览器会话。
+      // alpha.2+ 的 token URL 会先 303 并用 Set-Cookie 建立浏览器会话。
       // Node fetch 不保存 Cookie；若自动跟随，会在第二跳得到 401，因此这里手动检查首跳。
       const response = await fetch(url, {
         redirect: 'manual',
