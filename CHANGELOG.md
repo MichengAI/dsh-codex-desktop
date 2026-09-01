@@ -4,6 +4,14 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.42 — 2026-09-01
+
+- Upgraded the bundled official DSH runtime and its launch peers to `0.1.2-alpha.3`.
+- Updated the bundled ecosystem to Codex UI 0.2.97, IM Connect 0.1.30, Archive Manager 0.1.22, and MCP Connector 0.2.32.
+- Hardened offline runtime initialization by sharing the bundled-plugin verifier across Windows smoke tests, waiting for the desktop ready marker on both HTTP paths, and cleaning the full extraction process tree when initialization is cancelled or times out.
+
+Release tag: [`v1.0.42`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.42).
+
 ## 1.0.41 — 2026-08-31
 
 - Fixed the offline bundle so it includes every peer required to launch the official DSH runtime without network access.
@@ -39,12 +47,3 @@ Release tag: [`v1.0.39`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Kept the bundled official DSH runtime on the current npm release, 0.1.1-rc.2; the source-only 0.1.2 Alpha remains outside the stable desktop channel.
 
 Release tag: [`v1.0.38`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.38).
-
-## 1.0.37 — 2026-08-27
-
-- Synced the light and dark desktop title bars with the Codex-style gradient and the active DSH color scheme, including Desktop Settings, Keyboard Shortcuts, and About windows.
-- Cleared native title-bar menu selection after a dismissed popup, so menu buttons no longer remain visually active after clicking elsewhere.
-- Restored Escape behavior across the DSH view and desktop settings: ordinary DSH popups keep their own Escape handling, while only the visible Settings dialog is closed by the desktop fallback.
-- Made marketplace bulk updates wait for the complete batch before recycling the DSH runtime, with a bounded timeout and safe reload fallback.
-
-Release tag: [`v1.0.37`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.37).
