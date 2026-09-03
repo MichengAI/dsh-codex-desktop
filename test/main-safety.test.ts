@@ -85,6 +85,7 @@ test('恢复模式中的健康启动不会覆盖最近正常配置检查点', as
   assert.ok(healthyBranch)
   assert.match(healthyBranch, /await completeStartupDiagnostic/)
   assert.match(healthyBranch, /if \(!isRecoveryModeActive\(profileDir\)\) \{\s+await captureProfileHealthCheckpoint\(profileDir\)/)
+  assert.match(main, /beginStartupDiagnostic\(startupDiagnosticPath\(profileDir\), startupDiagnosticStage, \{\s+mode: isRecoveryModeActive\(profileDir\) \? 'recovery' : 'normal',?\s+\}\)/)
 })
 
 test('恢复页只有在 DSH 服务就绪后才显示进入工作台操作', async () => {

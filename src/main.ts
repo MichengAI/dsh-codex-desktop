@@ -416,7 +416,9 @@ function startupDiagnosticPath(profileDir: string): string {
 
 async function beginDshStartupDiagnostic(profileDir: string): Promise<void> {
   startupDiagnosticStage = 'server-starting'
-  await beginStartupDiagnostic(startupDiagnosticPath(profileDir), startupDiagnosticStage).catch(error => {
+  await beginStartupDiagnostic(startupDiagnosticPath(profileDir), startupDiagnosticStage, {
+    mode: isRecoveryModeActive(profileDir) ? 'recovery' : 'normal',
+  }).catch(error => {
     console.error('无法记录 DSH 启动诊断。', error)
   })
 }

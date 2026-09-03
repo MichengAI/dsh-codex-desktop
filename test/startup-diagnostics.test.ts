@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -22,7 +22,7 @@ test('启动诊断记录阶段、故障插件和最近一次健康启动时间',
   const root = await mkdtemp(join(tmpdir(), 'dsh-startup-diagnostics-'))
   const path = join(root, 'startup-diagnostics.json')
   try {
-    await beginStartupDiagnostic(path, 'server-starting', '2026-09-03T00:00:00.000Z')
+    await beginStartupDiagnostic(path, 'server-starting', { startedAt: '2026-09-03T00:00:00.000Z' })
     await failStartupDiagnostic(path, {
       stage: 'renderer-loading',
       source: 'renderer',
@@ -31,6 +31,7 @@ test('启动诊断记录阶段、故障插件和最近一次健康启动时间',
     }, '2026-09-03T00:00:01.000Z')
     assert.deepEqual(await readStartupDiagnostic(path), {
       version: 1,
+      mode: 'normal',
       startedAt: '2026-09-03T00:00:00.000Z',
       stage: 'renderer-loading',
       failure: {
@@ -46,9 +47,36 @@ test('启动诊断记录阶段、故障插件和最近一次健康启动时间',
     assert.match(persisted, /"lastHealthyAt": "2026-09-03T00:00:02.000Z"/)
     assert.deepEqual(await readStartupDiagnostic(path), {
       version: 1,
+      mode: 'normal',
       startedAt: '2026-09-03T00:00:00.000Z',
       stage: 'healthy',
       lastHealthyAt: '2026-09-03T00:00:02.000Z',
+    })
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('恢复会话健康不会覆盖最近一次正常健康时间', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-startup-diagnostics-'))
+  const path = join(root, 'startup-diagnostics.json')
+  try {
+    await writeFile(path, JSON.stringify({
+      version: 1,
+      mode: 'recovery',
+      startedAt: '2026-09-03T01:00:00.000Z',
+      stage: 'renderer-loading',
+      lastHealthyAt: '2026-09-03T00:00:00.000Z',
+    }), 'utf8')
+
+    await completeStartupDiagnostic(path, '2026-09-03T01:00:02.000Z')
+
+    assert.deepEqual(await readStartupDiagnostic(path), {
+      version: 1,
+      mode: 'recovery',
+      startedAt: '2026-09-03T01:00:00.000Z',
+      stage: 'healthy',
+      lastHealthyAt: '2026-09-03T00:00:00.000Z',
     })
   } finally {
     await rm(root, { recursive: true, force: true })

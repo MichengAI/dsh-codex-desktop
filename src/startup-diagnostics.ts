@@ -8,6 +8,7 @@ const MAX_FAILURE_MESSAGE_LENGTH = 4_000
 const MAX_FAILED_PLUGINS = 100
 
 export type StartupDiagnosticStage = 'server-starting' | 'server-ready' | 'renderer-loading' | 'healthy'
+export type StartupDiagnosticMode = 'normal' | 'recovery'
 export type StartupFailureSource = 'process' | 'renderer' | 'renderer-timeout'
 
 export interface RendererBootReport {
@@ -18,6 +19,7 @@ export interface RendererBootReport {
 
 export interface StartupDiagnostic {
   version: 1
+  mode?: StartupDiagnosticMode
   startedAt: string
   stage: StartupDiagnosticStage
   lastHealthyAt?: string
@@ -36,12 +38,21 @@ export interface StartupDiagnosticFailureInput {
   plugins: string[]
 }
 
+export interface BeginStartupDiagnosticOptions {
+  mode?: StartupDiagnosticMode
+  startedAt?: string
+}
+
 function isPackageName(value: unknown): value is string {
   return typeof value === 'string' && PACKAGE_NAME_PATTERN.test(value)
 }
 
 function isStage(value: unknown): value is StartupDiagnosticStage {
   return value === 'server-starting' || value === 'server-ready' || value === 'renderer-loading' || value === 'healthy'
+}
+
+function isMode(value: unknown): value is StartupDiagnosticMode {
+  return value === 'normal' || value === 'recovery'
 }
 
 function isTimestamp(value: unknown): value is string {
@@ -81,6 +92,7 @@ function parseDiagnostic(value: unknown): StartupDiagnostic | undefined {
   if (typeof value !== 'object' || value === null) return undefined
   const diagnostic = value as Partial<StartupDiagnostic>
   if (diagnostic.version !== STARTUP_DIAGNOSTIC_VERSION || !isTimestamp(diagnostic.startedAt) || !isStage(diagnostic.stage)) return undefined
+  if (diagnostic.mode !== undefined && !isMode(diagnostic.mode)) return undefined
   if (diagnostic.lastHealthyAt !== undefined && !isTimestamp(diagnostic.lastHealthyAt)) return undefined
   if (diagnostic.failure !== undefined) {
     const failure = diagnostic.failure
@@ -106,11 +118,12 @@ async function writeStartupDiagnostic(path: string, value: StartupDiagnostic): P
 }
 
 /** 开始一轮诊断，保留上一轮已验证可用的启动时间作恢复证据。 */
-export async function beginStartupDiagnostic(path: string, stage: Exclude<StartupDiagnosticStage, 'healthy'>, startedAt = new Date().toISOString()): Promise<void> {
+export async function beginStartupDiagnostic(path: string, stage: Exclude<StartupDiagnosticStage, 'healthy'>, options: BeginStartupDiagnosticOptions = {}): Promise<void> {
   const previous = await readStartupDiagnostic(path)
   await writeStartupDiagnostic(path, {
     version: STARTUP_DIAGNOSTIC_VERSION,
-    startedAt,
+    mode: options.mode ?? 'normal',
+    startedAt: options.startedAt ?? new Date().toISOString(),
     stage,
     ...(previous?.lastHealthyAt === undefined ? {} : { lastHealthyAt: previous.lastHealthyAt }),
   })
@@ -120,6 +133,7 @@ export async function advanceStartupDiagnostic(path: string, stage: Exclude<Star
   const current = await readStartupDiagnostic(path)
   await writeStartupDiagnostic(path, {
     version: STARTUP_DIAGNOSTIC_VERSION,
+    mode: current?.mode ?? 'normal',
     startedAt: current?.startedAt ?? new Date().toISOString(),
     stage,
     ...(current?.lastHealthyAt === undefined ? {} : { lastHealthyAt: current.lastHealthyAt }),
@@ -130,6 +144,7 @@ export async function failStartupDiagnostic(path: string, input: StartupDiagnost
   const current = await readStartupDiagnostic(path)
   await writeStartupDiagnostic(path, {
     version: STARTUP_DIAGNOSTIC_VERSION,
+    mode: current?.mode ?? 'normal',
     startedAt: current?.startedAt ?? occurredAt,
     stage: input.stage,
     ...(current?.lastHealthyAt === undefined ? {} : { lastHealthyAt: current.lastHealthyAt }),
@@ -144,10 +159,14 @@ export async function failStartupDiagnostic(path: string, input: StartupDiagnost
 
 export async function completeStartupDiagnostic(path: string, healthyAt = new Date().toISOString()): Promise<void> {
   const current = await readStartupDiagnostic(path)
+  const mode = current?.mode ?? 'normal'
   await writeStartupDiagnostic(path, {
     version: STARTUP_DIAGNOSTIC_VERSION,
+    mode,
     startedAt: current?.startedAt ?? healthyAt,
     stage: 'healthy',
-    lastHealthyAt: healthyAt,
+    ...(mode === 'normal'
+      ? { lastHealthyAt: healthyAt }
+      : current?.lastHealthyAt === undefined ? {} : { lastHealthyAt: current.lastHealthyAt }),
   })
 }
