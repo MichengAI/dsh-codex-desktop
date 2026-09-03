@@ -29,13 +29,13 @@ export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
   { packageName: '@michengai/dsh-codex-ui', version: '0.2.102' },
   { packageName: '@michengai/dsh-im-connect', version: '0.1.34' },
   { packageName: '@michengai/dsh-automation', version: '0.1.26' },
-  { packageName: '@michengai/dsh-skills-manager', version: '0.1.37' },
+  { packageName: '@michengai/dsh-skills-manager', version: '0.1.38' },
   { packageName: '@michengai/dsh-archive-manager', version: '0.1.29' },
   { packageName: '@michengai/dsh-agency-agents', version: '0.1.29' },
-  { packageName: 'dsh-context', version: '0.38.5' },
-  { packageName: 'dsh-better-sidebar', version: '0.18.0-alpha.0' },
+  { packageName: 'dsh-context', version: '0.41.2' },
+  { packageName: 'dsh-better-sidebar', version: '0.18.0' },
   { packageName: 'dsh-mcp-connector', version: '0.2.32' },
-  { packageName: 'dshmarket', version: '1.38.1' },
+  { packageName: 'dshmarket', version: '1.41.0' },
 ]
 
 /** 离线 store 只放社区插件，官方运行时单独预装，避免安装包把同一份依赖打两遍。 */
