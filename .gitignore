@@ -9,6 +9,11 @@ node_modules/
 # 开发过程产物仅保留在本地。
 coverage/
 *.log
+artifacts/
+output/
+
+# 项目文档仅在本地维护，不纳入 Git 仓库。
+docs/
 
 runtime-dsh/
 runtime-dsh.tgz
