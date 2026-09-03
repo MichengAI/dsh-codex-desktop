@@ -145,10 +145,11 @@ test('运行时初始化超时会等待并清理完整子进程树', async () =>
       scriptPath,
       installDir: root,
       resourcesDir: root,
-      timeoutMs: 200,
+      timeoutMs: 2_000,
     })
+    const rejected = assert.rejects(extraction, /初始化超时/)
     grandchildPid = await waitForProcessFile(join(root, 'grandchild.pid'))
-    await assert.rejects(extraction, /初始化超时/)
+    await rejected
     await waitForProcessExit(grandchildPid)
   } finally {
     if (grandchildPid !== undefined && isProcessRunning(grandchildPid)) process.kill(grandchildPid, 'SIGKILL')
@@ -169,9 +170,10 @@ test('主动取消运行时初始化会等待并清理完整子进程树', async
       resourcesDir: root,
       signal: controller.signal,
     })
+    const rejected = assert.rejects(extraction, /初始化已取消/)
     grandchildPid = await waitForProcessFile(join(root, 'grandchild.pid'))
     controller.abort()
-    await assert.rejects(extraction, /初始化已取消/)
+    await rejected
     await waitForProcessExit(grandchildPid)
   } finally {
     if (grandchildPid !== undefined && isProcessRunning(grandchildPid)) process.kill(grandchildPid, 'SIGKILL')
