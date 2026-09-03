@@ -28,10 +28,10 @@ export const OFFICIAL_LAUNCH_PEERS: readonly BundledPlugin[] = [
 export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
   { packageName: '@michengai/dsh-codex-ui', version: '0.2.102' },
   { packageName: '@michengai/dsh-im-connect', version: '0.1.34' },
-  { packageName: '@michengai/dsh-automation', version: '0.1.26' },
+  { packageName: '@michengai/dsh-automation', version: '0.1.27' },
   { packageName: '@michengai/dsh-skills-manager', version: '0.1.38' },
   { packageName: '@michengai/dsh-archive-manager', version: '0.1.29' },
-  { packageName: '@michengai/dsh-agency-agents', version: '0.1.29' },
+  { packageName: '@michengai/dsh-agency-agents', version: '0.1.30' },
   { packageName: 'dsh-context', version: '0.41.2' },
   { packageName: 'dsh-better-sidebar', version: '0.18.0' },
   { packageName: 'dsh-mcp-connector', version: '0.2.32' },
