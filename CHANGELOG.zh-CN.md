@@ -4,6 +4,15 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.44 — 2026-09-04
+
+- 新增插件恢复模式：启动失败后隔离第三方插件，并提供独立恢复页，支持恢复、卸载或回到最近正常配置。
+- 没有仍需隔离的插件时自动退出恢复模式；恢复会话中的健康启动不再覆盖最近一次已验证的配置检查点。
+- 修复 Windows 关闭关于、设置或快捷键窗口时主窗口闪一下的问题。
+- 将内置插件更新到 Codex UI 0.2.102、IM Connect 0.1.34、Automation 0.1.27、Skills Manager 0.1.38、Archive Manager 0.1.29、Agency Agents 0.1.30、`dsh-context` 0.41.2、DSH Better Sidebar 0.18.0 和 `dshmarket` 1.41.0。
+
+发布标签：[`v1.0.44`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.44)。
+
 ## 1.0.43 — 2026-09-01
 
 - 将内置官方 DSH 运行时及其启动依赖升级到 `0.1.2-alpha.3`。
@@ -38,12 +47,3 @@
 - 更新中英文下载说明、系统要求与开发文档，使 Linux x64 / ARM64 支持保持一致。
 
 发布标签：[`v1.0.39`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.39)。
-
-## 1.0.38 — 2026-08-30
-
-- 将内置的六个 MichengAI 产品更新到 Codex UI 0.2.94、IM Connect 0.1.26、Automation 0.1.22、Skills Manager 0.1.31、Archive Manager 0.1.19 和 Agency Agents 0.1.22。
-- 将内置生态组件更新到 `dsh-context` 0.38.3、DSH Better Sidebar 0.17.1、MCP Connector 0.2.29 和 `dshmarket` 1.38.0。
-- 刷新供全新安装和缺包自修复使用的离线插件目录；已有 Profile 可通过插件市场升级到相同版本，桌面端不会静默覆盖用户主动选择的插件版本。
-- 官方 DSH 运行时继续使用 npm 当前版本 0.1.1-rc.2；仅提供源码的 0.1.2 Alpha 暂不进入桌面稳定通道。
-
-发布标签：[`v1.0.38`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.38)。
