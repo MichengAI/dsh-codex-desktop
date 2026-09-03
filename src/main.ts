@@ -450,9 +450,11 @@ async function handleRendererBootReport(value: unknown, profileDir = lastSeedOpt
     await completeStartupDiagnostic(startupDiagnosticPath(profileDir)).catch(error => {
       console.error('无法保存 DSH 健康启动证据。', error)
     })
-    await captureProfileHealthCheckpoint(profileDir).catch(error => {
-      console.error('无法保存 DSH 健康配置检查点。', error)
-    })
+    if (!isRecoveryModeActive(profileDir)) {
+      await captureProfileHealthCheckpoint(profileDir).catch(error => {
+        console.error('无法保存 DSH 健康配置检查点。', error)
+      })
+    }
     return
   }
   if (handlingRendererBootFailure || isQuitting || isRecycling) return

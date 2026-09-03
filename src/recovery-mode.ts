@@ -258,18 +258,40 @@ export async function uninstallRecoveryPlugin(profileDir: string, packageName: s
   const source = packageDirectory(profileDir, packageName)
   const trashDir = join(profileDir, RECOVERY_TRASH_DIR)
   const trash = join(trashDir, `${packageName.replace(/[@/]/g, '_')}-${randomUUID()}`)
-  const moved = existsSync(source)
-  if (moved) {
-    await mkdir(trashDir, { recursive: true })
-    await rename(source, trash)
-  }
+  const shouldMove = existsSync(source)
+  let manifestWritten = false
+  let stateWritten = false
+  let moved = false
   try {
     await writeManifest(profileDir, nextManifest)
+    manifestWritten = true
     await writeState(profileDir, nextState)
+    stateWritten = true
+    if (shouldMove) {
+      await mkdir(trashDir, { recursive: true })
+      await rename(source, trash)
+      moved = true
+    }
   } catch (error) {
-    if (moved) await rename(trash, source).catch(() => undefined)
+    const rollbackErrors: unknown[] = []
+    if (moved) {
+      await rename(trash, source).catch(rollbackError => rollbackErrors.push(rollbackError))
+    }
+    if (stateWritten) {
+      await writeState(profileDir, state).catch(rollbackError => rollbackErrors.push(rollbackError))
+    }
+    if (manifestWritten) {
+      await writeManifest(profileDir, manifest).catch(rollbackError => rollbackErrors.push(rollbackError))
+    }
+    if (rollbackErrors.length > 0) {
+      throw new AggregateError([error, ...rollbackErrors], '卸载插件失败，且未能完整回滚恢复模式配置。')
+    }
     throw error
   }
-  if (moved) await rm(trash, { recursive: true, force: true })
+  if (moved) {
+    await rm(trash, { recursive: true, force: true }).catch(error => {
+      console.error('插件已卸载，但无法清理恢复模式临时目录。', error)
+    })
+  }
   return statusFrom(nextState)
 }

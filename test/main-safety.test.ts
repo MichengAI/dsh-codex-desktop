@@ -79,6 +79,14 @@ test('恢复最近正常配置成功后退出恢复状态并直接进入工作�
   assert.match(main, /if \(destination === 'workbench'\) \{\s+await returnToWorkbenchFromRecovery\(\)\s+\} else \{\s+await showRecoveryWindow\(profileDir\)\s+\}/)
 })
 
+test('恢复模式中的健康启动不会覆盖最近正常配置检查点', async () => {
+  const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
+  const healthyBranch = main.match(/if \(report\.status === 'healthy'\) \{([\s\S]*?)\n  \}/)?.[1]
+  assert.ok(healthyBranch)
+  assert.match(healthyBranch, /await completeStartupDiagnostic/)
+  assert.match(healthyBranch, /if \(!isRecoveryModeActive\(profileDir\)\) \{\s+await captureProfileHealthCheckpoint\(profileDir\)/)
+})
+
 test('恢复页只有在 DSH 服务就绪后才显示进入工作台操作', async () => {
   const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
   const recovery = await readFile(new URL('../../assets/recovery.html', import.meta.url), 'utf8')

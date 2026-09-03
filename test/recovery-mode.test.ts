@@ -115,6 +115,20 @@ test('卸载仅允许隔离的第三方插件，并同时移除清单和磁盘�
   }
 })
 
+test('卸载先提交清单和恢复状态，再移动插件目录，并为正常异常保留回滚', async () => {
+  const source = await readFile(new URL('../../src/recovery-mode.ts', import.meta.url), 'utf8')
+  const uninstall = source.match(/export async function uninstallRecoveryPlugin[\s\S]*?\n\}/)?.[0]
+  assert.ok(uninstall)
+  const writeManifestIndex = uninstall.indexOf('await writeManifest(profileDir, nextManifest)')
+  const writeStateIndex = uninstall.indexOf('await writeState(profileDir, nextState)')
+  const renameIndex = uninstall.indexOf('await rename(source, trash)')
+  assert.ok(writeManifestIndex >= 0)
+  assert.ok(writeStateIndex > writeManifestIndex)
+  assert.ok(renameIndex > writeStateIndex)
+  assert.match(uninstall, /await writeManifest\(profileDir, manifest\)/)
+  assert.match(uninstall, /await writeState\(profileDir, state\)/)
+})
+
 test('无恢复状态时返回非活动状态', async () => {
   const { root, profile } = await createProfile()
   try {
