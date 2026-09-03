@@ -4,14 +4,15 @@
 
 The five most recent published versions are listed below.
 
-## 1.0.44 — 2026-09-04
+## 1.0.45 — 2026-09-04
 
 - Added plugin recovery mode: after a failed start the desktop isolates third-party plugins and opens a dedicated page to restore, uninstall, or return to the last healthy configuration.
 - Recovery now exits automatically when no plugins remain isolated, and a healthy recovery boot no longer overwrites the last verified configuration checkpoint.
 - Fixed a Windows flash when closing the About, Settings, or Shortcuts windows.
 - Updated bundled plugins to Codex UI 0.2.102, IM Connect 0.1.34, Automation 0.1.27, Skills Manager 0.1.38, Archive Manager 0.1.29, Agency Agents 0.1.30, `dsh-context` 0.41.2, DSH Better Sidebar 0.18.0, and `dshmarket` 1.41.0.
+- Stabilized the runtime-extraction timeout test so macOS Intel CI no longer races a 200ms deadline before the hanging child writes its PID. This supersedes the unreleased `v1.0.44` tag.
 
-Release tag: [`v1.0.44`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.44).
+Release tag: [`v1.0.45`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.45).
 
 ## 1.0.43 — 2026-09-01
 

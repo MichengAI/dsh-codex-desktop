@@ -4,14 +4,15 @@
 
 以下记录最近发布的五个版本。
 
-## 1.0.44 — 2026-09-04
+## 1.0.45 — 2026-09-04
 
 - 新增插件恢复模式：启动失败后隔离第三方插件，并提供独立恢复页，支持恢复、卸载或回到最近正常配置。
 - 没有仍需隔离的插件时自动退出恢复模式；恢复会话中的健康启动不再覆盖最近一次已验证的配置检查点。
 - 修复 Windows 关闭关于、设置或快捷键窗口时主窗口闪一下的问题。
 - 将内置插件更新到 Codex UI 0.2.102、IM Connect 0.1.34、Automation 0.1.27、Skills Manager 0.1.38、Archive Manager 0.1.29、Agency Agents 0.1.30、`dsh-context` 0.41.2、DSH Better Sidebar 0.18.0 和 `dshmarket` 1.41.0。
+- 稳住运行时解压超时测试：先挂上拒绝断言，再等孙进程 PID，避免 macOS Intel CI 在 200ms 内输掉竞态。本版取代未发布的 `v1.0.44` 标签。
 
-发布标签：[`v1.0.44`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.44)。
+发布标签：[`v1.0.45`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.45)。
 
 ## 1.0.43 — 2026-09-01
 
