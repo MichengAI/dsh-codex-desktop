@@ -14,7 +14,7 @@ import type { DshServer, StartDshOptions } from './dsh-process.js'
 import { isExternalOpenUrl, isSameOrigin } from './navigation.js'
 import { applyPendingProfileUpdates, resolvePnpmStoreDir, seedBundledPlugins, resolveWebProfileDir } from './plugin-seed.js'
 import { parseUnresolvedBundleError, removeProfileBundle, startWithProfileSelfRepair } from './profile-repair.js'
-import { enterRecoveryMode, getRecoveryStatus, isRecoveryModeActive, leaveRecoveryMode, restoreRecoveryPlugin, uninstallRecoveryPlugin } from './recovery-mode.js'
+import { enterRecoveryMode, getRecoveryStatus, isRecoveryModeActive, leaveRecoveryMode, restoreRecoveryPlugin, tryAutoLeaveRecoveryMode, uninstallRecoveryPlugin } from './recovery-mode.js'
 import { extractPluginFromStartupFailure, trimStartupLogForRecovery } from './recovery-diagnostics.js'
 import { advanceStartupDiagnostic, beginStartupDiagnostic, completeStartupDiagnostic, failStartupDiagnostic, parseRendererBootReport, readStartupDiagnostic, suspectedPluginFromRendererReport, type StartupDiagnosticStage } from './startup-diagnostics.js'
 import { captureProfileHealthCheckpoint, readProfileHealthCheckpoint, restoreProfileHealthCheckpoint } from './profile-health-checkpoint.js'
@@ -280,8 +280,7 @@ async function startApplication(): Promise<void> {
     if (started.repaired.length > 0) console.log('已自我修复损坏的插件清单：' + started.repaired.join('、'))
     profileWatcher?.stop()
     profileWatcher = watchProfileActivation(profileDir, scheduleProfileActivationRecycle, { onError: handleUnexpectedMainError })
-    if (isRecoveryModeActive(profileDir)) await showRecoveryWindow(profileDir)
-    else await createMainWindow(server.url)
+    await openWorkbenchOrRecovery(profileDir, server.url)
     const smokeReadyFile = process.env.DSH_DESKTOP_SMOKE_READY_FILE
     if (smokeReadyFile !== undefined && smokeReadyFile !== '') {
       await writeTextFile(smokeReadyFile, 'ready\n', 'utf8')
@@ -452,6 +451,9 @@ async function handleRendererBootReport(value: unknown, profileDir = lastSeedOpt
     await completeStartupDiagnostic(startupDiagnosticPath(profileDir)).catch(error => {
       console.error('无法保存 DSH 健康启动证据。', error)
     })
+    if (await maybeLeaveRecoveryMode(profileDir)) {
+      // 恢复会话已结束，允许写入新的健康检查点。
+    }
     if (!isRecoveryModeActive(profileDir)) {
       await captureProfileHealthCheckpoint(profileDir).catch(error => {
         console.error('无法保存 DSH 健康配置检查点。', error)
@@ -501,6 +503,30 @@ async function returnToWorkbenchFromRecovery(): Promise<void> {
   mainWindow?.maximize()
   mainWindow?.show()
   mainWindow?.focus()
+  if (profileDir !== undefined) await maybeLeaveRecoveryMode(profileDir)
+}
+
+function clearRecoverySessionHints(): void {
+  recoveryFailureMessage = undefined
+  recoveryFailurePlugin = undefined
+}
+
+async function maybeLeaveRecoveryMode(profileDir: string): Promise<boolean> {
+  if (!await tryAutoLeaveRecoveryMode(profileDir)) return false
+  clearRecoverySessionHints()
+  return true
+}
+
+async function openWorkbenchOrRecovery(profileDir: string, serverUrl: string): Promise<void> {
+  if (isRecoveryModeActive(profileDir)) {
+    if (await maybeLeaveRecoveryMode(profileDir)) {
+      await createMainWindow(serverUrl)
+      return
+    }
+    await showRecoveryWindow(profileDir)
+    return
+  }
+  await createMainWindow(serverUrl)
 }
 
 async function showRecoveryWindow(profileDir: string, failure?: { failureMessage?: string, failurePlugin?: string }): Promise<void> {
@@ -635,8 +661,7 @@ async function recycleDshForPluginUpdate(): Promise<void> {
     })
     server = started.result
     await advanceDshStartupDiagnostic(seedOptions.profileDir, 'server-ready')
-    if (isRecoveryModeActive(seedOptions.profileDir)) await showRecoveryWindow(seedOptions.profileDir)
-    else await createMainWindow(server.url)
+    await openWorkbenchOrRecovery(seedOptions.profileDir, server.url)
   } catch (error) {
     await reportStartupFailure(error, seedOptions.profileDir)
   } finally {
@@ -1005,8 +1030,7 @@ function installRecoveryIpc(): void {
     const profileDir = requireRecoveryProfile(event.sender)
     await restoreProfileHealthCheckpoint(profileDir)
     await leaveRecoveryMode(profileDir)
-    recoveryFailureMessage = undefined
-    recoveryFailurePlugin = undefined
+    clearRecoverySessionHints()
     await restartDshInRecoveryMode(profileDir, 'workbench')
     return recoveryPageStatus(profileDir)
   })
@@ -1506,6 +1530,14 @@ function removeNativeWindowMenu(window: BrowserWindow): void {
   window.setMenuBarVisibility(false)
 }
 
+/** Windows 关闭 parent/modal 子窗时会 EnableWindow 主窗，自定义标题栏会整窗闪一下。关闭前先断开归属。 */
+function preventWindowsOwnedWindowFlash(window: BrowserWindow): void {
+  window.on('close', () => {
+    if (process.platform !== 'win32' || window.isDestroyed() || window.getParentWindow() === null) return
+    window.setParentWindow(null)
+  })
+}
+
 function showDesktopSettingsWindow(section: DesktopSettingsSection = 'notifications'): void {
   if (settingsWindow !== undefined && !settingsWindow.isDestroyed()) {
     settingsWindow.show()
@@ -1525,6 +1557,7 @@ function showDesktopSettingsWindow(section: DesktopSettingsSection = 'notificati
     webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
   })
   removeNativeWindowMenu(window)
+  preventWindowsOwnedWindowFlash(window)
   settingsWindow = window
   window.on('closed', () => { if (settingsWindow === window) settingsWindow = undefined })
   installShortcutHandler(window.webContents)
@@ -1552,6 +1585,7 @@ function showShortcutsWindow(): void {
     webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
   })
   removeNativeWindowMenu(window)
+  preventWindowsOwnedWindowFlash(window)
   shortcutsWindow = window
   window.on('closed', () => { if (shortcutsWindow === window) shortcutsWindow = undefined })
   installShortcutHandler(window.webContents)
@@ -1586,6 +1620,7 @@ function showAboutWindow(): void {
     webPreferences: { contextIsolation: true, nodeIntegration: false, preload: resolvePreload('shell-preload.cjs'), sandbox: true },
   })
   removeNativeWindowMenu(window)
+  preventWindowsOwnedWindowFlash(window)
   aboutWindow = window
   window.on('closed', () => { if (aboutWindow === window) aboutWindow = undefined })
   installShortcutHandler(window.webContents)

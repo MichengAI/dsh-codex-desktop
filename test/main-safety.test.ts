@@ -18,7 +18,7 @@ test('缺少离线 store 时仍执行官方清理和补种入口', async () => {
 test('主窗口导航完成前不结束启动或插件热重载', async () => {
   const source = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
   // 恢复页使用专用导航：DSH 页面确认可用后才切换内容视图。
-  assert.equal((source.match(/await createMainWindow\(server\.url\)/g) ?? []).length, 2)
+  assert.equal((source.match(/await openWorkbenchOrRecovery\(/g) ?? []).length, 2)
   assert.match(source, /isRecycling = true\s+broadcastShellState\(\)\s+try \{\s+await showStartupWindow\(desktopText\('加载中', 'Loading'\)\)/)
   assert.match(source, /console\.error\('显示启动错误页面失败。'/)
   assert.match(source, /will-navigate'[\s\S]*?windowNavigation\.isNavigating\(\)[\s\S]*?event\.preventDefault\(\)/)
@@ -70,13 +70,21 @@ test('恢复页返回工作台会先确认 DSH 页面可用再切换视图', asy
   assert.match(main, /await windowNavigation\.navigate\(view, \(\) => view\.webContents\.loadURL\(running\.url\)\)/)
   assert.match(main, /advanceDshStartupDiagnostic\(profileDir, 'renderer-loading'\)/)
   assert.match(main, /startRendererHealthTimer\(profileDir\)/)
-  assert.match(main, /showDshContentView\(\)\s+mainWindow\?\.maximize\(\)\s+mainWindow\?\.show\(\)\s+mainWindow\?\.focus\(\)/)
+  assert.match(main, /showDshContentView\(\)\s+mainWindow\?\.maximize\(\)\s+mainWindow\?\.show\(\)\s+mainWindow\?\.focus\(\)\s+if \(profileDir !== undefined\) await maybeLeaveRecoveryMode\(profileDir\)/)
 })
 
 test('恢复最近正常配置成功后退出恢复状态并直接进入工作台', async () => {
   const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
-  assert.match(main, /restoreProfileHealthCheckpoint\(profileDir\)\s+await leaveRecoveryMode\(profileDir\)\s+recoveryFailureMessage = undefined\s+recoveryFailurePlugin = undefined\s+await restartDshInRecoveryMode\(profileDir, 'workbench'\)/)
+  assert.match(main, /restoreProfileHealthCheckpoint\(profileDir\)\s+await leaveRecoveryMode\(profileDir\)\s+clearRecoverySessionHints\(\)\s+await restartDshInRecoveryMode\(profileDir, 'workbench'\)/)
   assert.match(main, /if \(destination === 'workbench'\) \{\s+await returnToWorkbenchFromRecovery\(\)\s+\} else \{\s+await showRecoveryWindow\(profileDir\)\s+\}/)
+})
+
+test('没有隔离插件时启动会自动退出恢复模式并进入工作台', async () => {
+  const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
+  assert.match(main, /async function openWorkbenchOrRecovery\(profileDir: string, serverUrl: string\): Promise<void>/)
+  assert.match(main, /if \(isRecoveryModeActive\(profileDir\)\) \{\s+if \(await maybeLeaveRecoveryMode\(profileDir\)\) \{\s+await createMainWindow\(serverUrl\)\s+return\s+\}\s+await showRecoveryWindow\(profileDir\)/)
+  assert.match(main, /await openWorkbenchOrRecovery\(profileDir, server\.url\)/)
+  assert.match(main, /await openWorkbenchOrRecovery\(seedOptions\.profileDir, server\.url\)/)
 })
 
 test('恢复模式中的健康启动不会覆盖最近正常配置检查点', async () => {
@@ -84,6 +92,7 @@ test('恢复模式中的健康启动不会覆盖最近正常配置检查点', as
   const healthyBranch = main.match(/if \(report\.status === 'healthy'\) \{([\s\S]*?)\n  \}/)?.[1]
   assert.ok(healthyBranch)
   assert.match(healthyBranch, /await completeStartupDiagnostic/)
+  assert.match(healthyBranch, /await maybeLeaveRecoveryMode\(profileDir\)/)
   assert.match(healthyBranch, /if \(!isRecoveryModeActive\(profileDir\)\) \{\s+await captureProfileHealthCheckpoint\(profileDir\)/)
   assert.match(main, /beginStartupDiagnostic\(startupDiagnosticPath\(profileDir\), startupDiagnosticStage, \{\s+mode: isRecoveryModeActive\(profileDir\) \? 'recovery' : 'normal',?\s+\}\)/)
 })
@@ -145,6 +154,8 @@ test('关于窗口使用独立丰富页面并进入打包资源', async () => {
   assert.match(main, /frame: false/)
   assert.match(main, /minimizable: false/)
   assert.match(main, /maximizable: false/)
+  assert.match(main, /function preventWindowsOwnedWindowFlash/)
+  assert.match(main, /window\.setParentWindow\(null\)/)
 })
 
 test('桌面通知和更新设置使用独立窗口并进入打包资源', async () => {

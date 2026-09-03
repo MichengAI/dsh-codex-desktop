@@ -143,6 +143,18 @@ export function isRecoveryModeActive(profileDir: string): boolean {
   }
 }
 
+/** 没有仍需隔离的第三方插件时，恢复会话可以结束。 */
+export function canAutoLeaveRecoveryMode(status: RecoveryStatus): boolean {
+  return status.active && status.isolated.length === 0
+}
+
+export async function tryAutoLeaveRecoveryMode(profileDir: string): Promise<boolean> {
+  const status = await getRecoveryStatus(profileDir)
+  if (!canAutoLeaveRecoveryMode(status)) return false
+  await leaveRecoveryMode(profileDir)
+  return true
+}
+
 export async function getRecoveryStatus(profileDir: string): Promise<RecoveryStatus> {
   return statusFrom(await readState(profileDir))
 }

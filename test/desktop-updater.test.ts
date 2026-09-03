@@ -108,7 +108,7 @@ test('主进程在窗口稳定后按策略安排启动检查', async () => {
   assert.doesNotMatch(main, /import \{ autoUpdater \} from 'electron-updater'/)
   assert.match(main, /autoDownload = false/)
   assert.match(main, /function checkDesktopUpdate/)
-  const startupView = main.indexOf('await createMainWindow(server.url)')
+  const startupView = main.indexOf('await openWorkbenchOrRecovery(profileDir, server.url)')
   const startupCheck = main.indexOf('scheduleStartupUpdateCheck()', startupView)
   assert.equal(startupView >= 0 && startupCheck > startupView, true)
   assert.match(main, /shouldCheckForUpdatesOnStartup\(updatePreferences, app\.isPackaged\)/)

@@ -5,11 +5,13 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import {
+  canAutoLeaveRecoveryMode,
   enterRecoveryMode,
   getRecoveryStatus,
   isRecoveryModeActive,
   leaveRecoveryMode,
   restoreRecoveryPlugin,
+  tryAutoLeaveRecoveryMode,
   uninstallRecoveryPlugin,
 } from '../src/recovery-mode.js'
 import { finalizeProfileBundlesAfterInstall } from '../src/plugin-seed.js'
@@ -148,6 +150,32 @@ test('退出恢复模式只清理恢复状态，不删除已安装插件', async
     assert.equal(existsSync(join(profile, '.dsh-desktop-recovery.json')), false)
     assert.equal(existsSync(join(profile, '.dsh-desktop-recovery.package.json')), false)
     assert.equal(existsSync(join(profile, 'node_modules', 'third-party-plugin')), true)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('没有隔离插件时可以自动退出恢复模式', async () => {
+  const { root, profile } = await createProfile()
+  try {
+    await enterRecoveryMode(profile)
+    await uninstallRecoveryPlugin(profile, 'third-party-plugin')
+    const status = await getRecoveryStatus(profile)
+    assert.equal(canAutoLeaveRecoveryMode(status), true)
+    assert.equal(await tryAutoLeaveRecoveryMode(profile), true)
+    assert.equal(isRecoveryModeActive(profile), false)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('仍有隔离插件时不能自动退出恢复模式', async () => {
+  const { root, profile } = await createProfile()
+  try {
+    const status = await enterRecoveryMode(profile)
+    assert.equal(canAutoLeaveRecoveryMode(status), false)
+    assert.equal(await tryAutoLeaveRecoveryMode(profile), false)
+    assert.equal(isRecoveryModeActive(profile), true)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
