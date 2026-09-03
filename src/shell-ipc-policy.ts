@@ -19,6 +19,10 @@ export function mayReportDshState(kind: ShellRendererKind): boolean {
   return kind === 'dsh'
 }
 
+export function mayReportDshBoot(kind: ShellRendererKind): boolean {
+  return kind === 'dsh'
+}
+
 export function mayReportDshNotification(kind: ShellRendererKind): boolean {
   return kind === 'dsh'
 }

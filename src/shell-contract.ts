@@ -9,6 +9,7 @@ export const SHELL_IPC = {
   state: 'dsh-shell:state',
   bootstrap: 'dsh-shell:bootstrap',
   dshAction: 'dsh-shell:dsh-action',
+  dshBoot: 'dsh-shell:dsh-boot',
   dshLocale: 'dsh-shell:dsh-locale',
   dshTheme: 'dsh-shell:dsh-theme',
   dshSettingsVisibility: 'dsh-shell:dsh-settings-visibility',

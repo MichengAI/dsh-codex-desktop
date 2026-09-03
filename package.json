@@ -21,7 +21,7 @@
       "linux-arm64": "23A5637C2470FDE09FCC1ACC77C1B92E04E3D7E3E6E80FF7DF6F5831958D1477",
       "linux-x64": "89AF8424DD53E560B1933F87BA650D8BF57C83CA5A04600EEFB31F416AABBAE7"
     },
-    "bundledDshVersion": "0.1.2-alpha.3"
+    "bundledDshVersion": "0.1.2-rc.1"
   },
   "main": "dist/src/main.js",
   "scripts": {
@@ -37,8 +37,8 @@
   },
   "devDependencies": {
     "@electron/notarize": "3.1.1",
-    "@types/node": "26.4.0",
-    "electron": "44.0.0",
+    "@types/node": "26.4.1",
+    "electron": "44.1.1",
     "electron-builder": "26.15.7",
     "typescript": "7.0.2"
   },
@@ -119,6 +119,10 @@
         "to": "startup.html"
       },
       {
+        "from": "assets/recovery.html",
+        "to": "recovery.html"
+      },
+      {
         "from": "assets/shell.html",
         "to": "shell.html"
       },
@@ -161,6 +165,7 @@
           "plugin-seed.js",
           "plugin-toolchain.js",
           "profile-updates.js",
+          "recovery-mode.js",
           "process-control.js",
           "readiness.js",
           "runtime-archive.js",

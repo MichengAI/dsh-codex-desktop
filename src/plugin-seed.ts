@@ -1,10 +1,12 @@
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 
 import { writeTextFileAtomic, writeTextFileAtomicSync } from './atomic-file.js'
+import { restrictProfileBundlesForRecovery } from './recovery-mode.js'
 import {
   BUNDLED_PLUGINS,
   OFFICIAL_DSH_VERSION,
@@ -522,7 +524,7 @@ function readMarketDisabledPackages(profileDir: string): ReadonlySet<string> {
   }
 }
 
-/** 未声明或缺包的社区 bundle 会让 DSH 直接退出；启动前摘掉，官方 bundle 仍由运行时解析。 */
+/** 未声明、缺包或清单损坏的社区 bundle 会让 DSH 直接退出；启动前隔离，官方 bundle 仍由运行时解析。 */
 export async function pruneMissingProfileBundles(profileDir: string, extraDirs: readonly string[] = []): Promise<string[]> {
   const manifestPath = join(profileDir, 'package.json')
   if (!existsSync(manifestPath)) return []
@@ -538,6 +540,9 @@ export async function pruneMissingProfileBundles(profileDir: string, extraDirs: 
     || (dependencies.has(packageName) && isResolvableProfileBundle(profileDir, packageName, extraDirs)))
   const removed = current.filter((packageName) => !next.includes(packageName))
   if (removed.length === 0) return []
+  const nextDependencies = { ...(manifest.dependencies ?? {}) }
+  for (const packageName of removed) delete nextDependencies[packageName]
+  manifest.dependencies = nextDependencies
   manifest.dsh = { ...manifest.dsh, profile: { ...manifest.dsh?.profile, bundles: next } }
   await writeTextFileAtomic(manifestPath, `${JSON.stringify(manifest, undefined, 2)}\n`)
   return removed
@@ -547,19 +552,78 @@ export async function pruneMissingProfileBundles(profileDir: string, extraDirs: 
 export async function finalizeProfileBundlesAfterInstall(profileDir: string, extraDirs: readonly string[] = [], packageNames?: readonly string[]): Promise<{ removed: string[]; bundles: string[] }> {
   const removed = await pruneMissingProfileBundles(profileDir, extraDirs)
   const bundles = await reconcileProfileBundles(profileDir, packageNames)
-  return { removed, bundles }
+  if (!await restrictProfileBundlesForRecovery(profileDir)) return { removed, bundles }
+  const manifest = JSON.parse(await readFile(join(profileDir, 'package.json'), 'utf8')) as {
+    dsh?: { profile?: { bundles?: string[] } }
+  }
+  return { removed, bundles: manifest.dsh?.profile?.bundles ?? [] }
 }
 
 export function isResolvableProfileBundle(profileDir: string, packageName: string, extraDirs: readonly string[] = []): boolean {
   if ((OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(packageName)) return true
-  return [profileDir, ...extraDirs].some((dir) => existsSync(join(dir, 'node_modules', ...packageName.split('/'), 'package.json')))
+  return [profileDir, ...extraDirs].some((dir) => hasBundleManifest(dir, packageName))
+}
+
+/** 官方 bundle 位于 @deepseek-ai/dsh 的依赖树中，须按运行时的实际解析规则验证。 */
+export function assertOfficialProfileBundlesAvailable(profileDir: string, runtimeDirs: readonly string[]): void {
+  if (runtimeDirs.length === 0) return
+  let bundles: string[]
+  try {
+    const manifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: unknown } } }
+    bundles = Array.isArray(manifest.dsh?.profile?.bundles)
+      ? manifest.dsh.profile.bundles.filter((value): value is string => typeof value === 'string')
+      : []
+  } catch {
+    return
+  }
+  const missing = bundles
+    .filter((bundle): bundle is typeof OFFICIAL_PROFILE_BUNDLES[number] => (OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(bundle))
+    .filter(bundle => !runtimeDirs.some(runtimeDir => hasOfficialRuntimeBundle(runtimeDir, bundle)))
+  if (missing.length > 0) throw new Error(`官方运行时安装不完整：缺少内置 bundle ${missing.join('、')}。请重新启动应用以修复官方运行时。`)
+}
+
+function hasOfficialRuntimeBundle(runtimeDir: string, packageName: string): boolean {
+  const dshManifestPath = join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')
+  if (!existsSync(dshManifestPath)) return false
+  try {
+    const resolvedManifestPath = createRequire(dshManifestPath).resolve(`${packageName}/package.json`)
+    const packageDir = dirname(resolvedManifestPath)
+    const manifest = JSON.parse(readFileSync(resolvedManifestPath, 'utf8')) as { name?: unknown, dsh?: { bundle?: { patch?: unknown } } }
+    const patch = manifest.dsh?.bundle?.patch
+    return manifest.name === packageName && typeof patch === 'string' && patch.trim() !== '' && isPackageFile(packageDir, patch)
+  } catch {
+    return false
+  }
 }
 
 function hasBundleManifest(profileDir: string, packageName: string): boolean {
-  const manifestPath = join(profileDir, 'node_modules', ...packageName.split('/'), 'package.json')
+  const packageDir = join(profileDir, 'node_modules', ...packageName.split('/'))
+  const manifestPath = join(packageDir, 'package.json')
   if (!existsSync(manifestPath)) return false
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { dsh?: { bundle?: { patch?: string } } }
-  return typeof manifest.dsh?.bundle?.patch === 'string'
+  try {
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      name?: unknown
+      dsh?: { bundle?: { patch?: unknown } }
+    }
+    const patch = manifest.dsh?.bundle?.patch
+    if (manifest.name !== packageName || typeof patch !== 'string' || patch.trim() === '') return false
+    return isPackageFile(packageDir, patch)
+  } catch {
+    return false
+  }
+}
+
+/** bundle patch 只能读取插件目录内的普通文件，避免半安装与路径逃逸进入 DSH 加载图。 */
+function isPackageFile(packageDir: string, candidate: string): boolean {
+  try {
+    const packageRoot = realpathSync(packageDir)
+    const target = realpathSync(resolve(packageDir, candidate))
+    const pathFromRoot = relative(packageRoot, target)
+    if (pathFromRoot === '' || pathFromRoot === '..' || pathFromRoot.startsWith('..' + sep) || isAbsolute(pathFromRoot)) return false
+    return statSync(target).isFile()
+  } catch {
+    return false
+  }
 }
 
 async function readProfilePluginNames(profileDir: string): Promise<{ declared: string[]; installed: string[] }> {

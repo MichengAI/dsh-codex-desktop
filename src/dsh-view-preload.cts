@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron') as typeof import('ele
 
 const IPC = {
   dshAction: 'dsh-shell:dsh-action',
+  dshBoot: 'dsh-shell:dsh-boot',
   dshLocale: 'dsh-shell:dsh-locale',
   dshTheme: 'dsh-shell:dsh-theme',
   dshSettingsVisibility: 'dsh-shell:dsh-settings-visibility',
@@ -187,6 +188,9 @@ contextBridge.exposeInMainWorld('dshDesktopShell', {
   },
   reportState: (state: unknown) => {
     ipcRenderer.send(IPC.dshState, state)
+  },
+  reportBoot: (report: unknown) => {
+    ipcRenderer.send(IPC.dshBoot, report)
   },
   reportNotification: (event: unknown) => {
     ipcRenderer.send(IPC.dshNotification, event)

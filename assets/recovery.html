@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DSH Codex Desktop 恢复</title>
+  <style>
+    :root{color-scheme:light dark;font-family:"Segoe UI","Microsoft YaHei UI",sans-serif;--canvas:#f5f6f8;--surface:#ffffff;--surface-subtle:#f8f9fa;--line:#d9dde3;--text:#20242a;--text-muted:#5f6873;--primary:#0866c6;--primary-hover:#0756a6;--primary-text:#ffffff;--danger:#b42318;--danger-fill:#b42318;--danger-surface:#fff2f0;--danger-line:#f0b9b2;--focus:#0756a6;--dialog-backdrop:rgba(24,28,33,.3);--shadow:0 14px 38px rgba(24,28,33,.12)}
+    :root[data-color-scheme="dark"]{--canvas:#1b1d20;--surface:#24272b;--surface-subtle:#1f2226;--line:#41464d;--text:#f2f4f6;--text-muted:#b2bac4;--primary:#69b3ff;--primary-hover:#8ac4ff;--primary-text:#10253b;--danger:#ffb4aa;--danger-fill:#ba1a1a;--danger-surface:#3a2424;--danger-line:#8b514b;--focus:#a5d0ff;--dialog-backdrop:rgba(0,0,0,.56);--shadow:0 14px 38px rgba(0,0,0,.32)}
+    *{box-sizing:border-box}html,body{min-width:0;min-height:100%;margin:0}body{min-height:100vh;background:var(--canvas);color:var(--text)}button{min-height:40px;padding:0 14px;border:1px solid transparent;border-radius:4px;background:transparent;color:inherit;font:inherit;cursor:pointer;touch-action:manipulation;transition:background-color 140ms ease,border-color 140ms ease,opacity 140ms ease}button:focus-visible{outline:3px solid var(--focus);outline-offset:3px}button:disabled{cursor:wait;opacity:.62}
+    main{width:min(820px,calc(100% - 48px));margin:0 auto;padding:28px 0 24px}.page-header{padding-bottom:20px;border-bottom:1px solid var(--line)}h1{margin:0;font-size:26px;line-height:1.3;font-weight:600}p{max-width:680px;margin:8px 0 0;color:var(--text-muted);font-size:15px;line-height:1.55}.summary{display:flex;align-items:center;gap:10px;margin:16px 0 0;font-size:14px;font-weight:600}.status{display:inline-flex;align-items:center;min-height:24px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;background:var(--surface-subtle);color:var(--text-muted);font-size:12px;font-weight:600}.status.active{border-color:var(--primary);color:var(--primary)}
+    .section{padding:18px 0;border-bottom:1px solid var(--line)}.section:last-child{border-bottom:0}.section-heading{margin:0;font-size:16px;line-height:1.4;font-weight:600}.error-box{max-height:120px;overflow:auto;margin:10px 0 0;padding:10px 12px;border:1px solid var(--danger-line);border-radius:4px;background:var(--danger-surface);color:var(--text);font-family:Consolas,"Cascadia Mono",monospace;font-size:12px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}.startup-log{max-height:280px;margin-top:10px;border-color:var(--line);background:var(--surface-subtle)}.section-note{margin-top:6px;font-size:14px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.primary{min-width:156px;background:var(--primary);color:var(--primary-text);font-weight:600}.primary:hover:not(:disabled){background:var(--primary-hover)}.secondary{border-color:var(--line);background:var(--surface);color:var(--text)}.secondary:hover:not(:disabled){background:var(--surface-subtle)}.notice{min-height:18px;margin-top:8px;font-size:14px}.notice[role="alert"]{color:var(--danger);font-weight:500}
+    .plugin-list{margin-top:12px;border:1px solid var(--line);border-radius:4px;background:var(--surface);overflow:hidden}.plugin-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}.plugin-row:last-child{border-bottom:0}.plugin-row.suspected{background:var(--danger-surface)}.plugin-name{min-width:0;font-size:14px;font-weight:600;overflow-wrap:anywhere}.plugin-meta{margin-top:3px;color:var(--text-muted);font-family:Consolas,"Cascadia Mono",monospace;font-size:12px}.suspected-note{margin-top:4px;color:var(--danger);font-size:13px;font-weight:600}.row-actions{display:flex;gap:8px}.row-actions button{min-height:36px;padding:0 10px;font-size:13px}.restore{border-color:var(--primary);color:var(--primary)}.restore:hover:not(:disabled){background:var(--surface-subtle)}.remove{border-color:var(--danger-line);color:var(--danger)}.remove:hover:not(:disabled){background:var(--danger-surface)}.empty{padding:13px 12px;color:var(--text-muted);font-size:14px}
+    dialog{width:min(460px,calc(100% - 32px));padding:24px;border:1px solid var(--line);border-radius:5px;background:var(--surface);color:var(--text);box-shadow:var(--shadow)}dialog::backdrop{background:var(--dialog-backdrop)}dialog h2{margin:0;font-size:19px;line-height:1.4}dialog p{margin-top:10px}.dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.dialog-actions button{min-height:32px;padding:0 10px;font-size:13px}.dialog-actions .primary{min-width:0}.danger{background:var(--danger-fill);color:#fff;font-weight:600}.danger:hover:not(:disabled){opacity:.88}
+    @media (max-width:600px){main{width:calc(100% - 32px);padding-top:36px}.plugin-row{grid-template-columns:1fr}.row-actions{justify-content:flex-start}.actions button{flex:1;min-width:0}}
+    @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <main id="main-content" tabindex="-1">
+    <header class="page-header">
+      <h1>DSH Codex Desktop 恢复</h1>
+      <p>当前配置无法正常启动。你可以查看启动错误，以恢复模式重新启动，并处理已隔离的第三方插件。</p>
+      <div class="summary"><span>当前配置：web</span><span class="status" id="status">正在检查</span></div>
+    </header>
+
+    <section class="section" id="startup-error-section" aria-labelledby="error-heading">
+      <h2 class="section-heading" id="error-heading">启动错误</h2>
+      <pre class="error-box" id="failure-message" role="alert">正在读取启动错误。</pre>
+      <pre class="error-box startup-log" id="startup-log" hidden>正在读取启动日志。</pre>
+    </section>
+
+    <section class="section" aria-labelledby="recovery-heading">
+      <h2 class="section-heading" id="recovery-heading">恢复操作</h2>
+      <p class="section-note" id="recovery-description">正在读取恢复状态。</p>
+      <div class="actions">
+        <button class="primary" id="primary-action">启动恢复模式</button>
+        <button class="secondary" id="show-log">显示完整启动日志</button>
+        <button class="secondary" id="restore-healthy-config" hidden>恢复最近正常配置</button>
+      </div>
+      <p class="notice" id="notice" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="section" aria-labelledby="plugins-heading">
+      <h2 class="section-heading" id="plugins-heading">已隔离的插件</h2>
+      <p class="section-note" id="plugins-description">确认启动恢复模式后，第三方插件会在不删除配置的情况下隔离。</p>
+      <div class="plugin-list" id="plugin-list"></div>
+    </section>
+  </main>
+
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <h2 id="confirm-title">卸载此插件？</h2>
+    <p id="confirm-message"></p>
+    <div class="dialog-actions"><button class="secondary" id="cancel-uninstall">取消</button><button class="danger" id="confirm-uninstall">确认卸载</button></div>
+  </dialog>
+  <dialog id="confirm-healthy-dialog" aria-labelledby="confirm-healthy-title">
+    <h2 id="confirm-healthy-title">恢复最近正常配置？</h2>
+    <p>这会覆盖当前 Profile 的插件清单和组合配置，不会删除会话、项目或插件文件。</p>
+    <div class="dialog-actions"><button class="secondary" id="cancel-healthy-restore">取消</button><button class="primary" id="confirm-healthy-restore">确认恢复</button></div>
+  </dialog>
+
+  <script>
+    const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyColorScheme = () => { document.documentElement.dataset.colorScheme = colorScheme.matches ? 'dark' : 'light'; };
+    applyColorScheme();
+    colorScheme.addEventListener('change', applyColorScheme);
+
+    const api = window.dshRecovery;
+    const main = document.getElementById('main-content');
+    const status = document.getElementById('status');
+    const startupErrorSection = document.getElementById('startup-error-section');
+    const failureMessage = document.getElementById('failure-message');
+    const recoveryDescription = document.getElementById('recovery-description');
+    const primaryAction = document.getElementById('primary-action');
+    const showLog = document.getElementById('show-log');
+    const restoreHealthyConfigButton = document.getElementById('restore-healthy-config');
+    const startupLog = document.getElementById('startup-log');
+    const pluginsDescription = document.getElementById('plugins-description');
+    const pluginList = document.getElementById('plugin-list');
+    const notice = document.getElementById('notice');
+    const dialog = document.getElementById('confirm-dialog');
+    const confirmMessage = document.getElementById('confirm-message');
+    const cancelUninstall = document.getElementById('cancel-uninstall');
+    const confirmUninstall = document.getElementById('confirm-uninstall');
+    const healthyDialog = document.getElementById('confirm-healthy-dialog');
+    const cancelHealthyRestore = document.getElementById('cancel-healthy-restore');
+    const confirmHealthyRestore = document.getElementById('confirm-healthy-restore');
+    let currentState;
+    let uninstallTarget;
+    let startupLogVisible = false;
+
+    const escapeHtml = value => String(value ?? '').replace(/[&<'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+    const setNotice = (message, error = false) => { notice.textContent = message; notice.setAttribute('role', error ? 'alert' : 'status'); };
+    const setButtonLoading = (button, loadingText) => { const label = button.textContent; button.disabled = true; button.setAttribute('aria-busy', 'true'); button.textContent = loadingText; return label; };
+    const resetButton = (button, label) => { button.disabled = false; button.removeAttribute('aria-busy'); button.textContent = label; };
+
+    async function refresh() {
+      try {
+        currentState = await api.getStatus();
+        render(currentState);
+      } catch (error) {
+        failureMessage.textContent = '无法读取恢复状态。请重新启动应用后再试。';
+        setNotice('无法读取恢复状态。', true);
+      }
+    }
+
+    function pluginRows(plugins, suspectedPlugin) {
+      if (plugins.length === 0) return '<div class="empty">没有需要处理的第三方插件。</div>';
+      return plugins.map(plugin => {
+        const suspected = plugin.packageName === suspectedPlugin;
+        const name = escapeHtml(plugin.packageName);
+        return `<article class="plugin-row${suspected ? ' suspected' : ''}"><div><div class="plugin-name">${name}</div><div class="plugin-meta">${escapeHtml(plugin.version || '未知版本')} · 已隔离，未加载</div>${suspected ? '<div class="suspected-note">检测到可能导致启动失败的插件，建议卸载。</div>' : ''}</div><div class="row-actions">${suspected ? `<button class="remove" data-action="uninstall" data-name="${name}">卸载此插件</button><button class="restore" data-action="restore" data-name="${name}">仍要恢复</button>` : `<button class="restore" data-action="restore" data-name="${name}">恢复并重启</button><button class="remove" data-action="uninstall" data-name="${name}">卸载</button>`}</div></article>`;
+      }).join('');
+    }
+
+    function render(state) {
+      const canEnterWorkbench = state.active && state.running;
+      const needsRetry = state.active && !state.running;
+      const hasFailure = typeof state.failureMessage === 'string' && state.failureMessage.trim() !== '';
+      status.textContent = canEnterWorkbench ? '恢复模式已就绪' : needsRetry ? '恢复模式未就绪' : '启动失败';
+      status.classList.toggle('active', canEnterWorkbench);
+      startupErrorSection.hidden = !hasFailure;
+      showLog.hidden = !hasFailure;
+      if (!hasFailure) {
+        startupLog.hidden = true;
+        startupLogVisible = false;
+      } else {
+        failureMessage.textContent = state.failureMessage;
+      }
+      restoreHealthyConfigButton.hidden = !state.checkpoint;
+      if (canEnterWorkbench) {
+        recoveryDescription.textContent = '恢复模式正在运行。第三方插件仍处于隔离状态，你可以进入工作台继续使用。';
+        primaryAction.textContent = '进入工作台';
+      } else if (needsRetry) {
+        recoveryDescription.textContent = '第三方插件已隔离，但 DSH 服务尚未就绪。查看日志后可重试恢复模式。';
+        primaryAction.textContent = '重试恢复模式';
+      } else {
+        recoveryDescription.textContent = '恢复模式只加载已验证的内置插件，并隔离第三方插件，不会删除会话、项目或设置。';
+        primaryAction.textContent = '启动恢复模式';
+      }
+      const isolated = state.isolated || [];
+      const suspected = state.suspectedPlugin;
+      pluginsDescription.textContent = state.active
+        ? suspected && isolated.some(plugin => plugin.packageName === suspected)
+          ? `已定位到可能导致本次失败的插件：${suspected}。建议卸载后再进入工作台。`
+          : `${isolated.length} 个第三方插件已隔离，当前不会加载。`
+        : suspected
+          ? `检测到可能导致本次失败的插件：${suspected}。启动恢复模式后可确认卸载。`
+          : '确认启动恢复模式后，第三方插件会在不删除配置的情况下隔离。';
+      pluginList.innerHTML = state.active ? pluginRows(isolated, suspected) : '<div class="empty">启动恢复模式后，可在这里恢复或卸载已隔离的插件。</div>';
+      bindPluginActions();
+    }
+
+    function bindPluginActions() {
+      pluginList.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => {
+        const name = button.dataset.name;
+        if (!name) return;
+        if (button.dataset.action === 'restore') void restorePlugin(name, button);
+        if (button.dataset.action === 'uninstall') {
+          uninstallTarget = name;
+          confirmMessage.textContent = `“${name}”将从当前配置中移除。卸载后需要重新安装才能恢复。`;
+          dialog.showModal();
+        }
+      }));
+    }
+
+    async function startOrEnterWorkbench() {
+      const label = setButtonLoading(primaryAction, currentState?.active && currentState?.running ? '正在打开工作台…' : '正在启动…');
+      try {
+        if (currentState?.active && currentState?.running) {
+          setNotice('正在打开工作台…');
+          await api.returnToWorkbench();
+          return;
+        }
+        setNotice('正在重新启动 DSH，最长等待 45 秒。');
+        await api.activate();
+        await refresh();
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : '操作失败，请查看启动日志。', true);
+        await refresh();
+      } finally {
+        if (currentState) render(currentState);
+        else resetButton(primaryAction, label);
+      }
+    }
+
+    async function restorePlugin(name, button) {
+      const label = setButtonLoading(button, '正在恢复…');
+      try {
+        await api.restore(name);
+        await refresh();
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : '恢复插件失败，请查看启动日志。', true);
+      } finally {
+        resetButton(button, label);
+      }
+    }
+
+    async function uninstallPlugin() {
+      if (!uninstallTarget) return;
+      const label = setButtonLoading(confirmUninstall, '正在卸载…');
+      try {
+        await api.uninstall(uninstallTarget);
+        uninstallTarget = undefined;
+        dialog.close();
+        await refresh();
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : '卸载插件失败，请查看启动日志。', true);
+      } finally {
+        resetButton(confirmUninstall, label);
+      }
+    }
+
+    async function restoreHealthyConfig() {
+      const label = setButtonLoading(confirmHealthyRestore, '正在恢复…');
+      try {
+        await api.restoreHealthyConfig();
+        healthyDialog.close();
+        await refresh();
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : '恢复最近正常配置失败，请查看启动日志。', true);
+      } finally {
+        resetButton(confirmHealthyRestore, label);
+      }
+    }
+
+    primaryAction.addEventListener('click', () => { void startOrEnterWorkbench(); });
+    showLog.addEventListener('click', async () => {
+      if (startupLogVisible) {
+        startupLog.hidden = true;
+        startupLogVisible = false;
+        showLog.textContent = '显示完整启动日志';
+        return;
+      }
+      const label = setButtonLoading(showLog, '正在读取…');
+      try {
+        const content = await api.getStartupLog();
+        startupLog.textContent = content || '启动日志暂时为空。';
+        startupLog.hidden = false;
+        startupLogVisible = true;
+      } catch (error) { setNotice(error instanceof Error ? error.message : '无法读取启动日志。', true); } finally { resetButton(showLog, startupLogVisible ? '隐藏完整启动日志' : label); }
+    });
+    cancelUninstall.addEventListener('click', () => dialog.close());
+    confirmUninstall.addEventListener('click', () => { void uninstallPlugin(); });
+    restoreHealthyConfigButton.addEventListener('click', () => healthyDialog.showModal());
+    cancelHealthyRestore.addEventListener('click', () => healthyDialog.close());
+    confirmHealthyRestore.addEventListener('click', () => { void restoreHealthyConfig(); });
+    void refresh();
+  </script>
+</body>
+</html>

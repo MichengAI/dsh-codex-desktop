@@ -14,6 +14,7 @@ function loadClient(options: { elements?: unknown[]; errors?: string[]; focused?
   locales: string[]
   listener(): ActionListener
   notifications: Array<Record<string, unknown>>
+  bootReports: Array<Record<string, unknown>>
   themes: Array<Record<string, unknown>>
   openSession(id: string): void
   reply(value: { sessionId: string; text: string }): void
@@ -25,6 +26,7 @@ function loadClient(options: { elements?: unknown[]; errors?: string[]; focused?
   let focused = options.focused ?? true
   const focusListeners = new Set<() => void>()
   const notifications: Array<Record<string, unknown>> = []
+  const bootReports: Array<Record<string, unknown>> = []
   const locales: string[] = []
   const themes: Array<Record<string, unknown>> = []
   const context = {
@@ -40,6 +42,7 @@ function loadClient(options: { elements?: unknown[]; errors?: string[]; focused?
         onOpenSession(listener: ActionListener): () => void { openSessionListener = listener; return () => { openSessionListener = undefined } },
         onNotificationReply(listener: (value: { sessionId: string; text: string }) => void): () => void { notificationReplyListener = listener; return () => { notificationReplyListener = undefined } },
         reportNotification(event: Record<string, unknown>): void { notifications.push(event) },
+        reportBoot(report: Record<string, unknown>): void { bootReports.push(report) },
         reportLocale(locale: string): void { locales.push(locale) },
         reportTheme(value: Record<string, unknown>): void { themes.push(value) },
         reportState(): void {},
@@ -58,6 +61,7 @@ function loadClient(options: { elements?: unknown[]; errors?: string[]; focused?
     locales,
     listener: () => { assert.ok(actionListener); return actionListener },
     notifications,
+    bootReports,
     themes,
     openSession: id => { assert.ok(openSessionListener); openSessionListener(id) },
     reply: value => { assert.ok(notificationReplyListener); notificationReplyListener(value) },
@@ -73,6 +77,7 @@ test('通知回复不把会话级 conversation 声明为根上下文注入', () 
 function clientContext(workspaces: Record<string, unknown>): Record<string, unknown> {
   return {
     effect(callback: () => void): void { callback() },
+    loader: { await: async () => undefined, entries: () => [] },
     layout: { toggleSidebar(): void {} },
     locale: { getSnapshot: () => ({ active: 'zh' }), subscribe: () => () => {} },
     sessions: {
@@ -109,6 +114,26 @@ test('桌面桥不注入 theme；外壳主题由 DSH preload 的 document 样式
   assert.equal(client.inject.includes('theme'), false)
   assert.deepEqual(client.locales, ['zh'])
   assert.deepEqual(client.themes, [])
+})
+
+test('客户端 Loader 未激活的插件会以结构化启动报告上报', async () => {
+  const client = loadClient()
+  client.apply({
+    ...clientContext({ pickDirectory: async () => null, create: async () => ({}), startSession(): void {} }),
+    loader: {
+      await: async () => { throw new Error('plugin activation failed') },
+      entries: () => [
+        { options: { name: '@scope/broken-plugin' }, fiber: { state: 1 } },
+        { options: { name: 'healthy-plugin' }, fiber: { state: 2 } },
+      ],
+    },
+  })
+  await new Promise(resolve => setTimeout(resolve, 0))
+  assert.deepEqual(JSON.parse(JSON.stringify(client.bootReports)), [{
+    status: 'failed',
+    plugins: ['@scope/broken-plugin'],
+    error: 'plugin activation failed',
+  }])
 })
 
 test('打开文件夹缺少 workspaceId 时不得继承当前工作区', async () => {

@@ -17,6 +17,7 @@ test('缺少离线 store 时仍执行官方清理和补种入口', async () => {
 
 test('主窗口导航完成前不结束启动或插件热重载', async () => {
   const source = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
+  // 恢复页使用专用导航：DSH 页面确认可用后才切换内容视图。
   assert.equal((source.match(/await createMainWindow\(server\.url\)/g) ?? []).length, 2)
   assert.match(source, /isRecycling = true\s+broadcastShellState\(\)\s+try \{\s+await showStartupWindow\(desktopText\('加载中', 'Loading'\)\)/)
   assert.match(source, /console\.error\('显示启动错误页面失败。'/)
@@ -41,6 +42,62 @@ test('桌面壳与 DSH 内容分层并复用托盘重载实现', async () => {
   assert.match(source, /id === 'reload'\) await recycleDshForPluginUpdate\(\)/)
   assert.match(source, /if \(id === 'reload'\) \{\s+await recycleDshForPluginUpdate\(\)/)
   assert.match(source, /title: DESKTOP_APP_NAME/)
+})
+
+test('插件恢复页使用独立内容视图和受限 preload，不复用 DSH 侧栏', async () => {
+  const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
+  const recovery = await readFile(new URL('../../assets/recovery.html', import.meta.url), 'utf8')
+  assert.match(main, /let recoveryView: WebContentsView \| undefined/)
+  assert.match(main, /preload: resolvePreload\('recovery-preload\.cjs'\)/)
+  assert.match(main, /function showRecoveryWindow/)
+  assert.match(main, /window\.unmaximize\(\)\s+window\.setSize\(920, 680\)/)
+  assert.match(main, /dshView\?\.setVisible\(false\)/)
+  assert.match(recovery, /恢复模式/)
+  assert.doesNotMatch(recovery, /dshShell/)
+  assert.doesNotMatch(recovery, /class="titlebar"/)
+  assert.doesNotMatch(recovery, /class="steps"/)
+  assert.match(recovery, /进入工作台/)
+  assert.match(recovery, /检测到可能导致启动失败的插件/)
+  assert.match(recovery, /显示完整启动日志/)
+  assert.match(recovery, /正在重新启动 DSH，最长等待 45 秒。/)
+  assert.match(recovery, /--danger-fill/)
+})
+
+test('恢复页返回工作台会先确认 DSH 页面可用再切换视图', async () => {
+  const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
+  assert.match(main, /async function returnToWorkbenchFromRecovery\(\): Promise<void>/)
+  assert.match(main, /running: server !== undefined/)
+  assert.match(main, /await windowNavigation\.navigate\(view, \(\) => view\.webContents\.loadURL\(running\.url\)\)/)
+  assert.match(main, /advanceDshStartupDiagnostic\(profileDir, 'renderer-loading'\)/)
+  assert.match(main, /startRendererHealthTimer\(profileDir\)/)
+  assert.match(main, /showDshContentView\(\)\s+mainWindow\?\.maximize\(\)\s+mainWindow\?\.show\(\)\s+mainWindow\?\.focus\(\)/)
+})
+
+test('恢复最近正常配置成功后退出恢复状态并直接进入工作台', async () => {
+  const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
+  assert.match(main, /restoreProfileHealthCheckpoint\(profileDir\)\s+await leaveRecoveryMode\(profileDir\)\s+recoveryFailureMessage = undefined\s+recoveryFailurePlugin = undefined\s+await restartDshInRecoveryMode\(profileDir, 'workbench'\)/)
+  assert.match(main, /if \(destination === 'workbench'\) \{\s+await returnToWorkbenchFromRecovery\(\)\s+\} else \{\s+await showRecoveryWindow\(profileDir\)\s+\}/)
+})
+
+test('恢复页只有在 DSH 服务就绪后才显示进入工作台操作', async () => {
+  const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
+  const recovery = await readFile(new URL('../../assets/recovery.html', import.meta.url), 'utf8')
+  assert.match(recovery, /state\.active && state\.running/)
+  assert.match(recovery, /const hasFailure = typeof state\.failureMessage === 'string'/)
+  assert.match(recovery, /showLog\.hidden = !hasFailure/)
+  assert.match(main, /await reportStartupFailure\(error, profileDir\)/)
+  assert.match(main, /join\(profileDir, '\.dsh-desktop-startup-error\.log'\)/)
+})
+
+test('恢复页使用单页诊断布局并跟随系统颜色模式', async () => {
+  const recovery = await readFile(new URL('../../assets/recovery.html', import.meta.url), 'utf8')
+  assert.match(recovery, /当前配置：web/)
+  assert.match(recovery, /启动错误/)
+  assert.match(recovery, /恢复操作/)
+  assert.match(recovery, /matchMedia\('\(prefers-color-scheme: dark\)'\)/)
+  assert.match(recovery, /\.dialog-actions button\{min-height:32px;padding:0 10px;font-size:13px\}/)
+  assert.match(recovery, /\.dialog-actions \.primary\{min-width:0\}/)
+  assert.doesNotMatch(recovery, /class="steps"/)
 })
 
 test('桌面壳预加载脚本被编译并提供 DSH 动作兜底', async () => {

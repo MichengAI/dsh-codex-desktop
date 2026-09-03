@@ -7,6 +7,7 @@ import { OFFICIAL_PROFILE_BUNDLES } from './bundled-plugins.js'
 import { ensureDesktopBridgePatch } from './desktop-host.js'
 import {
   ensureAutoInstallPeersDisabled,
+  assertOfficialProfileBundlesAvailable,
   finalizeProfileBundlesAfterInstall,
   stripOfficialProfileDependencies,
 } from './plugin-seed.js'
@@ -58,6 +59,7 @@ export async function startWithProfileSelfRepair<T>(options: {
 }): Promise<{ result: T; repaired: string[] }> {
   const extraDirs = options.extraDirs ?? []
   const repaired = [...await repairBrokenProfile(options.profileDir, extraDirs)]
+  assertOfficialProfileBundlesAvailable(options.profileDir, extraDirs)
   const maxAttempts = options.maxAttempts ?? 5
   let lastError: unknown
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {

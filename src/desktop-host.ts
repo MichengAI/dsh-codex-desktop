@@ -259,6 +259,7 @@ export const DESKTOP_BRIDGE_FILES = [
   'plugin-seed.js',
   'plugin-toolchain.js',
   'profile-updates.js',
+  'recovery-mode.js',
   'process-control.js',
   'readiness.js',
   'runtime-archive.js',

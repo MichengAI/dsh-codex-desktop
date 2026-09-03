@@ -354,11 +354,57 @@ test('启动前会摘掉磁盘上已经不存在的社区 bundle', async () => {
   }
 })
 
+test('启动前会隔离包名与目录不一致的第三方 bundle', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-invalid-package-name-'))
+  try {
+    const packageDir = join(root, 'node_modules', 'broken-plugin')
+    await mkdir(packageDir, { recursive: true })
+    await writeFile(join(packageDir, 'package.json'), JSON.stringify({
+      name: 'other-plugin',
+      dsh: { bundle: { patch: 'cordis.patch.yml' } },
+    }), 'utf8')
+    await writeFile(join(packageDir, 'cordis.patch.yml'), '[]\n', 'utf8')
+    await writeFile(join(root, 'package.json'), JSON.stringify({
+      dependencies: { 'broken-plugin': '1.0.0' },
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', 'broken-plugin'] } },
+    }), 'utf8')
+    assert.deepEqual(await pruneMissingProfileBundles(root), ['broken-plugin'])
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as { dependencies?: Record<string, string>; dsh?: { profile?: { bundles?: string[] } } }
+    assert.equal(manifest.dependencies?.['broken-plugin'], undefined)
+    assert.deepEqual(manifest.dsh?.profile?.bundles, ['@deepseek-ai/dsh-base'])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('启动前会隔离缺少 patch 文件的第三方 bundle', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-missing-bundle-patch-'))
+  try {
+    const packageDir = join(root, 'node_modules', 'broken-plugin')
+    await mkdir(packageDir, { recursive: true })
+    await writeFile(join(packageDir, 'package.json'), JSON.stringify({
+      name: 'broken-plugin',
+      dsh: { bundle: { patch: 'cordis.patch.yml' } },
+    }), 'utf8')
+    await writeFile(join(root, 'package.json'), JSON.stringify({
+      dependencies: { 'broken-plugin': '1.0.0' },
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', 'broken-plugin'] } },
+    }), 'utf8')
+    assert.deepEqual(await pruneMissingProfileBundles(root), ['broken-plugin'])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('桌面内部 bridge bundle 不依赖 profile dependencies 仍会保留', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-keep-desktop-bridge-'))
   try {
     await mkdir(join(root, 'node_modules', 'dsh-desktop-bridge'), { recursive: true })
-    await writeFile(join(root, 'node_modules', 'dsh-desktop-bridge', 'package.json'), '{}', 'utf8')
+    await writeFile(join(root, 'node_modules', 'dsh-desktop-bridge', 'package.json'), JSON.stringify({
+      name: 'dsh-desktop-bridge',
+      dsh: { bundle: { patch: 'cordis.patch.yml' } },
+    }), 'utf8')
+    await writeFile(join(root, 'node_modules', 'dsh-desktop-bridge', 'cordis.patch.yml'), '[]\n', 'utf8')
     await writeFile(join(root, 'package.json'), JSON.stringify({ dsh: { profile: { bundles: ['dsh-desktop-bridge'] } } }), 'utf8')
     assert.deepEqual(await pruneMissingProfileBundles(root), [])
   } finally {
@@ -375,6 +421,7 @@ test('先认磁盘上的包，再更新 bundle 列表', async () => {
       name: 'ready-plugin',
       dsh: { bundle: { patch: 'cordis.patch.yml' } },
     }), 'utf8')
+    await writeFile(join(root, 'node_modules', 'ready-plugin', 'cordis.patch.yml'), '[]\n', 'utf8')
     await writeFile(join(root, 'package.json'), JSON.stringify({
       dependencies: { 'ready-plugin': '1.0.0' },
       dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', 'dsh-file-upload'] } },
@@ -397,6 +444,7 @@ test('插件市场禁用 bundle 插件后，启动补种不得把它重新加入
       name: 'ready-plugin',
       dsh: { bundle: { patch: 'cordis.patch.yml' } },
     }), 'utf8')
+    await writeFile(join(root, 'node_modules', 'ready-plugin', 'cordis.patch.yml'), '[]\n', 'utf8')
     await writeFile(join(root, '.dsh-market', 'state.json'), JSON.stringify({
       disabled: ['ready-plugin'], groups: {}, groupOrder: [],
     }), 'utf8')

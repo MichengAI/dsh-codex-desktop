@@ -1,6 +1,6 @@
 import { app, BrowserWindow, Menu, Notification, Tray, WebContentsView, dialog, ipcMain, nativeImage, nativeTheme, net, protocol, session, shell, type Input, type MenuItemConstructorOptions, type WebContents } from 'electron'
 import { existsSync } from 'node:fs'
-import { writeFile as writeTextFile } from 'node:fs/promises'
+import { readFile, writeFile as writeTextFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -14,6 +14,10 @@ import type { DshServer, StartDshOptions } from './dsh-process.js'
 import { isExternalOpenUrl, isSameOrigin } from './navigation.js'
 import { applyPendingProfileUpdates, resolvePnpmStoreDir, seedBundledPlugins, resolveWebProfileDir } from './plugin-seed.js'
 import { parseUnresolvedBundleError, removeProfileBundle, startWithProfileSelfRepair } from './profile-repair.js'
+import { enterRecoveryMode, getRecoveryStatus, isRecoveryModeActive, leaveRecoveryMode, restoreRecoveryPlugin, uninstallRecoveryPlugin } from './recovery-mode.js'
+import { extractPluginFromStartupFailure, trimStartupLogForRecovery } from './recovery-diagnostics.js'
+import { advanceStartupDiagnostic, beginStartupDiagnostic, completeStartupDiagnostic, failStartupDiagnostic, parseRendererBootReport, readStartupDiagnostic, suspectedPluginFromRendererReport, type StartupDiagnosticStage } from './startup-diagnostics.js'
+import { captureProfileHealthCheckpoint, readProfileHealthCheckpoint, restoreProfileHealthCheckpoint } from './profile-health-checkpoint.js'
 import { resolveBundledPluginStore, resolvePluginBinDir } from './plugin-toolchain.js'
 import { resolveDshBootstrap, resolveDshRuntime, resolveNodeExecutable } from './runtime.js'
 import { extractPackagedRuntimesInChild, packagedRuntimesNeedExtraction, type RuntimeExtractionProgress } from './extract-runtime.js'
@@ -24,7 +28,7 @@ import { escapeRoute } from './escape-routing.js'
 import { installDesktopBridge, resolveDesktopBridgeDir } from './desktop-host.js'
 import { isChineseLocale, localizedShellActions, localizedShellMenus, normalizeShellLocale, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId } from './shell-actions.js'
 import { SHELL_BAR_HEIGHT, SHELL_IPC, type DshNavigationState, type DshShellActionId, type ShellBootstrap, type ShellMenuPopupRequest, type ShellState } from './shell-contract.js'
-import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayCloseDesktopSettings, mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshLocale, mayReportDshNotification, mayReportDshState, mayReportDshTheme, mayReportDshSettingsVisibility, type ShellRendererKind } from './shell-ipc-policy.js'
+import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayCloseDesktopSettings, mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshBoot, mayReportDshLocale, mayReportDshNotification, mayReportDshState, mayReportDshTheme, mayReportDshSettingsVisibility, type ShellRendererKind } from './shell-ipc-policy.js'
 import { DESKTOP_THEME_PALETTES, normalizeDesktopThemeSnapshot, type DesktopColorScheme, type DesktopThemePreference } from './desktop-theme.js'
 import { DSH_MARKET_STATUS_PATH, waitForDshMarketBatchToSettle } from './dshmarket-batch.js'
 import { DEFAULT_NOTIFICATION_PREFERENCES, buildWindowsReplyToastXml, loadNotificationPreferences, parseDesktopNotificationBridgeEvent, parseWindowsNotificationReplyActivation, saveNotificationPreferences, shouldShowDesktopNotification, windowsNotificationReplyArguments, type DesktopNotificationEvent, type DesktopNotificationPreferences } from './desktop-notifications.js'
@@ -44,6 +48,7 @@ const { isApplyPluginUpdatesIpc, startDsh } = dshProcessModule
 
 let mainWindow: BrowserWindow | undefined
 let dshView: WebContentsView | undefined
+let recoveryView: WebContentsView | undefined
 let shortcutsWindow: BrowserWindow | undefined
 let aboutWindow: BrowserWindow | undefined
 let settingsWindow: BrowserWindow | undefined
@@ -74,7 +79,19 @@ let activeDshLocale: 'zh' | 'en' | undefined
 let activeDshColorScheme: DesktopColorScheme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
 let activeDshThemePreference: DesktopThemePreference = 'system'
 let dshSettingsDialogVisible = false
+let recoveryProfileDir: string | undefined
+let recoveryFailureMessage: string | undefined
+let recoveryFailurePlugin: string | undefined
+let startupDiagnosticStage: Exclude<StartupDiagnosticStage, 'healthy'> = 'server-starting'
+let rendererHealthTimer: NodeJS.Timeout | undefined
+let handlingRendererBootFailure = false
 const shellActionIds = new Set<string>(SHELL_ACTIONS.map(action => action.id))
+
+function startupErrorLogPath(profileDir?: string): string {
+  return profileDir === undefined
+    ? join(app.getPath('userData'), 'startup-error.log')
+    : join(profileDir, '.dsh-desktop-startup-error.log')
+}
 
 function desktopLocale(): string {
   return activeDshLocale ?? app.getLocale()
@@ -146,6 +163,7 @@ async function startApplication(): Promise<void> {
   notificationPreferences = await loadNotificationPreferences(notificationPreferencesPath())
   updatePreferences = await loadUpdatePreferences(updatePreferencesPath())
   installShellIpc()
+  installRecoveryIpc()
   installDesktopFaviconReplacement()
   Menu.setApplicationMenu(null)
   configureDesktopUpdater()
@@ -241,20 +259,29 @@ async function startApplication(): Promise<void> {
       },
     }
     lastStartOptions = startOptions
-    const started = await startWithProfileSelfRepair({
-      profileDir,
-      extraDirs: [desktopRuntimeDir],
-      start: () => startDsh({
-        ...startOptions,
-        onUnexpectedExit: handleUnexpectedDshExit,
-        onIpcMessage: handleDshIpc,
-      }),
-    })
+    let started: { result: DshServer; repaired: string[] }
+    try {
+      await beginDshStartupDiagnostic(profileDir)
+      started = await startWithProfileSelfRepair({
+        profileDir,
+        extraDirs: [desktopRuntimeDir],
+        start: () => startDsh({
+          ...startOptions,
+          onUnexpectedExit: handleUnexpectedDshExit,
+          onIpcMessage: handleDshIpc,
+        }),
+      })
+    } catch (error) {
+      if (!isQuitting) await reportStartupFailure(error, profileDir)
+      return
+    }
     server = started.result
+    await advanceDshStartupDiagnostic(profileDir, 'server-ready')
     if (started.repaired.length > 0) console.log('已自我修复损坏的插件清单：' + started.repaired.join('、'))
     profileWatcher?.stop()
     profileWatcher = watchProfileActivation(profileDir, scheduleProfileActivationRecycle, { onError: handleUnexpectedMainError })
-    await createMainWindow(server.url)
+    if (isRecoveryModeActive(profileDir)) await showRecoveryWindow(profileDir)
+    else await createMainWindow(server.url)
     const smokeReadyFile = process.env.DSH_DESKTOP_SMOKE_READY_FILE
     if (smokeReadyFile !== undefined && smokeReadyFile !== '') {
       await writeTextFile(smokeReadyFile, 'ready\n', 'utf8')
@@ -270,6 +297,14 @@ function resolveStartupHtml(): string | undefined {
   const dev = join(app.getAppPath(), 'assets', 'startup.html')
   if (existsSync(packaged)) return packaged
   if (existsSync(dev)) return dev
+  return undefined
+}
+
+function resolveRecoveryHtml(): string | undefined {
+  const packaged = join(process.resourcesPath, 'recovery.html')
+  const development = join(app.getAppPath(), 'assets', 'recovery.html')
+  if (existsSync(packaged)) return packaged
+  if (existsSync(development)) return development
   return undefined
 }
 
@@ -321,6 +356,7 @@ function installDesktopFaviconReplacement(): void {
 async function showStartupWindow(message: string): Promise<void> {
   const window = mainWindow ??= createWindow()
   const view = requireDshView()
+  showDshContentView()
   const html = resolveStartupHtml()
   if (html !== undefined) {
     await windowNavigation.navigate(
@@ -365,16 +401,138 @@ async function createMainWindow(serverUrl: string): Promise<void> {
   allowedOrigin = new URL(serverUrl).origin
   mainWindow ??= createWindow()
   const view = requireDshView()
+  const profileDir = lastSeedOptions?.profileDir
+  if (profileDir !== undefined) {
+    await advanceDshStartupDiagnostic(profileDir, 'renderer-loading')
+    startRendererHealthTimer(profileDir)
+  }
+  showDshContentView()
   await windowNavigation.navigate(view, () => view.webContents.loadURL(serverUrl))
 }
 
-async function reportStartupFailure(error: unknown): Promise<void> {
-  const logPath = join(app.getPath('userData'), 'startup-error.log')
+function startupDiagnosticPath(profileDir: string): string {
+  return join(profileDir, '.dsh-desktop-startup-diagnostics.json')
+}
+
+async function beginDshStartupDiagnostic(profileDir: string): Promise<void> {
+  startupDiagnosticStage = 'server-starting'
+  await beginStartupDiagnostic(startupDiagnosticPath(profileDir), startupDiagnosticStage).catch(error => {
+    console.error('无法记录 DSH 启动诊断。', error)
+  })
+}
+
+async function advanceDshStartupDiagnostic(profileDir: string, stage: Exclude<StartupDiagnosticStage, 'healthy'>): Promise<void> {
+  startupDiagnosticStage = stage
+  await advanceStartupDiagnostic(startupDiagnosticPath(profileDir), stage).catch(error => {
+    console.error('无法更新 DSH 启动诊断。', error)
+  })
+}
+
+function stopRendererHealthTimer(): void {
+  if (rendererHealthTimer !== undefined) clearTimeout(rendererHealthTimer)
+  rendererHealthTimer = undefined
+}
+
+function startRendererHealthTimer(profileDir: string): void {
+  stopRendererHealthTimer()
+  rendererHealthTimer = setTimeout(() => {
+    rendererHealthTimer = undefined
+    void handleRendererBootReport({ status: 'failed', plugins: [], error: 'DSH 页面未能在 30 秒内完成插件加载。' }, profileDir, 'renderer-timeout')
+  }, 30_000)
+  rendererHealthTimer.unref()
+}
+
+async function handleRendererBootReport(value: unknown, profileDir = lastSeedOptions?.profileDir, source: 'renderer' | 'renderer-timeout' = 'renderer'): Promise<void> {
+  const report = parseRendererBootReport(value)
+  if (report === undefined || profileDir === undefined) return
+  stopRendererHealthTimer()
+  if (report.status === 'healthy') {
+    await completeStartupDiagnostic(startupDiagnosticPath(profileDir)).catch(error => {
+      console.error('无法保存 DSH 健康启动证据。', error)
+    })
+    await captureProfileHealthCheckpoint(profileDir).catch(error => {
+      console.error('无法保存 DSH 健康配置检查点。', error)
+    })
+    return
+  }
+  if (handlingRendererBootFailure || isQuitting || isRecycling) return
+  handlingRendererBootFailure = true
+  const plugins = report.plugins ?? []
+  const suspectedPlugin = suspectedPluginFromRendererReport(report)
+  const message = report.error ?? (plugins.length === 0
+    ? 'DSH 客户端未能完成插件加载。'
+    : `以下插件未能加载：${plugins.join('、')}。`)
+  try {
+    await failStartupDiagnostic(startupDiagnosticPath(profileDir), {
+      stage: 'renderer-loading',
+      source,
+      message,
+      plugins,
+    })
+    await writeTextFile(startupErrorLogPath(profileDir), `${message}\n`, 'utf8')
+    await showRecoveryWindow(profileDir, { failureMessage: message.slice(0, 240), failurePlugin: suspectedPlugin })
+  } catch (error) {
+    console.error('无法处理 DSH 客户端启动失败。', error)
+  } finally {
+    handlingRendererBootFailure = false
+  }
+}
+
+/**
+ * 恢复页与工作台使用不同的内容视图。先在后台完成工作台导航，
+ * 再切换可见视图，避免用户看到按钮点击后页面停留在原处。
+ */
+async function returnToWorkbenchFromRecovery(): Promise<void> {
+  const running = server
+  if (running === undefined) throw new Error('DSH 尚未成功启动，无法进入工作台。')
+  const view = requireDshView()
+  const profileDir = recoveryProfileDir
+  if (profileDir !== undefined) {
+    await advanceDshStartupDiagnostic(profileDir, 'renderer-loading')
+    startRendererHealthTimer(profileDir)
+  }
+  allowedOrigin = new URL(running.url).origin
+  await windowNavigation.navigate(view, () => view.webContents.loadURL(running.url))
+  showDshContentView()
+  mainWindow?.maximize()
+  mainWindow?.show()
+  mainWindow?.focus()
+}
+
+async function showRecoveryWindow(profileDir: string, failure?: { failureMessage?: string, failurePlugin?: string }): Promise<void> {
+  stopRendererHealthTimer()
+  mainWindow ??= createWindow()
+  const window = mainWindow
+  window.setMinimumSize(720, 520)
+  if (window.isMaximized()) window.unmaximize()
+  window.setSize(920, 680)
+  window.center()
+  const view = requireRecoveryView()
+  recoveryProfileDir = profileDir
+  if (failure?.failureMessage !== undefined) recoveryFailureMessage = failure.failureMessage
+  if (failure?.failurePlugin !== undefined) recoveryFailurePlugin = failure.failurePlugin
+  showRecoveryContentView()
+  const html = resolveRecoveryHtml()
+  if (html === undefined) throw new Error('恢复页面资源缺失。')
+  await windowNavigation.navigate(view, () => view.webContents.loadFile(html))
+}
+
+async function reportStartupFailure(error: unknown, profileDir?: string): Promise<void> {
+  const logPath = startupErrorLogPath(profileDir)
   const message = error instanceof Error ? error.message : '未知启动错误。'
+  if (profileDir !== undefined) {
+    await failStartupDiagnostic(startupDiagnosticPath(profileDir), {
+      stage: startupDiagnosticStage,
+      source: 'process',
+      message,
+      plugins: [],
+    }).catch(diagnosticError => { console.error('无法记录 DSH 启动失败。', diagnosticError) })
+  }
   await writeTextFile(logPath, message + '\n', 'utf8').catch(() => undefined)
   const short = message.split(/\r?\n/)[0]?.slice(0, 240) ?? '未知启动错误。'
   try {
-    await showStartupWindow(desktopText('启动失败：', 'Startup failed: ') + short + desktopText('\n日志：', '\nLog: ') + logPath)
+    if (profileDir !== undefined) await showRecoveryWindow(profileDir, { failureMessage: short, failurePlugin: extractPluginFromStartupFailure(message) })
+    else await showStartupWindow(desktopText('启动失败：', 'Startup failed: ') + short + desktopText('\n日志：', '\nLog: ') + logPath)
   } catch (displayError) {
     console.error('显示启动错误页面失败。', displayError)
   }
@@ -461,6 +619,7 @@ async function recycleDshForPluginUpdate(): Promise<void> {
     await current?.stop()
     const updated = await applyPendingProfileUpdates(seedOptions)
     if (updated.length > 0) console.log('已热更新插件：' + updated.join('、'))
+    await beginDshStartupDiagnostic(seedOptions.profileDir)
     const started = await startWithProfileSelfRepair({
       profileDir: seedOptions.profileDir,
       extraDirs: seedOptions.desktopRuntimeDir === undefined ? [] : [seedOptions.desktopRuntimeDir],
@@ -471,9 +630,11 @@ async function recycleDshForPluginUpdate(): Promise<void> {
       }),
     })
     server = started.result
-    await createMainWindow(server.url)
+    await advanceDshStartupDiagnostic(seedOptions.profileDir, 'server-ready')
+    if (isRecoveryModeActive(seedOptions.profileDir)) await showRecoveryWindow(seedOptions.profileDir)
+    else await createMainWindow(server.url)
   } catch (error) {
-    await reportStartupFailure(error)
+    await reportStartupFailure(error, seedOptions.profileDir)
   } finally {
     profileWatcher?.sync()
     isRecycling = false
@@ -484,6 +645,15 @@ async function recycleDshForPluginUpdate(): Promise<void> {
 function handleUnexpectedDshExit(message: string): void {
   if (isQuitting || isRecycling) return
   server = undefined
+  stopRendererHealthTimer()
+  if (lastSeedOptions !== undefined) {
+    void failStartupDiagnostic(startupDiagnosticPath(lastSeedOptions.profileDir), {
+      stage: startupDiagnosticStage,
+      source: 'process',
+      message,
+      plugins: [],
+    }).catch(error => { console.error('无法记录 DSH 异常退出。', error) })
+  }
   const missing = parseUnresolvedBundleError(message)
   if (missing !== undefined && lastSeedOptions !== undefined) {
     runMainTask(removeProfileBundle(lastSeedOptions.profileDir, missing).then((removed) => {
@@ -491,7 +661,7 @@ function handleUnexpectedDshExit(message: string): void {
     }))
     return
   }
-  void writeTextFile(join(app.getPath('userData'), 'startup-error.log'), `${message}\n`, 'utf8').catch(() => undefined)
+  void writeTextFile(startupErrorLogPath(lastSeedOptions?.profileDir), `${message}\n`, 'utf8').catch(() => undefined)
   runMainTask(showStartupWindow(desktopText('DSH 已停止运行。请重新启动应用。', 'DSH has stopped. Restart the app.')))
 }
 
@@ -508,7 +678,7 @@ function resolveShellAsset(name: 'shell.html' | 'shortcuts.html' | 'about.html' 
   return existsSync(packaged) ? packaged : join(app.getAppPath(), 'assets', name)
 }
 
-function resolvePreload(name: 'shell-preload.cjs' | 'dsh-view-preload.cjs'): string {
+function resolvePreload(name: 'shell-preload.cjs' | 'dsh-view-preload.cjs' | 'recovery-preload.cjs'): string {
   return join(app.getAppPath(), 'dist', 'src', name)
 }
 
@@ -517,9 +687,30 @@ function requireDshView(): WebContentsView {
   return dshView
 }
 
+function requireRecoveryView(): WebContentsView {
+  if (recoveryView === undefined) throw new Error('恢复内容视图尚未创建。')
+  return recoveryView
+}
+
+function showDshContentView(): void {
+  if (mainWindow !== undefined && !mainWindow.isDestroyed()) mainWindow.setMinimumSize(960, 640)
+  recoveryView?.setVisible(false)
+  dshView?.setVisible(true)
+}
+
+function showRecoveryContentView(): void {
+  dshView?.setVisible(false)
+  recoveryView?.setVisible(true)
+}
+
 function layoutDshView(window: BrowserWindow): void {
   const bounds = window.getContentBounds()
   dshView?.setBounds({ x: 0, y: SHELL_BAR_HEIGHT, width: bounds.width, height: Math.max(0, bounds.height - SHELL_BAR_HEIGHT) })
+}
+
+function layoutRecoveryView(window: BrowserWindow): void {
+  const bounds = window.getContentBounds()
+  recoveryView?.setBounds({ x: 0, y: 0, width: bounds.width, height: bounds.height })
 }
 
 function createWindow(): BrowserWindow {
@@ -552,12 +743,22 @@ function createWindow(): BrowserWindow {
     preload: resolvePreload('dsh-view-preload.cjs'),
     sandbox: true,
   } })
+  const recovery = new WebContentsView({ webPreferences: {
+    contextIsolation: true,
+    nodeIntegration: false,
+    preload: resolvePreload('recovery-preload.cjs'),
+    sandbox: true,
+  } })
   dshView = view
+  recoveryView = recovery
   window.contentView.addChildView(view)
+  window.contentView.addChildView(recovery)
+  recovery.setVisible(false)
   layoutDshView(window)
-  window.on('resize', () => layoutDshView(window))
-  window.on('maximize', () => layoutDshView(window))
-  window.on('unmaximize', () => layoutDshView(window))
+  layoutRecoveryView(window)
+  window.on('resize', () => { layoutDshView(window); layoutRecoveryView(window) })
+  window.on('maximize', () => { layoutDshView(window); layoutRecoveryView(window) })
+  window.on('unmaximize', () => { layoutDshView(window); layoutRecoveryView(window) })
   runMainTask(window.loadFile(resolveShellAsset('shell.html'), { query: { theme: activeDshColorScheme } }))
 
   view.webContents.setWindowOpenHandler(({ url }) => {
@@ -579,6 +780,7 @@ function createWindow(): BrowserWindow {
     event.preventDefault()
     if (isExternalOpenUrl(url, allowedOrigin)) runMainTask(shell.openExternal(url))
   })
+  recovery.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   installShortcutHandler(window.webContents)
   installShortcutHandler(view.webContents)
   applyInitialWindowState(window)
@@ -593,6 +795,9 @@ function createWindow(): BrowserWindow {
     if (mainWindow === window) {
       mainWindow = undefined
       dshView = undefined
+      recoveryView = undefined
+      recoveryProfileDir = undefined
+      recoveryFailureMessage = undefined
       dshSettingsDialogVisible = false
     }
   })
@@ -680,6 +885,138 @@ function setDesktopUpdateStatus(status: DesktopUpdateStatus, checked = false): v
   broadcastDesktopUpdateState()
 }
 
+const RECOVERY_IPC = {
+  activate: 'dsh-recovery:activate',
+  getStartupLog: 'dsh-recovery:get-startup-log',
+  getStatus: 'dsh-recovery:get-status',
+  keepIsolated: 'dsh-recovery:keep-isolated',
+  restore: 'dsh-recovery:restore',
+  restoreHealthyConfig: 'dsh-recovery:restore-healthy-config',
+  returnToWorkbench: 'dsh-recovery:return-to-workbench',
+  uninstall: 'dsh-recovery:uninstall',
+} as const
+
+function requireRecoveryProfile(sender: WebContents): string {
+  if (sender !== recoveryView?.webContents) throw new Error('恢复操作仅允许由恢复页面发起。')
+  if (recoveryProfileDir === undefined) throw new Error('恢复页面尚未准备完成。')
+  return recoveryProfileDir
+}
+
+async function recoveryPageStatus(profileDir: string): Promise<object> {
+  const status = await getRecoveryStatus(profileDir)
+  const diagnostic = await readStartupDiagnostic(startupDiagnosticPath(profileDir))
+  const checkpoint = await readProfileHealthCheckpoint(profileDir)
+  const suspectedPlugin = status.suspectedPlugin ?? recoveryFailurePlugin
+  const failureMessage = recoveryFailureMessage ?? status.failureMessage
+  return {
+    ...status,
+    running: server !== undefined,
+    ...(failureMessage === undefined ? {} : { failureMessage }),
+    ...(suspectedPlugin === undefined ? {} : { suspectedPlugin }),
+    ...(diagnostic === undefined ? {} : { diagnostic }),
+    ...(checkpoint === undefined ? {} : { checkpoint }),
+  }
+}
+
+async function restartDshInRecoveryMode(profileDir: string, destination: 'recovery' | 'workbench' = 'recovery'): Promise<void> {
+  if (lastStartOptions === undefined || lastSeedOptions === undefined) throw new Error('恢复环境尚未准备完成。')
+  const startOptions = lastStartOptions
+  isRecycling = true
+  broadcastShellState()
+  try {
+    const current = server
+    server = undefined
+    await current?.stop()
+    await beginDshStartupDiagnostic(profileDir)
+    const started = await startWithProfileSelfRepair({
+      profileDir,
+      extraDirs: lastSeedOptions.desktopRuntimeDir === undefined ? [] : [lastSeedOptions.desktopRuntimeDir],
+      start: () => startDsh({
+        ...startOptions,
+        onUnexpectedExit: handleUnexpectedDshExit,
+        onIpcMessage: handleDshIpc,
+      }),
+    })
+    server = started.result
+    allowedOrigin = new URL(server.url).origin
+    await advanceDshStartupDiagnostic(profileDir, 'server-ready')
+    recoveryFailureMessage = undefined
+    if (destination === 'workbench') {
+      await returnToWorkbenchFromRecovery()
+    } else {
+      await showRecoveryWindow(profileDir)
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    await enterRecoveryMode(profileDir, {
+      force: true,
+      suspectedPlugin: extractPluginFromStartupFailure(message),
+      failureMessage: message,
+    })
+    await reportStartupFailure(error, profileDir)
+    throw error
+  } finally {
+    profileWatcher?.sync()
+    isRecycling = false
+    broadcastShellState()
+  }
+}
+
+function installRecoveryIpc(): void {
+  for (const channel of Object.values(RECOVERY_IPC)) ipcMain.removeHandler(channel)
+  ipcMain.handle(RECOVERY_IPC.getStatus, async event => recoveryPageStatus(requireRecoveryProfile(event.sender)))
+  ipcMain.handle(RECOVERY_IPC.activate, async event => {
+    const profileDir = requireRecoveryProfile(event.sender)
+    const current = await getRecoveryStatus(profileDir)
+    if (!current.active) await enterRecoveryMode(profileDir, {
+      suspectedPlugin: recoveryFailurePlugin,
+      failureMessage: recoveryFailureMessage,
+    })
+    await restartDshInRecoveryMode(profileDir)
+    return recoveryPageStatus(profileDir)
+  })
+  ipcMain.handle(RECOVERY_IPC.keepIsolated, async (event, packageName: unknown) => {
+    const profileDir = requireRecoveryProfile(event.sender)
+    const status = await getRecoveryStatus(profileDir)
+    if (typeof packageName !== 'string' || !status.isolated.some(plugin => plugin.packageName === packageName)) {
+      throw new Error('只能操作当前隔离的第三方插件。')
+    }
+    return status
+  })
+  ipcMain.handle(RECOVERY_IPC.restore, async (event, packageName: unknown) => {
+    const profileDir = requireRecoveryProfile(event.sender)
+    if (typeof packageName !== 'string') throw new Error('插件名称不合法。')
+    await restoreRecoveryPlugin(profileDir, packageName)
+    await restartDshInRecoveryMode(profileDir)
+    return recoveryPageStatus(profileDir)
+  })
+  ipcMain.handle(RECOVERY_IPC.uninstall, async (event, packageName: unknown) => {
+    const profileDir = requireRecoveryProfile(event.sender)
+    if (typeof packageName !== 'string') throw new Error('插件名称不合法。')
+    const status = await uninstallRecoveryPlugin(profileDir, packageName)
+    if (recoveryFailurePlugin === packageName) recoveryFailurePlugin = undefined
+    return status
+  })
+  ipcMain.handle(RECOVERY_IPC.restoreHealthyConfig, async event => {
+    const profileDir = requireRecoveryProfile(event.sender)
+    await restoreProfileHealthCheckpoint(profileDir)
+    await leaveRecoveryMode(profileDir)
+    recoveryFailureMessage = undefined
+    recoveryFailurePlugin = undefined
+    await restartDshInRecoveryMode(profileDir, 'workbench')
+    return recoveryPageStatus(profileDir)
+  })
+  ipcMain.handle(RECOVERY_IPC.getStartupLog, async event => {
+    const profileDir = requireRecoveryProfile(event.sender)
+    const content = await readFile(startupErrorLogPath(profileDir), 'utf8').catch(() => '')
+    return trimStartupLogForRecovery(content)
+  })
+  ipcMain.handle(RECOVERY_IPC.returnToWorkbench, async event => {
+    requireRecoveryProfile(event.sender)
+    await returnToWorkbenchFromRecovery()
+  })
+}
+
 function installShellIpc(): void {
   ipcMain.removeHandler(SHELL_IPC.getBootstrap)
   ipcMain.removeHandler(SHELL_IPC.action)
@@ -751,6 +1088,11 @@ function installShellIpc(): void {
       canPreviousChat: state.canPreviousChat === true,
     }
     broadcastShellState()
+  })
+  ipcMain.removeAllListeners(SHELL_IPC.dshBoot)
+  ipcMain.on(SHELL_IPC.dshBoot, (event, value: unknown) => {
+    if (!mayReportDshBoot(shellRendererKind(event.sender))) return
+    runMainTask(handleRendererBootReport(value))
   })
   ipcMain.removeAllListeners(SHELL_IPC.dshLocale)
   ipcMain.on(SHELL_IPC.dshLocale, (event, value: unknown) => {

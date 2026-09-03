@@ -91,6 +91,13 @@ test('打包配置把离线插件仓库放到 extraResources', async () => {
   )
 })
 
+test('内置插件装配限制下载并发并保留网络重试', async () => {
+  const source = await readFile(new URL('../../scripts/prepare-runtime.ts', import.meta.url), 'utf8')
+  assert.match(source, /'--network-concurrency=1'/)
+  assert.match(source, /'--fetch-retries=5'/)
+  assert.match(source, /'--fetch-retry-mintimeout=10000'/)
+})
+
 test('Windows 根目录图标不会进入 macOS 应用包', async () => {
   const manifest = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as {
     build?: {
@@ -187,6 +194,16 @@ test('打包配置显式映射完整编译产物', async () => {
   )
 })
 
+test('打包配置包含恢复页及其运行依赖', async () => {
+  const manifest = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as {
+    build?: { extraResources?: Array<{ from?: string; to?: string; filter?: string[] }> }
+  }
+  const resources = manifest.build?.extraResources ?? []
+  assert.ok(resources.some(resource => resource.from === 'assets/recovery.html' && resource.to === 'recovery.html'))
+  const bridge = resources.find(resource => resource.to === 'desktop-bridge')
+  assert.ok(bridge?.filter?.includes('recovery-mode.js'))
+})
+
 test('Windows 冒烟检查使用实际产品可执行文件名', async () => {
   const workflow = await readFile(new URL('../../.github/workflows/desktop-package.yml', import.meta.url), 'utf8')
   assert.match(workflow, /release\\win-unpacked\\DSH Codex Desktop\.exe/)
@@ -203,11 +220,11 @@ test('官方运行时使用 npm 安装以兼容预发布 peer 依赖', () => {
     '--no-fund',
     '--allow-scripts=@deepseek-ai/dsh-subprocess-local,@google/genai,koffi,node-pty,protobufjs',
     '--registry=https://registry.npmjs.org/',
-    '@deepseek-ai/dsh@0.1.2-alpha.3',
+    '@deepseek-ai/dsh@0.1.2-rc.1',
     '@deepseek-ai/cordis-plugin-group@1.0.2',
-    '@deepseek-ai/dsh-scope@0.1.2-alpha.3',
-    '@deepseek-ai/dsh-timeout@0.1.2-alpha.3',
-    '@deepseek-ai/dsh-invariants@0.1.2-alpha.3',
+    '@deepseek-ai/dsh-scope@0.1.2-rc.1',
+    '@deepseek-ai/dsh-timeout@0.1.2-rc.1',
+    '@deepseek-ai/dsh-invariants@0.1.2-rc.1',
   ])
 })
 
@@ -218,11 +235,11 @@ test('npm 全局安装目录按平台归一化', () => {
 
 test('官方运行时把 DSH 和启动 peer 一起装成 npm 顶层依赖', () => {
   assert.deepEqual(officialRuntimeNpmDependencies(), {
-    '@deepseek-ai/dsh': '0.1.2-alpha.3',
+    '@deepseek-ai/dsh': '0.1.2-rc.1',
     '@deepseek-ai/cordis-plugin-group': '1.0.2',
-    '@deepseek-ai/dsh-scope': '0.1.2-alpha.3',
-    '@deepseek-ai/dsh-timeout': '0.1.2-alpha.3',
-    '@deepseek-ai/dsh-invariants': '0.1.2-alpha.3',
+    '@deepseek-ai/dsh-scope': '0.1.2-rc.1',
+    '@deepseek-ai/dsh-timeout': '0.1.2-rc.1',
+    '@deepseek-ai/dsh-invariants': '0.1.2-rc.1',
   })
 })
 

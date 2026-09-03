@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayCloseDesktopSettings, mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshLocale, mayReportDshNotification, mayReportDshState, mayReportDshTheme, mayReportDshSettingsVisibility } from '../src/shell-ipc-policy.js'
+import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayCloseDesktopSettings, mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshBoot, mayReportDshLocale, mayReportDshNotification, mayReportDshState, mayReportDshTheme, mayReportDshSettingsVisibility } from '../src/shell-ipc-policy.js'
 
 test('IPC 权限按 renderer 最小化开放', () => {
   assert.equal(mayGetShellBootstrap('main'), true)
@@ -13,6 +13,8 @@ test('IPC 权限按 renderer 最小化开放', () => {
   assert.equal(mayPopupShellMenu('about'), false)
   assert.equal(mayReportDshState('dsh'), true)
   assert.equal(mayReportDshState('main'), false)
+  assert.equal(mayReportDshBoot('dsh'), true)
+  assert.equal(mayReportDshBoot('main'), false)
   assert.equal(mayReportDshNotification('dsh'), true)
   assert.equal(mayReportDshNotification('settings'), false)
   assert.equal(mayReportDshLocale('dsh'), true)

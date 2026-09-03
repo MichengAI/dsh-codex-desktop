@@ -18,6 +18,10 @@ interface SessionList {
 
 interface ClientContext {
   effect(callback: () => void | (() => void), label?: string): void
+  loader: {
+    await(): Promise<void>
+    entries(): Iterable<{ options: { name: string }, fiber?: { state: number } }>
+  }
   layout: { toggleSidebar(): void }
   locale: {
     getSnapshot(): { active: string }
@@ -60,6 +64,7 @@ interface DesktopShellBridge {
     title?: string
   }): void
   reportLocale(locale: string): void
+  reportBoot(report: { status: 'healthy' } | { status: 'failed', plugins: string[], error?: string }): void
   reportTheme(value: { colorScheme: 'light' | 'dark'; preference: 'light' | 'dark' | 'system' }): void
   reportState(state: DesktopNavigationState): void
 }
@@ -101,6 +106,24 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
       }
 
       const snapshot = (): SessionList => ctx.sessions.list.getSnapshot()
+      const reportBoot = async (): Promise<void> => {
+        let error: string | undefined
+        try {
+          await ctx.loader.await()
+        } catch (cause) {
+          error = typeof cause === 'object' && cause !== null && typeof (cause as { message?: unknown }).message === 'string'
+            ? (cause as { message: string }).message
+            : String(cause)
+        }
+        const plugins = [...ctx.loader.entries()]
+          .filter(entry => entry.fiber?.state !== 2)
+          .map(entry => entry.options.name)
+          .filter(name => typeof name === 'string' && name.length > 0)
+          .slice(0, 100)
+        bridge.reportBoot(error === undefined && plugins.length === 0
+          ? { status: 'healthy' }
+          : { status: 'failed', plugins, ...(error === undefined ? {} : { error: error.slice(0, 4000) }) })
+      }
       const reportBadge = (): void => {
         if (reportedBadgeCount === unreadCompletions.size) return
         reportedBadgeCount = unreadCompletions.size
@@ -253,6 +276,9 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         const stopList = ctx.sessions.list.subscribe(trackCurrent)
         const reportLocale = (): void => { bridge.reportLocale(ctx.locale.getSnapshot().active) }
         const stopLocale = ctx.locale.subscribe(reportLocale)
+        const bootTimer = setTimeout(() => {
+          void reportBoot().catch(error => { console.error('上报插件启动状态失败。', error) })
+        }, 0)
         const onWindowFocus = (): void => {
           const current = snapshot().current
           if (current !== undefined) markSessionRead(current)
@@ -262,7 +288,7 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected', 'class'] })
         trackCurrent()
         reportLocale()
-        return () => { stopAction(); stopOpenSession(); stopNotificationReply(); stopList(); stopLocale(); window.removeEventListener('focus', onWindowFocus); observer.disconnect() }
+        return () => { clearTimeout(bootTimer); stopAction(); stopOpenSession(); stopNotificationReply(); stopList(); stopLocale(); window.removeEventListener('focus', onWindowFocus); observer.disconnect() }
       }, 'desktop-shell bridge')
     }
 

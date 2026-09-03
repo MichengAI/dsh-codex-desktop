@@ -38,12 +38,12 @@ test('每个内置插件都钉死精确版本', () => {
   }
   assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.38.1')
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
-    '@michengai/dsh-codex-ui': '0.2.97',
-    '@michengai/dsh-im-connect': '0.1.30',
-    '@michengai/dsh-automation': '0.1.22',
-    '@michengai/dsh-skills-manager': '0.1.32',
-    '@michengai/dsh-archive-manager': '0.1.22',
-    '@michengai/dsh-agency-agents': '0.1.23',
+    '@michengai/dsh-codex-ui': '0.2.102',
+    '@michengai/dsh-im-connect': '0.1.34',
+    '@michengai/dsh-automation': '0.1.26',
+    '@michengai/dsh-skills-manager': '0.1.37',
+    '@michengai/dsh-archive-manager': '0.1.29',
+    '@michengai/dsh-agency-agents': '0.1.29',
     'dsh-context': '0.38.5',
     'dsh-better-sidebar': '0.18.0-alpha.0',
     'dsh-mcp-connector': '0.2.32',
@@ -54,7 +54,7 @@ test('每个内置插件都钉死精确版本', () => {
 test('官方 DSH 家族锁在同一个精确版本', () => {
   assert.equal(OFFICIAL_RUNTIME.packageName, '@deepseek-ai/dsh')
   assert.equal(OFFICIAL_RUNTIME.version, OFFICIAL_DSH_VERSION)
-  assert.equal(OFFICIAL_DSH_VERSION, '0.1.2-alpha.3')
+  assert.equal(OFFICIAL_DSH_VERSION, '0.1.2-rc.1')
   assert.equal(seededPackageNames()[0], '@deepseek-ai/dsh')
   assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.packageName, '@deepseek-ai/cordis-plugin-group')
   assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.version, '1.0.2')

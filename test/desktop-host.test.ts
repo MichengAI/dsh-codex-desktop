@@ -66,7 +66,9 @@ test('pnpm 成功但插件版本未变化时不应重载 DSH', async () => {
     await writeFile(join(root, 'node_modules', 'dsh-better-sidebar', 'package.json'), JSON.stringify({
       name: 'dsh-better-sidebar',
       version: '0.14.0',
+      dsh: { bundle: { patch: 'cordis.patch.yml' } },
     }), 'utf8')
+    await writeFile(join(root, 'node_modules', 'dsh-better-sidebar', 'cordis.patch.yml'), '[]\n', 'utf8')
     const sent: unknown[] = []
     const host = createDesktopHostServices({
       profileName: 'web',
@@ -359,6 +361,7 @@ test('后续成功安装不会激活上次失败留下的无关依赖', async ()
         name: packageName,
         dsh: { bundle: { patch: 'cordis.patch.yml' } },
       }), 'utf8')
+      await writeFile(join(root, 'node_modules', packageName, 'cordis.patch.yml'), '[]\n', 'utf8')
     }
     await writeFile(join(root, 'package.json'), JSON.stringify({
       dependencies: { 'stale-plugin': '1.0.0', 'good-plugin': '1.0.0' },

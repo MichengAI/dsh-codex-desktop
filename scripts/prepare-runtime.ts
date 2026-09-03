@@ -162,6 +162,10 @@ export async function stageBundledPlugins(destinationRoot: string, nodeRoot: str
     '--config.node-linker=hoisted',
     '--config.auto-install-peers=false',
     '--config.minimumReleaseAge=0',
+    '--network-concurrency=1',
+    '--fetch-retries=5',
+    '--fetch-retry-mintimeout=10000',
+    '--fetch-retry-maxtimeout=60000',
     '--registry=https://registry.npmjs.org/',
   ])
   for (const plugin of stagedPackages) {
