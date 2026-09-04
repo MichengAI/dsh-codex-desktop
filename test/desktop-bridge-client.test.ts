@@ -298,6 +298,34 @@ test('未聚焦会话完成时上报未读标记，窗口重新聚焦后清除',
   assert.deepEqual(client.notifications.filter(event => event.type === 'badge').map(event => event.count), [0, 1, 0])
 })
 
+test('已读完成任务在列表刷新后不会重新计入角标', () => {
+  let snapshot: any = {
+    ids: ['session-1', 'session-2'], current: 'session-1',
+    byId: {
+      'session-1': { completed: true, displayTitle: '任务一', running: false },
+      'session-2': { completed: true, displayTitle: '任务二', running: false },
+    },
+  }
+  let listListener: (() => void) | undefined
+  const client = loadClient()
+  client.apply({
+    ...clientContext({ pickDirectory: async () => null, create: async () => ({}), startSession(): void {} }),
+    sessions: {
+      binding: () => undefined,
+      list: { getSnapshot: () => snapshot, subscribe: (listener: () => void) => { listListener = listener; return () => {} } },
+      open(): void {},
+    },
+  })
+  assert.deepEqual(client.notifications.filter(event => event.type === 'badge').map(event => event.count), [1])
+
+  snapshot = { ...snapshot, current: 'session-2' }
+  assert.ok(listListener)
+  listListener()
+  listListener()
+
+  assert.deepEqual(client.notifications.filter(event => event.type === 'badge').map(event => event.count), [1, 0])
+})
+
 test('创建工作区异常返回空值时也不得启动会话', async () => {
   let starts = 0
   const errors: string[] = []

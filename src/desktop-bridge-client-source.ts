@@ -164,6 +164,7 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
       const trackCurrent = (): void => {
         const nextSnapshot = snapshot()
         const current = nextSnapshot.current
+        const isInitialSnapshot = notificationBaseline === undefined
         if (current !== undefined && history[historyIndex] !== current) {
           history = history.slice(0, historyIndex + 1)
           history.push(current)
@@ -183,7 +184,7 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         for (const id of nextSnapshot.ids) {
           const row = nextSnapshot.byId[id]
           if (row === undefined) continue
-          if (row.completed === true) unreadCompletions.add(id)
+          if (isInitialSnapshot && row.completed === true) unreadCompletions.add(id)
           const previous = notificationBaseline?.get(id)
           nextBaseline.set(id, { running: row.running, ...(row.pendingInteraction === undefined ? {} : { pendingInteraction: row.pendingInteraction }) })
           if (previous === undefined) continue
