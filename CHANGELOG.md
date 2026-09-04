@@ -4,6 +4,12 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.46 — 2026-09-04
+
+- Fixed the Windows taskbar unread-completion badge so opening completed tasks clears them permanently; later session-list refreshes no longer count historical completed rows again.
+
+Release tag: [`v1.0.46`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.46).
+
 ## 1.0.45 — 2026-09-04
 
 - Added plugin recovery mode: after a failed start the desktop isolates third-party plugins and opens a dedicated page to restore, uninstall, or return to the last healthy configuration.
@@ -39,12 +45,3 @@ Release tag: [`v1.0.41`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Aligned Windows, macOS, and Linux packaged-app smoke tests with alpha.2 authentication by verifying the expected unauthenticated response, process liveness, startup diagnostics, and the post-window ready marker in isolated profiles.
 
 Release tag: [`v1.0.40`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.40).
-
-## 1.0.39 — 2026-08-30
-
-- Added native Linux ARM64 / aarch64 packages for Ubuntu, Debian, and other compatible distributions, with both `.deb` and `.AppImage` artifacts.
-- Added a native GitHub-hosted ARM64 packaging job and packaged-app smoke test instead of relying on unverified cross-compilation.
-- Added the verified Node.js 24.20.0 Linux ARM64 executable checksum and a release guard for the architecture-specific `latest-linux-arm64.yml` update metadata.
-- Updated the English and Chinese download, system-requirement, and development documentation for Linux x64 / ARM64 parity.
-
-Release tag: [`v1.0.39`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.39).

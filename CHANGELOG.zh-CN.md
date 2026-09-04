@@ -4,6 +4,12 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.46 — 2026-09-04
+
+- 修复 Windows 任务栏未读完成角标：打开已完成任务后会稳定清除未读状态，后续任务列表刷新不再把历史完成任务重复计入。
+
+发布标签：[`v1.0.46`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.46)。
+
 ## 1.0.45 — 2026-09-04
 
 - 新增插件恢复模式：启动失败后隔离第三方插件，并提供独立恢复页，支持恢复、卸载或回到最近正常配置。
@@ -39,12 +45,3 @@
 - 让 Windows、macOS 与 Linux 打包应用冒烟测试适配 alpha.2 鉴权：在隔离 Profile 中校验预期的未鉴权响应、进程存活、启动诊断以及主窗口创建后的就绪标记。
 
 发布标签：[`v1.0.40`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.40)。
-
-## 1.0.39 — 2026-08-30
-
-- 为 Ubuntu、Debian 及其他兼容发行版新增原生 Linux ARM64 / aarch64 安装包，同时提供 `.deb` 与 `.AppImage` 制品。
-- 新增 GitHub 托管的原生 ARM64 打包任务与打包应用冒烟测试，不依赖未经验证的交叉编译。
-- 新增经过校验的 Node.js 24.20.0 Linux ARM64 可执行文件哈希，并在发布前检查架构专属的 `latest-linux-arm64.yml` 更新元数据。
-- 更新中英文下载说明、系统要求与开发文档，使 Linux x64 / ARM64 支持保持一致。
-
-发布标签：[`v1.0.39`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.39)。
