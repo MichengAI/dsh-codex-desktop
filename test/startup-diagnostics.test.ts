@@ -9,8 +9,17 @@ import {
   completeStartupDiagnostic,
   failStartupDiagnostic,
   readStartupDiagnostic,
+  parseRendererBootReport,
   suspectedPluginFromRendererReport,
 } from '../src/startup-diagnostics.js'
+
+test('工作台可用性只接受布尔值，兼容不携带该字段的旧报告', () => {
+  const report = { status: 'failed', plugins: ['broken-plugin'] }
+  assert.deepEqual(parseRendererBootReport(report), report)
+  assert.deepEqual(parseRendererBootReport({ ...report, workbenchReady: true }), { ...report, workbenchReady: true })
+  assert.deepEqual(parseRendererBootReport({ ...report, workbenchReady: false }), { ...report, workbenchReady: false })
+  assert.equal(parseRendererBootReport({ ...report, workbenchReady: 'true' }), undefined)
+})
 
 test('结构化渲染器报告只接受合法的包名，并返回首个可处理插件', () => {
   assert.equal(suspectedPluginFromRendererReport({ status: 'failed', plugins: ['@scope/broken-plugin', 'not a package'] }), '@scope/broken-plugin')

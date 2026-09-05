@@ -4,7 +4,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 
 import { writeTextFileAtomic } from './atomic-file.js'
-import { BUNDLED_PLUGINS, OFFICIAL_PROFILE_BUNDLES } from './bundled-plugins.js'
+import { isDeepSeekOfficialPackage } from './bundled-plugins.js'
 
 const RECOVERY_STATE_FILE = '.dsh-desktop-recovery.json'
 const RECOVERY_BACKUP_FILE = '.dsh-desktop-recovery.package.json'
@@ -110,11 +110,8 @@ function packageVersion(profileDir: string, packageName: string): string | undef
   }
 }
 
-function isTrustedBundle(profileDir: string, packageName: string): boolean {
-  if ((OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(packageName)) return true
-  if (packageName === 'dsh-desktop-bridge') return true
-  const bundled = BUNDLED_PLUGINS.find(plugin => plugin.packageName === packageName)
-  return bundled !== undefined && packageVersion(profileDir, packageName) === bundled.version
+export function isRecoverablePlugin(packageName: string): boolean {
+  return isValidPackageName(packageName) && !isDeepSeekOfficialPackage(packageName) && packageName !== 'dsh-desktop-bridge'
 }
 
 function originalBundles(manifest: ProfileManifest): string[] {
@@ -145,7 +142,14 @@ export function isRecoveryModeActive(profileDir: string): boolean {
 
 /** 没有仍需隔离的第三方插件时，恢复会话可以结束。 */
 export function canAutoLeaveRecoveryMode(status: RecoveryStatus): boolean {
-  return status.active && status.isolated.length === 0
+  return status.active && status.isolated.length === 0 && (status.pendingRestore?.length ?? 0) === 0
+}
+
+/** 恢复的插件通过完整客户端加载后，才结束试运行并允许清理恢复备份。 */
+export async function confirmRecoveryStartup(profileDir: string): Promise<void> {
+  const state = await readState(profileDir)
+  if (state === undefined || state.pendingRestore.length === 0) return
+  await writeState(profileDir, { ...state, pendingRestore: [] })
 }
 
 export async function tryAutoLeaveRecoveryMode(profileDir: string): Promise<boolean> {
@@ -170,45 +174,56 @@ export async function leaveRecoveryMode(profileDir: string): Promise<void> {
   ])
 }
 
-function filteredBundles(profileDir: string, bundles: readonly string[], pendingRestore: readonly string[]): string[] {
-  const pending = new Set(pendingRestore)
-  return bundles.filter(packageName => isTrustedBundle(profileDir, packageName) || pending.has(packageName))
+function filteredBundles(bundles: readonly string[], isolated: readonly RecoveryPlugin[]): string[] {
+  const blocked = new Set(isolated.map(plugin => plugin.packageName))
+  return bundles.filter(packageName => !blocked.has(packageName))
 }
 
 function withBundles(manifest: ProfileManifest, bundles: readonly string[]): ProfileManifest {
   return { ...manifest, dsh: { ...manifest.dsh, profile: { ...manifest.dsh?.profile, bundles: [...bundles] } } }
 }
 
-export async function enterRecoveryMode(profileDir: string, options: { force?: boolean, suspectedPlugin?: string, failureMessage?: string } = {}): Promise<RecoveryStatus> {
+export async function enterRecoveryMode(profileDir: string, options: { force?: boolean, suspectedPlugin?: string, suspectedPlugins?: readonly string[], failureMessage?: string } = {}): Promise<RecoveryStatus> {
   if (options.suspectedPlugin !== undefined && !isValidPackageName(options.suspectedPlugin)) throw new Error('插件名称不合法。')
+  if (options.suspectedPlugins?.some(name => !isValidPackageName(name))) throw new Error('插件名称不合法。')
   if (options.failureMessage !== undefined && normalizeFailureMessage(options.failureMessage) === undefined) throw new Error('启动错误信息不合法。')
   const currentState = await readState(profileDir)
-  if (currentState !== undefined && !options.force && options.suspectedPlugin === undefined && options.failureMessage === undefined) return statusFrom(currentState)
+  if (currentState !== undefined && !options.force && options.suspectedPlugin === undefined && options.suspectedPlugins === undefined && options.failureMessage === undefined) return statusFrom(currentState)
   const currentManifest = await readManifest(manifestPath(profileDir))
-  const originalManifest = currentState === undefined
+  const savedManifest = currentState === undefined
     ? currentManifest
     : await readManifest(backupPath(profileDir))
+  // 恢复期间仍允许安装新插件，后续诊断也必须能够单独恢复它们。
+  const originalManifest = withBundles({ ...savedManifest, dependencies: { ...currentManifest.dependencies, ...savedManifest.dependencies } },
+    [...new Set([...originalBundles(savedManifest), ...originalBundles(currentManifest)])])
   const bundles = originalBundles(originalManifest)
   if (!bundles.every(isValidPackageName)) throw new Error('插件名称不合法。')
+  const suspectedPlugin = options.suspectedPlugin ?? options.suspectedPlugins?.[0] ?? currentState?.suspectedPlugin
+  const identified = [...(options.suspectedPlugins ?? []), ...(options.suspectedPlugin === undefined ? [] : [options.suspectedPlugin])]
+  const requested = new Set([
+    ...(currentState?.isolated.map(plugin => plugin.packageName) ?? []),
+    ...identified,
+    ...(options.force && identified.length === 0 ? currentState?.pendingRestore ?? [] : []),
+  ])
   const isolated = bundles
-    .filter(packageName => !isTrustedBundle(profileDir, packageName))
+    .filter(packageName => isRecoverablePlugin(packageName) && requested.has(packageName))
     .map(packageName => ({ packageName, version: originalManifest.dependencies?.[packageName] ?? packageVersion(profileDir, packageName) }))
-  const suspectedPlugin = options.suspectedPlugin ?? currentState?.suspectedPlugin
+  if (currentState === undefined && isolated.length === 0) return statusFrom(undefined)
   const failureMessage = normalizeFailureMessage(options.failureMessage) ?? currentState?.failureMessage
   const state: RecoveryState = {
     schemaVersion: 1,
     enteredAt: currentState?.enteredAt ?? new Date().toISOString(),
     isolated,
-    pendingRestore: [],
+    pendingRestore: currentState?.pendingRestore.filter(name => !requested.has(name)) ?? [],
     ...(suspectedPlugin === undefined || !isolated.some(plugin => plugin.packageName === suspectedPlugin)
       ? {}
       : { suspectedPlugin }),
     ...(failureMessage === undefined ? {} : { failureMessage }),
     originalManifestSha256: createHash('sha256').update(JSON.stringify(originalManifest)).digest('hex'),
   }
-  if (currentState === undefined) await writeTextFileAtomic(backupPath(profileDir), `${JSON.stringify(originalManifest, undefined, 2)}\n`)
+  await writeTextFileAtomic(backupPath(profileDir), `${JSON.stringify(originalManifest, undefined, 2)}\n`)
   await writeState(profileDir, state)
-  await writeManifest(profileDir, withBundles(currentManifest, filteredBundles(profileDir, originalBundles(currentManifest), state.pendingRestore)))
+  await writeManifest(profileDir, withBundles(currentManifest, filteredBundles(originalBundles(currentManifest), state.isolated)))
   return statusFrom(state)
 }
 
@@ -217,7 +232,7 @@ export async function restrictProfileBundlesForRecovery(profileDir: string): Pro
   if (state === undefined) return false
   const manifest = await readManifest(manifestPath(profileDir))
   const current = originalBundles(manifest)
-  const next = filteredBundles(profileDir, current, state.pendingRestore)
+  const next = filteredBundles(current, state.isolated)
   if (next.length === current.length && next.every((value, index) => value === current[index])) return false
   await writeManifest(profileDir, withBundles(manifest, next))
   return true

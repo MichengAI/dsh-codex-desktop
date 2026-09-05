@@ -64,7 +64,7 @@ interface DesktopShellBridge {
     title?: string
   }): void
   reportLocale(locale: string): void
-  reportBoot(report: { status: 'healthy' } | { status: 'failed', plugins: string[], error?: string }): void
+  reportBoot(report: { status: 'healthy' } | { status: 'failed', plugins: string[], error?: string, workbenchReady: boolean }): void
   reportTheme(value: { colorScheme: 'light' | 'dark'; preference: 'light' | 'dark' | 'system' }): void
   reportState(state: DesktopNavigationState): void
 }
@@ -120,9 +120,20 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
           .map(entry => entry.options.name)
           .filter(name => typeof name === 'string' && name.length > 0)
           .slice(0, 100)
-        bridge.reportBoot(error === undefined && plugins.length === 0
-          ? { status: 'healthy' }
-          : { status: 'failed', plugins, ...(error === undefined ? {} : { error: error.slice(0, 4000) }) })
+        if (error === undefined && plugins.length === 0) {
+          bridge.reportBoot({ status: 'healthy' })
+          return
+        }
+        // Loader 完成不等于 React 已提交布局，等绘制后再检查实际会话界面。
+        await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+        const frame = document.querySelector('[data-shell-overlay]')?.parentElement
+        const editor = frame?.querySelector<HTMLElement>('[role="textbox"]')
+        const bounds = editor?.getBoundingClientRect()
+        const workbenchReady = editor !== undefined && editor !== null
+          && bounds !== undefined && bounds.width > 0 && bounds.height > 0
+          && getComputedStyle(editor).visibility === 'visible'
+        bridge.reportBoot({ status: 'failed', plugins, workbenchReady,
+          ...(error === undefined ? {} : { error: error.slice(0, 4000) }) })
       }
       const reportBadge = (): void => {
         if (reportedBadgeCount === unreadCompletions.size) return

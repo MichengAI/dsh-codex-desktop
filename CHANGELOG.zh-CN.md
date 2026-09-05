@@ -4,6 +4,16 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.47 — 2026-09-06
+
+- 将插件安装错误与 DSH 启动分开处理：安装失败后仍尝试加载工作台，不直接阻断启动。
+- 恢复模式仅定位与加载失败相关的插件，支持回溯损坏依赖的所属插件；无关插件继续启用，确认隔离前先展示候选列表。
+- 修复非关键插件失败时强制将可用工作台切到恢复页的问题。异常仍记录日志，试恢复插件通过完整健康检查后才清理恢复备份。
+- 保留客户端加载超过 30 秒且近期插件变更提供候选线索时进入恢复的规则。
+- 内置插件更新到 Codex UI 0.2.103、Automation 0.1.31、Skills Manager 0.1.40、Archive Manager 0.1.30、Agency Agents 0.1.32、`dsh-context` 0.43.0、MCP Connector 0.2.35 和 `dshmarket` 1.44.0。IM Connect 保持 0.1.34，DSH Better Sidebar 保持 0.18.0。
+
+发布标签：[`v1.0.47`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.47)。
+
 ## 1.0.46 — 2026-09-04
 
 - 修复 Windows 任务栏未读完成角标：打开已完成任务后会稳定清除未读状态，后续任务列表刷新不再把历史完成任务重复计入。
@@ -36,12 +46,3 @@
 - 将 Windows、macOS 与 Linux 打包冒烟测试统一为强制离线，并在隔离 Profile 中核对全部十个随包插件及其固定版本。
 
 发布标签：[`v1.0.41`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.41)。
-
-## 1.0.40 — 2026-08-31
-
-- 将内置官方 DSH 运行时及其启动依赖升级到 `0.1.2-alpha.2`，适配启动 Token 鉴权与 alpha.2 所需的原生安装脚本。
-- 将内置生态组件更新到 IM Connect 0.1.27、Skills Manager 0.1.32、Archive Manager 0.1.21、Agency Agents 0.1.23、`dsh-context` 0.38.5、DSH Better Sidebar 0.18.0-alpha.0、MCP Connector 0.2.31 和 `dshmarket` 1.38.1。
-- 将 `electron-builder` 升级到 26.15.7，并刷新供全新安装和缺包自修复使用的离线运行时与插件仓库装配流程。
-- 让 Windows、macOS 与 Linux 打包应用冒烟测试适配 alpha.2 鉴权：在隔离 Profile 中校验预期的未鉴权响应、进程存活、启动诊断以及主窗口创建后的就绪标记。
-
-发布标签：[`v1.0.40`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.40)。

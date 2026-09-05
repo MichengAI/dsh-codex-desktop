@@ -6,6 +6,7 @@ import test from 'node:test'
 
 import {
   canAutoLeaveRecoveryMode,
+  confirmRecoveryStartup,
   enterRecoveryMode,
   getRecoveryStatus,
   isRecoveryModeActive,
@@ -35,10 +36,10 @@ async function createProfile(): Promise<{ root: string; profile: string }> {
   return { root, profile }
 }
 
-test('恢复模式只保留锁定版本的内置 bundle，并保留原清单备份', async () => {
+test('恢复模式只隔离被诊断指向的插件，并保留原清单备份', async () => {
   const { root, profile } = await createProfile()
   try {
-    const status = await enterRecoveryMode(profile)
+    const status = await enterRecoveryMode(profile, { suspectedPlugin: 'third-party-plugin' })
     assert.equal(status.active, true)
     assert.deepEqual(status.isolated.map(plugin => plugin.packageName), ['third-party-plugin'])
     const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as { dsh: { profile: { bundles: string[] } } }
@@ -65,11 +66,14 @@ test('恢复状态持久化疑似出错插件，便于重启后提示卸载', as
   }
 })
 
-test('内置插件即使出现在诊断中，也不能作为可卸载的疑似第三方插件保存', async () => {
+test('随包社区插件确实加载失败时也可单独隔离，无关第三方插件继续加载', async () => {
   const { root, profile } = await createProfile()
   try {
     const status = await enterRecoveryMode(profile, { suspectedPlugin: '@michengai/dsh-codex-ui' })
-    assert.equal(status.suspectedPlugin, undefined)
+    assert.equal(status.suspectedPlugin, '@michengai/dsh-codex-ui')
+    assert.deepEqual(status.isolated.map(plugin => plugin.packageName), ['@michengai/dsh-codex-ui'])
+    const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
+    assert.equal(manifest.dsh.profile.bundles.includes('third-party-plugin'), true)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -78,7 +82,7 @@ test('内置插件即使出现在诊断中，也不能作为可卸载的疑似�
 test('恢复模式有效时，启动补种不能把隔离的第三方 bundle 写回清单', async () => {
   const { root, profile } = await createProfile()
   try {
-    await enterRecoveryMode(profile)
+    await enterRecoveryMode(profile, { suspectedPlugin: 'third-party-plugin' })
     await finalizeProfileBundlesAfterInstall(profile)
     const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as { dsh: { profile: { bundles: string[] } } }
     assert.equal(manifest.dsh.profile.bundles.includes('third-party-plugin'), false)
@@ -90,7 +94,7 @@ test('恢复模式有效时，启动补种不能把隔离的第三方 bundle 写
 test('恢复单个插件会按原始顺序恢复 bundle 和依赖声明', async () => {
   const { root, profile } = await createProfile()
   try {
-    await enterRecoveryMode(profile)
+    await enterRecoveryMode(profile, { suspectedPlugin: 'third-party-plugin' })
     const status = await restoreRecoveryPlugin(profile, 'third-party-plugin')
     assert.deepEqual(status.isolated, [])
     const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as { dependencies: Record<string, string>; dsh: { profile: { bundles: string[] } } }
@@ -104,7 +108,7 @@ test('恢复单个插件会按原始顺序恢复 bundle 和依赖声明', async 
 test('卸载仅允许隔离的第三方插件，并同时移除清单和磁盘目录', async () => {
   const { root, profile } = await createProfile()
   try {
-    await enterRecoveryMode(profile)
+    await enterRecoveryMode(profile, { suspectedPlugin: 'third-party-plugin' })
     await assert.rejects(() => uninstallRecoveryPlugin(profile, '@michengai/dsh-codex-ui'))
     const status = await uninstallRecoveryPlugin(profile, 'third-party-plugin')
     assert.deepEqual(status.isolated, [])
@@ -143,7 +147,7 @@ test('无恢复状态时返回非活动状态', async () => {
 test('退出恢复模式只清理恢复状态，不删除已安装插件', async () => {
   const { root, profile } = await createProfile()
   try {
-    await enterRecoveryMode(profile)
+    await enterRecoveryMode(profile, { suspectedPlugin: 'third-party-plugin' })
     await leaveRecoveryMode(profile)
     assert.equal(isRecoveryModeActive(profile), false)
     assert.deepEqual(await getRecoveryStatus(profile), { active: false, isolated: [] })
@@ -158,7 +162,7 @@ test('退出恢复模式只清理恢复状态，不删除已安装插件', async
 test('没有隔离插件时可以自动退出恢复模式', async () => {
   const { root, profile } = await createProfile()
   try {
-    await enterRecoveryMode(profile)
+    await enterRecoveryMode(profile, { suspectedPlugin: 'third-party-plugin' })
     await uninstallRecoveryPlugin(profile, 'third-party-plugin')
     const status = await getRecoveryStatus(profile)
     assert.equal(canAutoLeaveRecoveryMode(status), true)
@@ -172,7 +176,7 @@ test('没有隔离插件时可以自动退出恢复模式', async () => {
 test('仍有隔离插件时不能自动退出恢复模式', async () => {
   const { root, profile } = await createProfile()
   try {
-    const status = await enterRecoveryMode(profile)
+    const status = await enterRecoveryMode(profile, { suspectedPlugin: 'third-party-plugin' })
     assert.equal(canAutoLeaveRecoveryMode(status), false)
     assert.equal(await tryAutoLeaveRecoveryMode(profile), false)
     assert.equal(isRecoveryModeActive(profile), true)
@@ -190,6 +194,69 @@ test('恢复模式拒绝可能逃逸 profile 目录的插件标识', async () =>
     }, undefined, 2), 'utf8')
     await assert.rejects(() => enterRecoveryMode(profile), /插件名称不合法/)
     assert.equal(existsSync(join(profile, '.dsh-desktop-recovery.json')), false)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('没有可疑插件时不隔离整个 profile，也不创建恢复会话', async () => {
+  const { root, profile } = await createProfile()
+  try {
+    const original = await readFile(join(profile, 'package.json'), 'utf8')
+    assert.deepEqual(await enterRecoveryMode(profile), { active: false, isolated: [] })
+    assert.equal(await readFile(join(profile, 'package.json'), 'utf8'), original)
+    assert.equal(isRecoveryModeActive(profile), false)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('隔离守卫保留新安装的无关插件，恢复失败只重新隔离当前嫌疑插件', async () => {
+  const { root, profile } = await createProfile()
+  try {
+    await enterRecoveryMode(profile, { suspectedPlugin: 'third-party-plugin' })
+    const packageDir = join(profile, 'node_modules', 'healthy-new-plugin')
+    await mkdir(packageDir, { recursive: true })
+    await writeFile(join(packageDir, 'package.json'), JSON.stringify({ name: 'healthy-new-plugin', dsh: { bundle: { patch: 'patch.yml' } } }), 'utf8')
+    await writeFile(join(packageDir, 'patch.yml'), '[]', 'utf8')
+    const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
+    manifest.dependencies['healthy-new-plugin'] = '1.0.0'
+    await writeFile(join(profile, 'package.json'), JSON.stringify(manifest), 'utf8')
+    await finalizeProfileBundlesAfterInstall(profile)
+    await restoreRecoveryPlugin(profile, 'third-party-plugin')
+    const status = await enterRecoveryMode(profile, { force: true, suspectedPlugin: 'third-party-plugin' })
+    assert.deepEqual(status.isolated.map(plugin => plugin.packageName), ['third-party-plugin'])
+    const after = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
+    assert.equal(after.dsh.profile.bundles.includes('healthy-new-plugin'), true)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('恢复最后一个插件后必须等待完整健康检查才能清理备份', async () => {
+  const { root, profile } = await createProfile()
+  try {
+    await enterRecoveryMode(profile, { suspectedPlugin: 'third-party-plugin' })
+    await restoreRecoveryPlugin(profile, 'third-party-plugin')
+    assert.equal(await tryAutoLeaveRecoveryMode(profile), false)
+    assert.equal(existsSync(join(profile, '.dsh-desktop-recovery.package.json')), true)
+    await confirmRecoveryStartup(profile)
+    assert.equal(await tryAutoLeaveRecoveryMode(profile), true)
+    assert.equal(isRecoveryModeActive(profile), false)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('多个插件试恢复后只有一个加载失败时，不重新隔离其他试恢复插件', async () => {
+  const { root, profile } = await createProfile()
+  try {
+    await enterRecoveryMode(profile, { suspectedPlugins: ['third-party-plugin', '@michengai/dsh-codex-ui'] })
+    await restoreRecoveryPlugin(profile, 'third-party-plugin')
+    await restoreRecoveryPlugin(profile, '@michengai/dsh-codex-ui')
+    const status = await enterRecoveryMode(profile, { force: true, suspectedPlugins: ['third-party-plugin'] })
+    assert.deepEqual(status.isolated.map(plugin => plugin.packageName), ['third-party-plugin'])
+    assert.deepEqual(status.pendingRestore, ['@michengai/dsh-codex-ui'])
   } finally {
     await rm(root, { recursive: true, force: true })
   }

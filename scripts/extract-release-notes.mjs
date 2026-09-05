@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
 const tag = process.argv[2] || process.env.GITHUB_REF_NAME
 const outputPath = process.argv[3] || 'release-notes.md'
+const englishOnly = process.argv[4] === 'en'
 
 if (!tag) {
   throw new Error('Usage: node scripts/extract-release-notes.mjs <tag> [output]')
@@ -36,12 +37,18 @@ function extractSection(path) {
 const chinese = extractSection('CHANGELOG.zh-CN.md')
 const english = extractSection('CHANGELOG.md')
 
+if (englishOnly && !english) {
+  throw new Error(`No English changelog section found for ${tag}`)
+}
+
 if (!chinese && !english) {
   throw new Error(`No changelog section found for ${tag}`)
 }
 
 const sections = []
-if (chinese && english) {
+if (englishOnly) {
+  sections.push(english)
+} else if (chinese && english) {
   sections.push(`## 中文说明\n\n${chinese}`)
   sections.push(`## English\n\n${english}`)
 } else {

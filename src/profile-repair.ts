@@ -51,6 +51,20 @@ export async function repairBrokenProfile(profileDir: string, extraDirs: readonl
   return finalized.removed
 }
 
+/** 安装失败只记录安装错误；是否进入恢复流程由随后的实际加载结果决定。 */
+export async function startAfterPluginUpdates<T>(options: {
+  applyUpdates: () => Promise<unknown>
+  onUpdateError: (error: unknown) => Promise<void>
+  start: () => Promise<T>
+}): Promise<T> {
+  try {
+    await options.applyUpdates()
+  } catch (error) {
+    await options.onUpdateError(error).catch(logError => { console.error('无法记录插件安装错误。', logError) })
+  }
+  return options.start()
+}
+
 export async function startWithProfileSelfRepair<T>(options: {
   profileDir: string
   extraDirs?: readonly string[]

@@ -49,6 +49,16 @@ export async function readProfileHealthCheckpoint(profileDir: string): Promise<P
   return checkpoint === undefined ? undefined : { capturedAt: checkpoint.capturedAt }
 }
 
+/** 仅在实际加载失败后作为诊断线索，安装或版本变化本身不触发恢复。 */
+export async function changedBundlesSinceHealthy(profileDir: string): Promise<string[]> {
+  const checkpoint = await readCheckpoint(profileDir)
+  if (checkpoint === undefined) return []
+  const before = JSON.parse(checkpoint.packageJson) as { dependencies?: Record<string, string>; dsh?: { profile?: { bundles?: string[] } } }
+  const after = JSON.parse(await readFile(join(profileDir, 'package.json'), 'utf8')) as typeof before
+  const previous = new Set(before.dsh?.profile?.bundles ?? [])
+  return (after.dsh?.profile?.bundles ?? []).filter(name => !previous.has(name) || after.dependencies?.[name] !== before.dependencies?.[name])
+}
+
 /** 只保存 DSH 组合所需的声明文件；会话、项目和依赖目录从不进入检查点。 */
 export async function captureProfileHealthCheckpoint(profileDir: string, capturedAt = new Date().toISOString()): Promise<void> {
   const packageJson = await readFile(join(profileDir, 'package.json'), 'utf8')

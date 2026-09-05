@@ -13,10 +13,10 @@ import { quitDesktopApp, shouldHideInsteadOfClose } from './app-lifecycle.js'
 import type { DshServer, StartDshOptions } from './dsh-process.js'
 import { isExternalOpenUrl, isSameOrigin } from './navigation.js'
 import { applyPendingProfileUpdates, resolvePnpmStoreDir, seedBundledPlugins, resolveWebProfileDir } from './plugin-seed.js'
-import { parseUnresolvedBundleError, removeProfileBundle, startWithProfileSelfRepair } from './profile-repair.js'
-import { enterRecoveryMode, getRecoveryStatus, isRecoveryModeActive, leaveRecoveryMode, restoreRecoveryPlugin, tryAutoLeaveRecoveryMode, uninstallRecoveryPlugin } from './recovery-mode.js'
-import { extractPluginFromStartupFailure, trimStartupLogForRecovery } from './recovery-diagnostics.js'
-import { advanceStartupDiagnostic, beginStartupDiagnostic, completeStartupDiagnostic, failStartupDiagnostic, parseRendererBootReport, readStartupDiagnostic, suspectedPluginFromRendererReport, type StartupDiagnosticStage } from './startup-diagnostics.js'
+import { parseUnresolvedBundleError, removeProfileBundle, startAfterPluginUpdates, startWithProfileSelfRepair } from './profile-repair.js'
+import { confirmRecoveryStartup, enterRecoveryMode, getRecoveryStatus, isRecoveryModeActive, leaveRecoveryMode, restoreRecoveryPlugin, tryAutoLeaveRecoveryMode, uninstallRecoveryPlugin } from './recovery-mode.js'
+import { findRecoveryCandidates, trimStartupLogForRecovery } from './recovery-diagnostics.js'
+import { advanceStartupDiagnostic, beginStartupDiagnostic, completeStartupDiagnostic, failStartupDiagnostic, parseRendererBootReport, readStartupDiagnostic, type StartupDiagnosticStage } from './startup-diagnostics.js'
 import { captureProfileHealthCheckpoint, readProfileHealthCheckpoint, restoreProfileHealthCheckpoint } from './profile-health-checkpoint.js'
 import { resolveBundledPluginStore, resolvePluginBinDir } from './plugin-toolchain.js'
 import { resolveDshBootstrap, resolveDshRuntime, resolveNodeExecutable } from './runtime.js'
@@ -82,6 +82,7 @@ let dshSettingsDialogVisible = false
 let recoveryProfileDir: string | undefined
 let recoveryFailureMessage: string | undefined
 let recoveryFailurePlugin: string | undefined
+let recoveryFailurePlugins: string[] = []
 let startupDiagnosticStage: Exclude<StartupDiagnosticStage, 'healthy'> = 'server-starting'
 let rendererHealthTimer: NodeJS.Timeout | undefined
 let handlingRendererBootFailure = false
@@ -451,6 +452,7 @@ async function handleRendererBootReport(value: unknown, profileDir = lastSeedOpt
     await completeStartupDiagnostic(startupDiagnosticPath(profileDir)).catch(error => {
       console.error('无法保存 DSH 健康启动证据。', error)
     })
+    await confirmRecoveryStartup(profileDir)
     if (await maybeLeaveRecoveryMode(profileDir)) {
       // 恢复会话已结束，允许写入新的健康检查点。
     }
@@ -464,19 +466,21 @@ async function handleRendererBootReport(value: unknown, profileDir = lastSeedOpt
   if (handlingRendererBootFailure || isQuitting || isRecycling) return
   handlingRendererBootFailure = true
   const plugins = report.plugins ?? []
-  const suspectedPlugin = suspectedPluginFromRendererReport(report)
   const message = report.error ?? (plugins.length === 0
     ? 'DSH 客户端未能完成插件加载。'
     : `以下插件未能加载：${plugins.join('、')}。`)
   try {
+    const candidates = await startupRecoveryCandidates(profileDir, message, plugins)
     await failStartupDiagnostic(startupDiagnosticPath(profileDir), {
       stage: 'renderer-loading',
       source,
       message,
-      plugins,
+      plugins: candidates,
     })
     await writeTextFile(startupErrorLogPath(profileDir), `${message}\n`, 'utf8')
-    await showRecoveryWindow(profileDir, { failureMessage: message.slice(0, 240), failurePlugin: suspectedPlugin })
+    // 非关键插件异常只保留诊断；不能把有异常的配置确认为完全健康。
+    if (source === 'renderer' && report.workbenchReady === true) return
+    await presentDshLoadFailure(profileDir, message, candidates)
   } catch (error) {
     console.error('无法处理 DSH 客户端启动失败。', error)
   } finally {
@@ -509,6 +513,7 @@ async function returnToWorkbenchFromRecovery(): Promise<void> {
 function clearRecoverySessionHints(): void {
   recoveryFailureMessage = undefined
   recoveryFailurePlugin = undefined
+  recoveryFailurePlugins = []
 }
 
 async function maybeLeaveRecoveryMode(profileDir: string): Promise<boolean> {
@@ -529,7 +534,7 @@ async function openWorkbenchOrRecovery(profileDir: string, serverUrl: string): P
   await createMainWindow(serverUrl)
 }
 
-async function showRecoveryWindow(profileDir: string, failure?: { failureMessage?: string, failurePlugin?: string }): Promise<void> {
+async function showRecoveryWindow(profileDir: string, failure?: { failureMessage: string, failurePlugins: string[] }): Promise<void> {
   stopRendererHealthTimer()
   mainWindow ??= createWindow()
   const window = mainWindow
@@ -539,29 +544,55 @@ async function showRecoveryWindow(profileDir: string, failure?: { failureMessage
   window.center()
   const view = requireRecoveryView()
   recoveryProfileDir = profileDir
-  if (failure?.failureMessage !== undefined) recoveryFailureMessage = failure.failureMessage
-  if (failure?.failurePlugin !== undefined) recoveryFailurePlugin = failure.failurePlugin
+  if (failure !== undefined) {
+    recoveryFailureMessage = failure.failureMessage
+    recoveryFailurePlugins = failure.failurePlugins
+    recoveryFailurePlugin = failure.failurePlugins[0]
+  }
   showRecoveryContentView()
   const html = resolveRecoveryHtml()
   if (html === undefined) throw new Error('恢复页面资源缺失。')
   await windowNavigation.navigate(view, () => view.webContents.loadFile(html))
 }
 
+async function startupRecoveryCandidates(profileDir: string, message: string, plugins: readonly string[] = []): Promise<string[]> {
+  try {
+    return await findRecoveryCandidates(profileDir, message, plugins)
+  } catch (error) {
+    console.error('无法定位导致 DSH 加载失败的插件。', error)
+    return []
+  }
+}
+
+async function presentDshLoadFailure(profileDir: string, message: string, candidates: string[]): Promise<void> {
+  if (isRecoveryModeActive(profileDir)) {
+    await enterRecoveryMode(profileDir, { force: true, suspectedPlugins: candidates, failureMessage: message })
+  }
+  if (candidates.length > 0 || isRecoveryModeActive(profileDir)) {
+    await showRecoveryWindow(profileDir, { failureMessage: message, failurePlugins: candidates })
+  } else {
+    clearRecoverySessionHints()
+    await showStartupWindow(desktopText('DSH 加载失败：', 'DSH failed to load: ') + message.slice(0, 240)
+      + desktopText('\n日志：', '\nLog: ') + startupErrorLogPath(profileDir))
+  }
+}
+
 async function reportStartupFailure(error: unknown, profileDir?: string): Promise<void> {
   const logPath = startupErrorLogPath(profileDir)
   const message = error instanceof Error ? error.message : '未知启动错误。'
+  const candidates = profileDir === undefined ? [] : await startupRecoveryCandidates(profileDir, message)
   if (profileDir !== undefined) {
     await failStartupDiagnostic(startupDiagnosticPath(profileDir), {
       stage: startupDiagnosticStage,
       source: 'process',
       message,
-      plugins: [],
+      plugins: candidates,
     }).catch(diagnosticError => { console.error('无法记录 DSH 启动失败。', diagnosticError) })
   }
   await writeTextFile(logPath, message + '\n', 'utf8').catch(() => undefined)
   const short = message.split(/\r?\n/)[0]?.slice(0, 240) ?? '未知启动错误。'
   try {
-    if (profileDir !== undefined) await showRecoveryWindow(profileDir, { failureMessage: short, failurePlugin: extractPluginFromStartupFailure(message) })
+    if (profileDir !== undefined) await presentDshLoadFailure(profileDir, message, candidates)
     else await showStartupWindow(desktopText('启动失败：', 'Startup failed: ') + short + desktopText('\n日志：', '\nLog: ') + logPath)
   } catch (displayError) {
     console.error('显示启动错误页面失败。', displayError)
@@ -647,17 +678,28 @@ async function recycleDshForPluginUpdate(): Promise<void> {
     const current = server
     server = undefined
     await current?.stop()
-    const updated = await applyPendingProfileUpdates(seedOptions)
-    if (updated.length > 0) console.log('已热更新插件：' + updated.join('、'))
-    await beginDshStartupDiagnostic(seedOptions.profileDir)
-    const started = await startWithProfileSelfRepair({
-      profileDir: seedOptions.profileDir,
-      extraDirs: seedOptions.desktopRuntimeDir === undefined ? [] : [seedOptions.desktopRuntimeDir],
-      start: () => startDsh({
-        ...startOptions,
-        onUnexpectedExit: handleUnexpectedDshExit,
-        onIpcMessage: handleDshIpc,
-      }),
+    const started = await startAfterPluginUpdates({
+      applyUpdates: async () => {
+        const updated = await applyPendingProfileUpdates(seedOptions)
+        if (updated.length > 0) console.log('已热更新插件：' + updated.join('、'))
+      },
+      onUpdateError: async error => {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('插件更新失败，继续尝试加载 DSH。', message)
+        await writeTextFile(join(app.getPath('userData'), 'plugin-update.log'), `${message}\n`, 'utf8')
+      },
+      start: async () => {
+        await beginDshStartupDiagnostic(seedOptions.profileDir)
+        return startWithProfileSelfRepair({
+          profileDir: seedOptions.profileDir,
+          extraDirs: seedOptions.desktopRuntimeDir === undefined ? [] : [seedOptions.desktopRuntimeDir],
+          start: () => startDsh({
+            ...startOptions,
+            onUnexpectedExit: handleUnexpectedDshExit,
+            onIpcMessage: handleDshIpc,
+          }),
+        })
+      },
     })
     server = started.result
     await advanceDshStartupDiagnostic(seedOptions.profileDir, 'server-ready')
@@ -940,6 +982,7 @@ async function recoveryPageStatus(profileDir: string): Promise<object> {
   return {
     ...status,
     running: server !== undefined,
+    candidates: recoveryFailurePlugins.map(packageName => ({ packageName })),
     ...(failureMessage === undefined ? {} : { failureMessage }),
     ...(suspectedPlugin === undefined ? {} : { suspectedPlugin }),
     ...(diagnostic === undefined ? {} : { diagnostic }),
@@ -976,12 +1019,6 @@ async function restartDshInRecoveryMode(profileDir: string, destination: 'recove
       await showRecoveryWindow(profileDir)
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    await enterRecoveryMode(profileDir, {
-      force: true,
-      suspectedPlugin: extractPluginFromStartupFailure(message),
-      failureMessage: message,
-    })
     await reportStartupFailure(error, profileDir)
     throw error
   } finally {
@@ -998,7 +1035,7 @@ function installRecoveryIpc(): void {
     const profileDir = requireRecoveryProfile(event.sender)
     const current = await getRecoveryStatus(profileDir)
     if (!current.active) await enterRecoveryMode(profileDir, {
-      suspectedPlugin: recoveryFailurePlugin,
+      suspectedPlugins: recoveryFailurePlugins,
       failureMessage: recoveryFailureMessage,
     })
     await restartDshInRecoveryMode(profileDir)

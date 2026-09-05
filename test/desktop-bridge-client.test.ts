@@ -7,7 +7,7 @@ import { desktopBridgeClientBundle } from '../src/desktop-bridge-client-source.j
 type ActionListener = (id: string) => void
 type ClientPlugin = { apply(ctx: Record<string, unknown>): void; inject: string[] }
 
-function loadClient(options: { elements?: unknown[]; errors?: string[]; focused?: boolean } = {}): {
+function loadClient(options: { elements?: unknown[]; errors?: string[]; focused?: boolean; editor?: { width: number; height: number; visibility?: string } } = {}): {
   apply(ctx: Record<string, unknown>): void
   focusWindow(): void
   inject: string[]
@@ -31,7 +31,20 @@ function loadClient(options: { elements?: unknown[]; errors?: string[]; focused?
   const themes: Array<Record<string, unknown>> = []
   const context = {
     console: { error: (...args: unknown[]) => { options.errors?.push(args.map(String).join(' ')) } },
-    document: { body: {}, hasFocus: () => focused, querySelectorAll: () => options.elements ?? [] },
+    document: {
+      body: {}, hasFocus: () => focused, querySelectorAll: () => options.elements ?? [],
+      querySelector: (selector: string) => {
+        assert.equal(selector, '[data-shell-overlay]')
+        return options.editor === undefined ? null : { parentElement: {
+          querySelector: (selector: string) => {
+            assert.equal(selector, '[role="textbox"]')
+            return { getBoundingClientRect: () => options.editor }
+          },
+        } }
+      },
+    },
+    getComputedStyle: () => ({ visibility: options.editor?.visibility ?? 'visible' }),
+    requestAnimationFrame: (callback: () => void) => queueMicrotask(callback),
     MutationObserver: class { observe(): void {} disconnect(): void {} },
     queueMicrotask,
     setTimeout,
@@ -133,8 +146,29 @@ test('客户端 Loader 未激活的插件会以结构化启动报告上报', asy
     status: 'failed',
     plugins: ['@scope/broken-plugin'],
     error: 'plugin activation failed',
+    workbenchReady: false,
   }])
 })
+
+for (const [name, editor, ready] of [
+  ['已渲染输入框', { width: 600, height: 80 }, true],
+  ['隐藏输入框', { width: 0, height: 0 }, false],
+  ['不可见输入框', { width: 600, height: 80, visibility: 'hidden' }, false],
+] as const) {
+  test(`非关键插件失败时依据${name}报告工作台可用性`, async () => {
+    const client = loadClient({ editor })
+    client.apply({
+      ...clientContext({ startSession(): void {} }),
+      loader: {
+        await: async () => undefined,
+        entries: () => [{ options: { name: 'optional-plugin' }, fiber: { state: 1 } }],
+      },
+    })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    assert.equal(client.bootReports[0]?.status, 'failed')
+    assert.equal(client.bootReports[0]?.workbenchReady, ready)
+  })
+}
 
 test('打开文件夹缺少 workspaceId 时不得继承当前工作区', async () => {
   let starts = 0

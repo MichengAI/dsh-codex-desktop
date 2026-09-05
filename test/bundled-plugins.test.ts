@@ -36,18 +36,18 @@ test('每个内置插件都钉死精确版本', () => {
       true,
     )
   }
-  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.41.0')
+  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.44.0')
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
-    '@michengai/dsh-codex-ui': '0.2.102',
+    '@michengai/dsh-codex-ui': '0.2.103',
     '@michengai/dsh-im-connect': '0.1.34',
-    '@michengai/dsh-automation': '0.1.27',
-    '@michengai/dsh-skills-manager': '0.1.38',
-    '@michengai/dsh-archive-manager': '0.1.29',
-    '@michengai/dsh-agency-agents': '0.1.30',
-    'dsh-context': '0.41.2',
+    '@michengai/dsh-automation': '0.1.31',
+    '@michengai/dsh-skills-manager': '0.1.40',
+    '@michengai/dsh-archive-manager': '0.1.30',
+    '@michengai/dsh-agency-agents': '0.1.32',
+    'dsh-context': '0.43.0',
     'dsh-better-sidebar': '0.18.0',
-    'dsh-mcp-connector': '0.2.32',
-    dshmarket: '1.41.0',
+    'dsh-mcp-connector': '0.2.35',
+    dshmarket: '1.44.0',
   })
 })
 

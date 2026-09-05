@@ -15,6 +15,7 @@ export interface RendererBootReport {
   status: 'healthy' | 'failed'
   plugins?: string[]
   error?: string
+  workbenchReady?: boolean
 }
 
 export interface StartupDiagnostic {
@@ -67,15 +68,17 @@ function sanitizePlugins(value: unknown): string[] {
 /** 仅接受固定字段的客户端启动报告，避免把渲染器任意对象写入本地诊断文件。 */
 export function parseRendererBootReport(value: unknown): RendererBootReport | undefined {
   if (typeof value !== 'object' || value === null) return undefined
-  const report = value as { status?: unknown, plugins?: unknown, error?: unknown }
+  const report = value as { status?: unknown, plugins?: unknown, error?: unknown, workbenchReady?: unknown }
   if (report.status === 'healthy') return { status: 'healthy' }
   if (report.status !== 'failed') return undefined
   if (!Array.isArray(report.plugins) || report.plugins.length > MAX_FAILED_PLUGINS) return undefined
   if (!report.plugins.every(isPackageName)) return undefined
   if (report.error !== undefined && (typeof report.error !== 'string' || report.error.length > MAX_FAILURE_MESSAGE_LENGTH)) return undefined
+  if (report.workbenchReady !== undefined && typeof report.workbenchReady !== 'boolean') return undefined
   return {
     status: 'failed',
     plugins: [...new Set(report.plugins)],
+    ...(typeof report.workbenchReady === 'boolean' ? { workbenchReady: report.workbenchReady } : {}),
     ...(typeof report.error === 'string' && report.error !== '' ? { error: report.error } : {}),
   }
 }

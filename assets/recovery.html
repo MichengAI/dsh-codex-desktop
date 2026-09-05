@@ -20,7 +20,7 @@
   <main id="main-content" tabindex="-1">
     <header class="page-header">
       <h1>DSH Codex Desktop 恢复</h1>
-      <p>当前配置无法正常启动。你可以查看启动错误，以恢复模式重新启动，并处理已隔离的第三方插件。</p>
+      <p>DSH 未能完成加载。下方列出与本次加载失败相关的可疑插件。</p>
       <div class="summary"><span>当前配置：web</span><span class="status" id="status">正在检查</span></div>
     </header>
 
@@ -42,8 +42,8 @@
     </section>
 
     <section class="section" aria-labelledby="plugins-heading">
-      <h2 class="section-heading" id="plugins-heading">已隔离的插件</h2>
-      <p class="section-note" id="plugins-description">确认启动恢复模式后，第三方插件会在不删除配置的情况下隔离。</p>
+      <h2 class="section-heading" id="plugins-heading">可能影响加载的插件</h2>
+      <p class="section-note" id="plugins-description">正在读取本次加载失败的诊断结果。</p>
       <div class="plugin-list" id="plugin-list"></div>
     </section>
   </main>
@@ -104,16 +104,19 @@
       }
     }
 
-    function pluginRows(plugins, suspectedPlugin) {
-      if (plugins.length === 0) return '<div class="empty">没有需要处理的第三方插件。</div>';
+    function pluginRows(plugins, suspectedPlugin, isolated = true) {
+      if (plugins.length === 0) return '<div class="empty">未定位到需要隔离的插件。</div>';
       return plugins.map(plugin => {
         const suspected = plugin.packageName === suspectedPlugin;
         const name = escapeHtml(plugin.packageName);
+        if (!isolated) return `<article class="plugin-row"><div><div class="plugin-name">${name}</div><div class="plugin-meta">可能影响本次加载，尚未隔离</div></div></article>`;
         return `<article class="plugin-row${suspected ? ' suspected' : ''}"><div><div class="plugin-name">${name}</div><div class="plugin-meta">${escapeHtml(plugin.version || '未知版本')} · 已隔离，未加载</div>${suspected ? '<div class="suspected-note">检测到可能导致启动失败的插件，建议卸载。</div>' : ''}</div><div class="row-actions">${suspected ? `<button class="remove" data-action="uninstall" data-name="${name}">卸载此插件</button><button class="restore" data-action="restore" data-name="${name}">仍要恢复</button>` : `<button class="restore" data-action="restore" data-name="${name}">恢复并重启</button><button class="remove" data-action="uninstall" data-name="${name}">卸载</button>`}</div></article>`;
       }).join('');
     }
 
     function render(state) {
+      primaryAction.disabled = false;
+      primaryAction.removeAttribute('aria-busy');
       const canEnterWorkbench = state.active && state.running;
       const needsRetry = state.active && !state.running;
       const hasFailure = typeof state.failureMessage === 'string' && state.failureMessage.trim() !== '';
@@ -129,13 +132,13 @@
       }
       restoreHealthyConfigButton.hidden = !state.checkpoint;
       if (canEnterWorkbench) {
-        recoveryDescription.textContent = '恢复模式正在运行。第三方插件仍处于隔离状态，你可以进入工作台继续使用。';
+        recoveryDescription.textContent = 'DSH 已启动，列表中的可疑插件仍处于隔离状态。';
         primaryAction.textContent = '进入工作台';
       } else if (needsRetry) {
-        recoveryDescription.textContent = '第三方插件已隔离，但 DSH 服务尚未就绪。查看日志后可重试恢复模式。';
+        recoveryDescription.textContent = '列表中的可疑插件已隔离，DSH 服务尚未就绪。';
         primaryAction.textContent = '重试恢复模式';
       } else {
-        recoveryDescription.textContent = '恢复模式只加载已验证的内置插件，并隔离第三方插件，不会删除会话、项目或设置。';
+        recoveryDescription.textContent = '恢复启动将仅隔离下方列出的可疑插件，保留其他插件和用户数据。';
         primaryAction.textContent = '启动恢复模式';
       }
       const isolated = state.isolated || [];
@@ -143,11 +146,11 @@
       pluginsDescription.textContent = state.active
         ? suspected && isolated.some(plugin => plugin.packageName === suspected)
           ? `已定位到可能导致本次失败的插件：${suspected}。建议卸载后再进入工作台。`
-          : `${isolated.length} 个第三方插件已隔离，当前不会加载。`
+          : `${isolated.length} 个可疑插件已隔离，当前不会加载。`
         : suspected
           ? `检测到可能导致本次失败的插件：${suspected}。启动恢复模式后可确认卸载。`
-          : '确认启动恢复模式后，第三方插件会在不删除配置的情况下隔离。';
-      pluginList.innerHTML = state.active ? pluginRows(isolated, suspected) : '<div class="empty">启动恢复模式后，可在这里恢复或卸载已隔离的插件。</div>';
+          : '尚未定位到具体插件，不会批量隔离第三方插件。';
+      pluginList.innerHTML = state.active ? pluginRows(isolated, suspected) : pluginRows(state.candidates || [], suspected, false);
       bindPluginActions();
     }
 
@@ -175,6 +178,7 @@
         setNotice('正在重新启动 DSH，最长等待 45 秒。');
         await api.activate();
         await refresh();
+        setNotice(currentState?.running ? 'DSH 已启动。' : 'DSH 尚未完成启动。');
       } catch (error) {
         setNotice(error instanceof Error ? error.message : '操作失败，请查看启动日志。', true);
         await refresh();
@@ -191,6 +195,7 @@
         await refresh();
       } catch (error) {
         setNotice(error instanceof Error ? error.message : '恢复插件失败，请查看启动日志。', true);
+        await refresh();
       } finally {
         resetButton(button, label);
       }
