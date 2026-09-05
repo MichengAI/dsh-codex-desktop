@@ -232,7 +232,7 @@ jobs:
           $OutputEncoding = [System.Text.Encoding]::UTF8
           $files = Get-ChildItem -LiteralPath 'release' -File | Where-Object { $_.Extension -in '.exe', '.zip', '.dmg', '.AppImage', '.deb', '.yml', '.blockmap' }
           if ($files.Count -eq 0) { throw '未找到可发布的安装包。' }
-          node scripts/extract-release-notes.mjs $env:GITHUB_REF_NAME release-notes.md en
+          node scripts/extract-release-notes.mjs $env:GITHUB_REF_NAME release-notes.md
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           gh release view $env:GITHUB_REF_NAME *> $null
