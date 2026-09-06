@@ -45,6 +45,7 @@ interface ClientContext {
     } | undefined
   }
   workspaces: {
+    list?: { getSnapshot(): { archivedSessionIds: readonly string[] } }
     create(input: { path: string }): Promise<{ id?: string; workspaceId?: string } | string>
     pickDirectory(): Promise<string | null>
     startSession(workspaceId?: string): void
@@ -99,6 +100,8 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
       let selectedForDismiss: string | undefined
       const unreadCompletions = new Set<string>()
       let reportedBadgeCount: number | undefined
+      let unreadStorageErrorReported = false
+      const unreadStorageKey = 'dsh.session-unread.v1'
 
       const notificationKindForInteraction = (value: string | undefined): 'approval' | 'question' | undefined => {
         if (value === undefined) return undefined
@@ -135,10 +138,36 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         bridge.reportBoot({ status: 'failed', plugins, workbenchReady,
           ...(error === undefined ? {} : { error: error.slice(0, 4000) }) })
       }
+      const sidebarUnreadCount = (): number | undefined => {
+        const codexUiActive = [...ctx.loader.entries()]
+          .some(entry => entry.options.name === '@michengai/dsh-codex-ui' && entry.fiber?.state === 2)
+        if (!codexUiActive) return undefined
+        try {
+          const stored = window.localStorage.getItem(unreadStorageKey)
+          const value: unknown = stored === null ? { version: 1, ids: [] } : JSON.parse(stored)
+          if (typeof value !== 'object' || value === null
+            || (value as { version?: unknown }).version !== 1
+            || !Array.isArray((value as { ids?: unknown }).ids)
+            || !(value as { ids: unknown[] }).ids.every(id => typeof id === 'string')) {
+            throw new Error('任务列表未读记录格式不正确。')
+          }
+          const current = snapshot()
+          const archived = new Set(ctx.workspaces.list?.getSnapshot().archivedSessionIds ?? [])
+          const unread = new Set((value as { ids: string[] }).ids
+            .filter(id => id.trim() !== '' && current.byId[id] !== undefined && !archived.has(id)))
+          unreadStorageErrorReported = false
+          return unread.size
+        } catch (error) {
+          if (!unreadStorageErrorReported) console.error('无法读取任务列表未读状态。', error)
+          unreadStorageErrorReported = true
+          return reportedBadgeCount ?? 0
+        }
+      }
       const reportBadge = (): void => {
-        if (reportedBadgeCount === unreadCompletions.size) return
-        reportedBadgeCount = unreadCompletions.size
-        bridge.reportNotification({ type: 'badge', count: unreadCompletions.size })
+        const count = Math.min(999, sidebarUnreadCount() ?? unreadCompletions.size)
+        if (reportedBadgeCount === count) return
+        reportedBadgeCount = count
+        bridge.reportNotification({ type: 'badge', count })
       }
       const markSessionRead = (id: string): void => {
         if (!unreadCompletions.delete(id)) return
@@ -294,13 +323,20 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         const onWindowFocus = (): void => {
           const current = snapshot().current
           if (current !== undefined) markSessionRead(current)
+          reportBadge()
         }
+        const onUnreadStorage = (event: StorageEvent): void => {
+          if (event.key === null || event.key === unreadStorageKey) reportBadge()
+        }
+        // 同页 localStorage 写入不触发 storage 事件，定时读取兼容插件现有的未读协议。
+        const unreadTimer = setInterval(reportBadge, 500)
+        window.addEventListener('storage', onUnreadStorage)
         window.addEventListener('focus', onWindowFocus)
         const observer = new MutationObserver(report)
         observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected', 'class'] })
         trackCurrent()
         reportLocale()
-        return () => { clearTimeout(bootTimer); stopAction(); stopOpenSession(); stopNotificationReply(); stopList(); stopLocale(); window.removeEventListener('focus', onWindowFocus); observer.disconnect() }
+        return () => { clearTimeout(bootTimer); clearInterval(unreadTimer); stopAction(); stopOpenSession(); stopNotificationReply(); stopList(); stopLocale(); window.removeEventListener('storage', onUnreadStorage); window.removeEventListener('focus', onWindowFocus); observer.disconnect() }
       }, 'desktop-shell bridge')
     }
 

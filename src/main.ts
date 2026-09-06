@@ -25,7 +25,8 @@ import { resolvePrebuiltOfficialRuntime } from './runtime-prebuilt.js'
 import { applyInitialWindowState } from './window-state.js'
 import { WindowNavigationCoordinator } from './window-navigation.js'
 import { escapeRoute } from './escape-routing.js'
-import { installDesktopBridge, resolveDesktopBridgeDir } from './desktop-host.js'
+import { prepareDesktopBridge, resolveDesktopBridgeDir } from './desktop-host.js'
+import { migrateDesktopBridgeProfile } from './desktop-bridge-migration.js'
 import { isChineseLocale, localizedShellActions, localizedShellMenus, normalizeShellLocale, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId } from './shell-actions.js'
 import { SHELL_BAR_HEIGHT, SHELL_IPC, type DshNavigationState, type DshShellActionId, type ShellBootstrap, type ShellMenuPopupRequest, type ShellState } from './shell-contract.js'
 import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayCloseDesktopSettings, mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshBoot, mayReportDshLocale, mayReportDshNotification, mayReportDshState, mayReportDshTheme, mayReportDshSettingsVisibility, type ShellRendererKind } from './shell-ipc-policy.js'
@@ -221,6 +222,7 @@ async function startApplication(): Promise<void> {
     const prebuiltRuntimeDir = resolvePrebuiltOfficialRuntime(runtimeOptions)
     const seedOptions = {
       nodeExecutable,
+      ...(pnpmEntry === undefined ? {} : { pnpmEntry }),
       profileDir,
       desktopRuntimeDir,
       pluginStoreDir: pluginStoreDir ?? '',
@@ -242,11 +244,13 @@ async function startApplication(): Promise<void> {
       await writeTextFile(join(app.getPath('userData'), 'plugin-update.log'), ` ${message}\n`, 'utf8').catch(() => undefined)
 
     }
-    installDesktopBridge(profileDir, resolveDesktopBridgeDir(runtimeOptions))
+    const desktopBridgePatch = prepareDesktopBridge(join(app.getPath('userData'), 'desktop-bridge'), resolveDesktopBridgeDir(runtimeOptions))
+    migrateDesktopBridgeProfile(profileDir)
     lastSeedOptions = seedOptions
     const runtime = resolveDshRuntime({ ...runtimeOptions, profileDir, desktopRuntimeDir })
     const startOptions = {
       bootstrapPath: resolveDshBootstrap(runtimeOptions),
+      desktopBridgePatch,
       ...(pathPrefix === undefined ? {} : { pathPrefix }),
       runtime,
       nodeExecutable,
@@ -1785,7 +1789,7 @@ async function checkDesktopUpdate(interaction: DesktopUpdateInteraction = 'inter
   try {
     const result = await autoUpdater.checkForUpdates()
     const version = result?.updateInfo.version
-    if (version === undefined || version === app.getVersion()) {
+    if (result?.isUpdateAvailable !== true || version === undefined || version === app.getVersion()) {
       setDesktopUpdateStatus({ kind: 'none' }, true)
       dismissDesktopUpdateNotification()
       if (interaction === 'interactive') {

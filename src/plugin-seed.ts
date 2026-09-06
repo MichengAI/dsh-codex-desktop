@@ -123,6 +123,8 @@ export function buildSeedPluginArgs(packages: readonly BundledPlugin[], targetDi
     ...packages.map((plugin) => `${plugin.packageName}@${plugin.version}`),
     `--dir=${targetDir}`,
     ...(options.storeDir === undefined ? [] : [`--store-dir=${options.storeDir}`]),
+    // pnpm 11 把版本元数据放在 cache-dir；纯离线首启不能依赖当前用户的缓存。
+    ...(options.offline === true && options.storeDir !== undefined ? [`--cache-dir=${join(options.storeDir, 'cache')}`] : []),
     ...(options.offline === true ? ['--offline'] : []),
     '--config.node-linker=hoisted',
     '--config.auto-install-peers=' + (options.autoInstallPeers === true ? 'true' : 'false'),
@@ -438,7 +440,10 @@ async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
     try {
       await runner(args)
     } catch (error) {
-      if (useStore) await runner(buildSeedPluginArgs(plan.packages, options.profileDir, {}))
+      if (useStore) {
+        console.warn('内置插件离线补种失败，尝试在线安装。', error)
+        await runner(buildSeedPluginArgs(plan.packages, options.profileDir, {}))
+      }
       else throw error
     }
   }
@@ -684,7 +689,7 @@ function runPnpm(options: SeedOptions, args: readonly string[]): Promise<void> {
       else reject(error)
     }
     const timeout = setTimeout(() => {
-      timeoutError = new Error('pnpm 操作超时，已终止子进程。')
+      timeoutError = new Error('pnpm 操作超时，已终止子进程。' + output.replace(/\s+/g, ' ').trim())
       terminateProcessTree(child)
       killDeadline = setTimeout(() => finish(timeoutError), 2_000)
     }, options.timeoutMs ?? 300_000)

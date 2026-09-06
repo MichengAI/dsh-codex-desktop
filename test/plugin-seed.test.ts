@@ -70,6 +70,7 @@ test('只补种缺失插件，并走 profile 内的 pnpm add', () => {
     '@michengai/dsh-im-connect@0.1.10',
     '--dir=D:\\profile\\web',
     '--store-dir=D:\\plugins\\store',
+    `--cache-dir=${join('D:\\plugins\\store', 'cache')}`,
     '--offline',
     '--config.node-linker=hoisted',
     '--config.auto-install-peers=false',

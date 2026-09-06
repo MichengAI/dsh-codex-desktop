@@ -4,6 +4,18 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.48 — 2026-09-07
+
+- Inject the desktop bridge from the application's private directory when Desktop starts DSH. Standalone `dsh web` now uses Web plugin management, and legacy bridge configuration is migrated out of the shared profile with a backup.
+- Validate Desktop environment and pnpm availability before exposing bridge services, and keep read-only pnpm queries from modifying the profile.
+- Synchronize the Windows taskbar badge with Codex UI's unread records so reading a task clears the same state shown in the task list.
+- Respect the updater's availability decision so older or currently ineligible releases are not offered as new updates or downloaded automatically.
+- Include pnpm package metadata in the offline bundle so first launch works with an empty user cache. Preserve the initial offline installation error and timeout output for diagnosis.
+- Bundle Usage Billing 1.0.31, BTW 0.1.3, and Simplify 0.1.2, bringing the bundled plugin catalog to 13 entries.
+- Update Codex UI to 0.2.106, Automation to 0.1.32, `dsh-context` to 0.44.0, and MCP Connector to 0.2.37. Other bundled plugin versions remain unchanged.
+
+Release tag: [`v1.0.48`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.48).
+
 ## 1.0.47 — 2026-09-06
 
 - Plugin installation errors now remain separate from DSH startup: the desktop still attempts to load the workbench after a failed installation.
@@ -37,12 +49,3 @@ Release tag: [`v1.0.45`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Hardened offline runtime initialization by sharing the bundled-plugin verifier across Windows smoke tests, waiting for the desktop ready marker on both HTTP paths, and cleaning the full extraction process tree when initialization is cancelled or times out.
 
 Release tag: [`v1.0.43`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.43).
-
-## 1.0.41 — 2026-08-31
-
-- Fixed the offline bundle so it includes every peer required to launch the official DSH runtime without network access.
-- Moved portable first-run verification, extraction, and bulk file copying into a separate child process with staged progress, preventing the window from becoming unresponsive during initialization.
-- Bound runtime and plugin-store completion markers to the bundled archive SHA256. Empty or stale markers from overwritten or reused portable directories now trigger re-extraction, so offline first launch no longer starts without plugins.
-- Made Windows, macOS, and Linux packaged-app smoke tests force offline mode and verify all ten bundled plugins and their pinned versions in an isolated profile.
-
-Release tag: [`v1.0.41`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.41).

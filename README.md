@@ -99,8 +99,13 @@ The installer ships with the local runtime required to start DSH. On first launc
 | Context inspection and management | [`dsh-context`](https://github.com/bowenliang123/dsh-context) |
 | Extensible workspace sidebar | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
 | MCP connection management | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
+| Usage and cost tracking | [`@kenz1117/dsh-ui-usage-billing`](https://github.com/kenz1117/dsh-ui-usage-billing) |
+| One-off read-only side questions | [`@michengai/dsh-btw`](https://github.com/MichengAI/dsh-btw) |
+| Code simplification scoped to Git changes | [`@michengai/dsh-simplify`](https://github.com/MichengAI/dsh-simplify) |
 
 You can later manage additional plugins from the plugin market. The desktop application keeps its own runtime separate from profile-installed community plugins so plugin changes do not overwrite the application runtime.
+
+The desktop bridge ships with the app and is injected only when Desktop starts DSH; it does not need to be installed in the shared Web profile. Running `dsh web` manually uses Web's own plugin management path. Desktop migrates and backs up bridge configuration left by older versions on startup.
 
 ## DSH product ecosystem
 
@@ -113,6 +118,8 @@ DSH Codex Desktop combines the core runtime, feature products, and plugin market
 | Six feature products | [Codex UI](https://github.com/MichengAI/dsh-codex-ui) · [IM Connect](https://github.com/MichengAI/dsh-im-connect) · [Automation](https://github.com/MichengAI/dsh-automation) · [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) · [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) · [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | Each can be installed independently; all six are bundled with the desktop app |
 | Integrated ecosystem plugins | [DSH Context](https://github.com/bowenliang123/dsh-context) · [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) · [DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector) | Bundled with the desktop app for context insight, workspace navigation, and MCP connection management |
 | `dshmarket` | Discover, install, and update more DSH plugins | Included as the plugin market |
+| BTW and Simplify | Read-only side questions and code simplification | Both first-party tool plugins ship with Desktop and can also be installed independently |
+| [Usage Billing](https://github.com/kenz1117/dsh-ui-usage-billing) | Usage aggregation, cost tracking, and a billing dashboard | Bundled as a community plugin |
 
 ## Updates and recovery
 

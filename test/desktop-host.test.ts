@@ -6,7 +6,9 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import { APPLY_PLUGIN_UPDATES_IPC, OFFICIAL_DSH_VERSION } from '../src/bundled-plugins.js'
-import { createDesktopHostServices, DESKTOP_BRIDGE_FILES, ensureDesktopBridgeBundle, ensureDesktopBridgePatch, installDesktopBridge, mergeDesktopBridgePatch, officialPluginUpdateVersion, runBundledPnpm, shouldRecycleAfterPluginArgs, shouldRecycleAfterPluginResult } from '../src/desktop-host.js'
+import { createDesktopHostServices, DESKTOP_BRIDGE_FILES, prepareDesktopBridge, officialPluginUpdateVersion, runBundledPnpm, shouldRecycleAfterPluginArgs, shouldRecycleAfterPluginResult } from '../src/desktop-host.js'
+import { removeDesktopBridgePatch } from '../src/desktop-bridge-migration.js'
+import { pathToFileURL } from 'node:url'
 
 async function waitFor(predicate: () => boolean | Promise<boolean>, timeoutMs = 1_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
@@ -227,31 +229,16 @@ test('pnpm 成功退出时不应因可选依赖脚本提示阻断热更新', asy
   await waitFor(() => sent.length === 1)
   assert.deepEqual(sent, [APPLY_PLUGIN_UPDATES_IPC])
 })
-test('会把桌面桥接插件写进 profile patch 顶部', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-bridge-'))
-  try {
-    ensureDesktopBridgePatch(root)
-    const patch = await readFile(join(root, 'cordis.patch.yml'), 'utf8')
-    assert.match(patch, /- insert:\n  - id: dsh-desktop-bridge\n    name: dsh-desktop-bridge/)
-    assert.match(patch, /id: dsh-desktop-bridge/)
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-})
-
 test('带注释的空 patch 不会再拼出非法 YAML', () => {
-  const next = mergeDesktopBridgePatch('# keep\n[]\n')
-  assert.match(next, /^# keep/m)
-  assert.match(next, /id: dsh-desktop-bridge/)
-  assert.doesNotMatch(next, /^\[\]/m)
+  assert.equal(removeDesktopBridgePatch('# keep\n[]\n'), '# keep\n[]\n')
 })
 
 test('已损坏的 bridge+空数组 patch 会被修回合法 YAML', () => {
   const broken = '- id: dsh-desktop-bridge\n  name: dsh-desktop-bridge\n# note\n[]\n'
-  const next = mergeDesktopBridgePatch(broken)
-  assert.match(next, /- insert:\n  - id: dsh-desktop-bridge\n    name: dsh-desktop-bridge/)
-  assert.doesNotMatch(next, /^- id: dsh-desktop-bridge$/m)
-  assert.doesNotMatch(next, /^\[\]/m)
+  const next = removeDesktopBridgePatch(broken)
+  assert.match(next, /# note/)
+  assert.doesNotMatch(next, /dsh-desktop-bridge/)
+  assert.match(next, /\[\]/)
 })
 
 test('官方包更新会锁成同一个版本号', () => {
@@ -308,7 +295,21 @@ test('安装桌面桥接时缺少任一依赖都会立即失败', async () => {
   try {
     await mkdir(source, { recursive: true })
     await writeFile(join(source, DESKTOP_BRIDGE_FILES[0]), '', 'utf8')
-    assert.throws(() => installDesktopBridge(profile, source), /桌面桥接文件缺失/)
+    assert.throws(() => prepareDesktopBridge(profile, source), /桌面桥接文件缺失/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('查询 pnpm 版本不会触发 profile 清理或重载', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-pnpm-query-'))
+  const manifest = '{"dsh":{"profile":{"bundles":["user-plugin"]}}}'
+  try {
+    await writeFile(join(root, 'package.json'), manifest, 'utf8')
+    const host = createDesktopHostServices({ profileDir: root, profileName: 'web', runner: successfulHandle, send: () => assert.fail('查询不能重载') })
+    await host.desktopPnpm.run(['--version']).done
+    await new Promise(resolve => setTimeout(resolve, 30))
+    assert.equal(await readFile(join(root, 'package.json'), 'utf8'), manifest)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -317,12 +318,12 @@ test('安装桌面桥接时缺少任一依赖都会立即失败', async () => {
 test('桌面桥接清单同时声明 host 与 client 入口', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-bridge-client-'))
   const source = join(root, 'source')
-  const profile = join(root, 'profile')
+  const profile = join(root, 'Desktop 私有目录')
   try {
     await mkdir(source, { recursive: true })
     for (const file of DESKTOP_BRIDGE_FILES) await writeFile(join(source, file), '', 'utf8')
-    installDesktopBridge(profile, source)
-    const manifest = JSON.parse(await readFile(join(profile, 'node_modules', 'dsh-desktop-bridge', 'package.json'), 'utf8')) as {
+    const patch = prepareDesktopBridge(profile, source)
+    const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as {
       exports?: Record<string, string>
       dsh?: { bundle?: { patch?: string }; client?: { inject?: string[]; platform?: string } }
     }
@@ -331,22 +332,14 @@ test('桌面桥接清单同时声明 host 与 client 入口', async () => {
     assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml')
     assert.equal(manifest.dsh?.client?.platform, 'web')
     assert.equal(manifest.dsh?.client?.inject?.includes('@deepseek-ai/dsh-client-locale'), true)
-    assert.match(await readFile(join(profile, 'node_modules', 'dsh-desktop-bridge', 'desktop-bridge-client.js'), 'utf8'), /window\.__ModuleLoader__\.load/)
-    assert.equal(await readFile(join(profile, 'node_modules', 'dsh-desktop-bridge', 'cordis.patch.yml'), 'utf8'), '[]\n')
+    assert.match(await readFile(join(profile, 'desktop-bridge-client.js'), 'utf8'), /window\.__ModuleLoader__\.load/)
+    assert.equal(await readFile(join(profile, 'cordis.patch.yml'), 'utf8'), '[]\n')
     const profileManifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }
-    assert.equal(profileManifest.dsh?.profile?.bundles?.includes('dsh-desktop-bridge'), true)
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-})
-
-test('重复登记桌面桥接 bundle 不会产生重复项', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-bridge-bundle-'))
-  try {
-    ensureDesktopBridgeBundle(root)
-    ensureDesktopBridgeBundle(root)
-    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }
-    assert.deepEqual(manifest.dsh?.profile?.bundles, ['dsh-desktop-bridge'])
+    assert.equal(profileManifest.dsh?.profile, undefined)
+    const expected = [{ insert: [{ id: 'dsh-desktop-bridge', name: pathToFileURL(join(profile, 'desktop-bridge.mjs')).href }] }]
+    assert.deepEqual(JSON.parse(await readFile(patch, 'utf8')), expected)
+    assert.equal(prepareDesktopBridge(profile, source), patch)
+    assert.deepEqual(JSON.parse(await readFile(patch, 'utf8')), expected)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

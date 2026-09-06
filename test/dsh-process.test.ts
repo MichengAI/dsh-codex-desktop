@@ -115,3 +115,30 @@ test('本地联调可以复用已有 DSH Web origin', () => {
   assert.equal(resolveDesktopWebPort('65536'), '0')
   assert.equal(resolveDesktopWebPort('not-a-port'), '0')
 })
+
+test('启动 overlay 位于 Web 参数之前，热重启继续注入且不依赖继承标识', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-overlay-'))
+  const launchFile = join(root, 'launch.json')
+  const patch = join(root, 'Desktop 桥接', 'desktop.patch.yml')
+  try {
+    for (const desktopBridgePatch of [patch, patch, undefined]) {
+      const server = await startDsh({
+        bootstrapPath,
+        desktopBridgePatch,
+        runtime: { entry: fixtureEntry, root: projectRoot },
+        nodeExecutable: process.execPath,
+        environment: { DSH_FIXTURE_MODE: 'healthy', DSH_FIXTURE_LAUNCH_FILE: launchFile, DSH_DESKTOP_HOST: 'inherited' },
+      })
+      try {
+        const launch = JSON.parse(await readFile(launchFile, 'utf8'))
+        assert.deepEqual(launch.args, desktopBridgePatch ? ['web', '--patch', patch, '--port', '0', '--no-open'] : ['web', '--port', '0', '--no-open'])
+        assert.equal(launch.desktop, desktopBridgePatch ? '1' : undefined)
+        assert.equal(launch.ipc, true)
+      } finally {
+        await server.stop()
+      }
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})

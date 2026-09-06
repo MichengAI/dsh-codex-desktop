@@ -14,6 +14,21 @@ $tempRoot = Join-Path $tempBase ("dsh-desktop-smoke-$([guid]::NewGuid().ToString
 $userDataDir = Join-Path $tempRoot 'user-data'
 $dshHome = Join-Path $tempRoot 'dsh-home'
 New-Item -ItemType Directory -Path $userDataDir, $dshHome -Force | Out-Null
+$isolatedEnvironment = @{
+  USERPROFILE = $dshHome
+  HOME = $dshHome
+  APPDATA = (Join-Path $dshHome 'AppData\Roaming')
+  LOCALAPPDATA = (Join-Path $dshHome 'AppData\Local')
+  XDG_CONFIG_HOME = (Join-Path $dshHome '.config')
+  XDG_CACHE_HOME = (Join-Path $dshHome '.cache')
+  XDG_DATA_HOME = (Join-Path $dshHome '.local\share')
+}
+$previousEnvironment = @{}
+foreach ($name in $isolatedEnvironment.Keys) {
+  New-Item -ItemType Directory -Path $isolatedEnvironment[$name] -Force | Out-Null
+  $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+  [Environment]::SetEnvironmentVariable($name, $isolatedEnvironment[$name], 'Process')
+}
 $previousDshHome = $env:DSH_HOME
 $previousSmokeReadyFile = $env:DSH_DESKTOP_SMOKE_READY_FILE
 $previousNpmOffline = $env:npm_config_offline
@@ -27,7 +42,7 @@ $startupTimeoutSeconds = 180
 $unresponsiveSince = $null
 
 try {
-  $application = Start-Process -FilePath $resolvedApplication -ArgumentList "--user-data-dir=$userDataDir" -PassThru
+  $application = Start-Process -FilePath $resolvedApplication -ArgumentList "--user-data-dir=$userDataDir" -WindowStyle Hidden -PassThru
   $deadline = (Get-Date).AddSeconds($startupTimeoutSeconds)
   $port = $null
   while ((Get-Date) -lt $deadline -and $null -eq $port) {
@@ -118,6 +133,9 @@ try {
   $env:DSH_HOME = $previousDshHome
   $env:DSH_DESKTOP_SMOKE_READY_FILE = $previousSmokeReadyFile
   $env:npm_config_offline = $previousNpmOffline
+  foreach ($name in $previousEnvironment.Keys) {
+    [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], 'Process')
+  }
   $resolvedTempRoot = [System.IO.Path]::GetFullPath($tempRoot)
   if ($resolvedTempRoot.StartsWith($tempBase, [System.StringComparison]::OrdinalIgnoreCase)) {
     Remove-Item -LiteralPath $resolvedTempRoot -Recurse -Force -ErrorAction SilentlyContinue

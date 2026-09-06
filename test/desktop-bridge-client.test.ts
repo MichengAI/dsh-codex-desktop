@@ -7,9 +7,10 @@ import { desktopBridgeClientBundle } from '../src/desktop-bridge-client-source.j
 type ActionListener = (id: string) => void
 type ClientPlugin = { apply(ctx: Record<string, unknown>): void; inject: string[] }
 
-function loadClient(options: { elements?: unknown[]; errors?: string[]; focused?: boolean; editor?: { width: number; height: number; visibility?: string } } = {}): {
+function loadClient(options: { elements?: unknown[]; errors?: string[]; focused?: boolean; unreadStorage?: () => string | null; editor?: { width: number; height: number; visibility?: string } } = {}): {
   apply(ctx: Record<string, unknown>): void
   focusWindow(): void
+  syncUnread(): void
   inject: string[]
   locales: string[]
   listener(): ActionListener
@@ -25,6 +26,7 @@ function loadClient(options: { elements?: unknown[]; errors?: string[]; focused?
   let notificationReplyListener: ((value: { sessionId: string; text: string }) => void) | undefined
   let focused = options.focused ?? true
   const focusListeners = new Set<() => void>()
+  const intervals = new Set<() => void>()
   const notifications: Array<Record<string, unknown>> = []
   const bootReports: Array<Record<string, unknown>> = []
   const locales: string[] = []
@@ -48,7 +50,14 @@ function loadClient(options: { elements?: unknown[]; errors?: string[]; focused?
     MutationObserver: class { observe(): void {} disconnect(): void {} },
     queueMicrotask,
     setTimeout,
+    clearTimeout,
+    setInterval: (callback: () => void) => { intervals.add(callback); return callback },
+    clearInterval: (callback: () => void) => intervals.delete(callback),
     window: {
+      localStorage: { getItem: (key: string) => {
+        assert.equal(key, 'dsh.session-unread.v1')
+        return options.unreadStorage?.() ?? null
+      } },
       __ModuleLoader__: { load(value: { factory(): ClientPlugin }): void { registration = value } },
       dshDesktopShell: {
         onAction(listener: ActionListener): () => void { actionListener = listener; return () => { actionListener = undefined } },
@@ -70,6 +79,7 @@ function loadClient(options: { elements?: unknown[]; errors?: string[]; focused?
   return {
     apply: plugin.apply,
     focusWindow: () => { focused = true; for (const listener of focusListeners) listener() },
+    syncUnread: () => { for (const callback of intervals) callback() },
     inject: plugin.inject,
     locales,
     listener: () => { assert.ok(actionListener); return actionListener },
@@ -358,6 +368,89 @@ test('已读完成任务在列表刷新后不会重新计入角标', () => {
   listListener()
 
   assert.deepEqual(client.notifications.filter(event => event.type === 'badge').map(event => event.count), [1, 0])
+})
+
+test('Codex 任务列表的未读记录决定角标，手动已读未读、归档及重载保持一致', () => {
+  let unreadIds: string[] = []
+  let archivedSessionIds: string[] = []
+  const snapshot = {
+    ids: ['session-1', 'session-2'], current: 'session-1',
+    byId: {
+      'session-1': { completed: true, displayTitle: '任务一', running: false },
+      'session-2': { completed: true, displayTitle: '任务二', running: false },
+    },
+  }
+  const context = {
+    ...clientContext({ list: { getSnapshot: () => ({ archivedSessionIds }) } }),
+    loader: { await: async () => {}, entries: () => [{ options: { name: '@michengai/dsh-codex-ui' }, fiber: { state: 2 } }] },
+    sessions: { binding: () => undefined, list: { getSnapshot: () => snapshot, subscribe: () => () => {} }, open(): void {} },
+  }
+  const unreadStorage = () => JSON.stringify({ version: 1, ids: unreadIds })
+  const client = loadClient({ unreadStorage, focused: false })
+  client.apply(context)
+  const counts = () => client.notifications.filter(event => event.type === 'badge').map(event => event.count)
+  assert.deepEqual(counts(), [0], '列表已读不能被旧 completed 状态重新计数')
+  unreadIds = ['session-2']
+  client.syncUnread()
+  assert.deepEqual(counts(), [0, 1], '手动标记未读无需 running 边沿')
+  unreadIds = []
+  client.syncUnread()
+  assert.deepEqual(counts(), [0, 1, 0], '手动标记已读后清除角标')
+  unreadIds = ['session-1', 'session-2', 'session-2', 'deleted-session']
+  archivedSessionIds = ['session-2']
+  client.syncUnread()
+  assert.deepEqual(counts(), [0, 1, 0, 1], '去重并排除已删除及归档任务')
+  client.focusWindow()
+  assert.equal(counts().at(-1), 1, '聚焦不能覆盖列表显式未读状态')
+  const reloaded = loadClient({ unreadStorage })
+  reloaded.apply(context)
+  assert.deepEqual(reloaded.notifications.filter(event => event.type === 'badge').map(event => event.count), [1])
+  assert.equal(client.notifications.some(event => event.type === 'notify'), false)
+})
+
+test('未启用 Codex UI 时不读取其遗留未读记录', () => {
+  const client = loadClient({ unreadStorage: () => { throw new Error('不应读取停用插件的记录') } })
+  client.apply(clientContext({}))
+  client.syncUnread()
+  assert.deepEqual(client.notifications.filter(event => event.type === 'badge').map(event => event.count), [0])
+})
+
+test('Codex UI 缺少未读记录时显示零；存储恢复后继续同步', () => {
+  let stored: string | null = null
+  const errors: string[] = []
+  const client = loadClient({ unreadStorage: () => stored, errors })
+  client.apply({
+    ...clientContext({}),
+    loader: { await: async () => {}, entries: () => [{ options: { name: '@michengai/dsh-codex-ui' }, fiber: { state: 2 } }] },
+    sessions: { list: { getSnapshot: () => ({ ids: ['task'], byId: { task: { completed: true, running: false } } }), subscribe: () => () => {} } },
+  })
+  assert.equal(client.notifications.filter(event => event.type === 'badge').at(-1)?.count, 0)
+  stored = 'invalid JSON'
+  client.syncUnread()
+  client.syncUnread()
+  assert.equal(errors.length, 1, '损坏存储错误不能每次轮询都刷日志')
+  stored = JSON.stringify({ version: 1, ids: ['task'] })
+  client.syncUnread()
+  assert.equal(client.notifications.filter(event => event.type === 'badge').at(-1)?.count, 1)
+})
+
+test('大量未读不超过 IPC 上限，卸载桌面桥后停止同步', () => {
+  const ids = Array.from({ length: 1001 }, (_, index) => `task-${index}`)
+  let unreadIds = ids
+  let dispose: (() => void) | undefined
+  const client = loadClient({ unreadStorage: () => JSON.stringify({ version: 1, ids: unreadIds }) })
+  client.apply({
+    ...clientContext({}),
+    effect(callback: () => () => void): void { dispose = callback() },
+    loader: { await: async () => {}, entries: () => [{ options: { name: '@michengai/dsh-codex-ui' }, fiber: { state: 2 } }] },
+    sessions: { list: { getSnapshot: () => ({ ids, byId: Object.fromEntries(ids.map(id => [id, { running: false }])) }), subscribe: () => () => {} } },
+  })
+  assert.deepEqual(client.notifications.filter(event => event.type === 'badge').map(event => event.count), [999])
+  assert.ok(dispose)
+  dispose()
+  unreadIds = []
+  client.syncUnread()
+  assert.deepEqual(client.notifications.filter(event => event.type === 'badge').map(event => event.count), [999])
 })
 
 test('创建工作区异常返回空值时也不得启动会话', async () => {

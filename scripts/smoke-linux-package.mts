@@ -27,6 +27,10 @@ async function main(): Promise<void> {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: {
       ...process.env,
+      HOME: dshHome,
+      XDG_CONFIG_HOME: join(dshHome, '.config'),
+      XDG_CACHE_HOME: join(dshHome, '.cache'),
+      XDG_DATA_HOME: join(dshHome, '.local', 'share'),
       DSH_HOME: dshHome,
       DSH_DESKTOP_SMOKE_READY_FILE: smokeReadyFile,
       npm_config_offline: 'true',

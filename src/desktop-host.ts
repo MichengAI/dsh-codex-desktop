@@ -146,7 +146,7 @@ export function createDesktopHostServices(options: DesktopHostOptions) {
     const beforeProfileState = packageNames.length === 0 ? undefined : profilePackageState(options.profileDir, packageNames)
     const handle = (options.runner ?? runBundledPnpm)(args, options.profileDir, signal)
     void handle.done.then(async (outcome) => {
-      if (outcome.exitCode !== 0) return
+      if (outcome.exitCode !== 0 || pluginCommandAction(args) === 'other') return
       const isInstalled = options.isInstalled ?? ((packageName) => existsSync(join(options.profileDir, 'node_modules', ...packageName.split('/'), 'package.json')))
       await finalizeProfileBundlesAfterInstall(options.profileDir, [], packageNames.length === 0 ? undefined : packageNames)
       const afterProfileState = packageNames.length === 0 ? undefined : profilePackageState(options.profileDir, packageNames)
@@ -248,6 +248,7 @@ function completedPnpmHandle(exitCode: number, message = ''): DesktopPnpmHandle 
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 export const DESKTOP_BRIDGE_FILES = [
   'desktop-bridge.mjs',
@@ -272,8 +273,8 @@ export function resolveDesktopBridgeDir(options: { isPackaged: boolean; appPath:
     : join(options.appPath, 'dist', 'src')
 }
 
-export function installDesktopBridge(profileDir: string, sourceDir: string): void {
-  const destDir = join(profileDir, 'node_modules', DESKTOP_BRIDGE_PACKAGE)
+/** 在 Desktop 私有目录准备完整桥接包，返回仅供本次启动使用的 overlay 路径。 */
+export function prepareDesktopBridge(destDir: string, sourceDir: string): string {
   mkdirSync(destDir, { recursive: true })
   for (const file of DESKTOP_BRIDGE_FILES) {
     const from = join(sourceDir, file)
@@ -305,47 +306,12 @@ export function installDesktopBridge(profileDir: string, sourceDir: string): voi
       },
     },
   }, undefined, 2)}\n`, 'utf8')
-  // The profile patch owns the host insertion; this empty bundle patch makes
-  // the internal package a first-class profile bundle so DSH discovers its
-  // client half as well.
   writeFileSync(join(destDir, 'cordis.patch.yml'), '[]\n', 'utf8')
-  ensureDesktopBridgeBundle(profileDir)
-  ensureDesktopBridgePatch(profileDir)
-}
-
-export function ensureDesktopBridgeBundle(profileDir: string): void {
-  const manifestPath = join(profileDir, 'package.json')
-  const manifest = existsSync(manifestPath)
-    ? JSON.parse(readFileSync(manifestPath, 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }
-    : {}
-  const bundles = manifest.dsh?.profile?.bundles ?? []
-  if (bundles.includes(DESKTOP_BRIDGE_PACKAGE)) return
-  manifest.dsh = { ...manifest.dsh, profile: { ...manifest.dsh?.profile, bundles: [...bundles, DESKTOP_BRIDGE_PACKAGE] } }
-  writeFileSync(manifestPath, `${JSON.stringify(manifest, undefined, 2)}\n`, 'utf8')
-}
-
-export function mergeDesktopBridgePatch(current: string): string {
-  const entry = `- insert:\n  - id: ${DESKTOP_BRIDGE_PACKAGE}\n    name: ${DESKTOP_BRIDGE_PACKAGE}`
-  const lines = current.replace(/\r\n/g, '\n').split('\n')
-  const comments = lines.filter((line) => line.trim().startsWith('#'))
-  const body = lines.filter((line) => {
-    const trimmed = line.trim()
-    return trimmed !== '' && !trimmed.startsWith('#')
-  }).join('\n').trim()
-  const rest = body === '[]' ? '' : body.replace(/(?:^|\n)\[\]\s*$/g, '').trim()
-  const legacyEntry = new RegExp(`(?:^|\\n)- id: ${DESKTOP_BRIDGE_PACKAGE}\\n  name: ${DESKTOP_BRIDGE_PACKAGE}(?=\\n|$)`, 'g')
-  const normalized = rest.replace(legacyEntry, '').trim()
-  const hasEntry = normalized.includes(`- insert:\n  - id: ${DESKTOP_BRIDGE_PACKAGE}\n    name: ${DESKTOP_BRIDGE_PACKAGE}`)
-  const items = hasEntry
-    ? normalized
-    : normalized === '' ? entry : `${entry}\n${normalized}`
-  const header = comments.length > 0 ? `${comments.join('\n')}\n` : ''
-  return `${header}${items}\n`
-}
-
-export function ensureDesktopBridgePatch(profileDir: string): void {
-  const patchPath = join(profileDir, 'cordis.patch.yml')
-  const current = existsSync(patchPath) ? readFileSync(patchPath, 'utf8') : ''
-  const next = mergeDesktopBridgePatch(current)
-  if (next !== current) writeFileSync(patchPath, next, 'utf8')
+  const patchPath = join(destDir, 'desktop.patch.yml')
+  // JSON 是合法 YAML；file URL 同时兼容 Windows 路径、空格及中文目录。
+  writeFileSync(patchPath, `${JSON.stringify([{ insert: [{
+    id: DESKTOP_BRIDGE_PACKAGE,
+    name: pathToFileURL(join(destDir, 'desktop-bridge.mjs')).href,
+  }] }], undefined, 2)}\n`, 'utf8')
+  return patchPath
 }

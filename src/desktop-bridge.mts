@@ -1,4 +1,5 @@
 import { homedir } from 'node:os'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { createDesktopHostServices } from './desktop-host.js'
@@ -13,6 +14,10 @@ interface CordisLike {
 
 /** 向 DSH 提供官方桌面契约，让插件市场走随包 pnpm，并由桌面端负责热更新。 */
 export function apply(ctx: CordisLike): void {
+  // 共享 profile 或继承环境变量不代表存在 Desktop 宿主与可用的安装工具。
+  if (process.env.DSH_DESKTOP_HOST !== '1' || !process.connected || typeof process.send !== 'function') return
+  const pnpmEntry = process.env.DSH_PNPM_ENTRY
+  if (!pnpmEntry || !existsSync(pnpmEntry)) return
   const profileDir = process.env.DSH_PROFILE_DIR ?? join(process.env.DSH_HOME ?? join(homedir(), '.dsh'), 'profiles', 'web')
   const host = createDesktopHostServices({
     profileName: process.env.DSH_PROFILE_NAME ?? 'web',

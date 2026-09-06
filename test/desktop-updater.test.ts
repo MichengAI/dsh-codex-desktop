@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { runInNewContext } from 'node:vm'
 import test from 'node:test'
 
 import { DEFAULT_UPDATE_PREFERENCES, buildDesktopTrayItems, DESKTOP_UPDATE_WARNING, desktopUpdateChannel, desktopUpdatePrompt, formatDesktopReleaseNotes, loadUpdatePreferences, publicDesktopUpdateError, sanitizeUpdatePreferences, saveUpdatePreferences, shouldCheckForUpdatesOnStartup, shouldDownloadUpdateAutomatically } from '../src/desktop-updater.js'
@@ -113,4 +114,45 @@ test('主进程在窗口稳定后按策略安排启动检查', async () => {
   assert.equal(startupView >= 0 && startupCheck > startupView, true)
   assert.match(main, /shouldCheckForUpdatesOnStartup\(updatePreferences, app\.isPackaged\)/)
   assert.match(main, /checkDesktopUpdate\('background'\)/)
+})
+
+test('主进程遵循更新库可用标志，旧版和受策略限制的新版不触发下载', async () => {
+  const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8')
+  const start = main.indexOf('async function checkDesktopUpdate(')
+  const end = main.indexOf('async function downloadDesktopUpdate(', start)
+  assert.ok(start >= 0 && end > start)
+  const check = main.slice(start, end)
+  for (const scenario of [
+    { version: '1.0.47', available: false },
+    { version: '1.0.48', available: false },
+    { version: '1.0.49', available: false },
+    { version: '1.0.49', available: true },
+    { version: undefined, available: false },
+  ]) {
+    let status: { kind: string; version?: string } = { kind: 'idle' }
+    let downloads = 0
+    let notices = 0
+    const result = scenario.version === undefined ? null : {
+      isUpdateAvailable: scenario.available,
+      updateInfo: { version: scenario.version, releaseNotes: '## 修复' },
+    }
+    // 执行实际编译后的检查函数，覆盖状态转换与后台自动下载分支。
+    await runInNewContext(`(async () => { ${check}; await checkDesktopUpdate('background') })()`, {
+      updateStatus: status,
+      updatePreferences: { policy: 'auto-download' },
+      app: { isPackaged: true, getVersion: () => '1.0.48' },
+      autoUpdater: { checkForUpdates: async () => result },
+      setDesktopUpdateStatus: (next: typeof status) => { status = next },
+      dismissDesktopUpdateNotification: () => {},
+      shouldDownloadUpdateAutomatically,
+      downloadDesktopUpdate: async () => { downloads += 1 },
+      showDesktopUpdateNotification: () => { notices += 1 },
+      formatDesktopReleaseNotes,
+      publicDesktopUpdateError,
+      desktopLocale: () => 'zh',
+    })
+    assert.equal(status.kind, scenario.available ? 'available' : 'none', `线上版本 ${scenario.version}`)
+    assert.equal(downloads, scenario.available ? 1 : 0)
+    assert.equal(notices, 0)
+  }
 })

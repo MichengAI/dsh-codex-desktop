@@ -158,6 +158,7 @@ export async function stageBundledPlugins(destinationRoot: string, nodeRoot: str
     'install',
     '--dir', stagingDir,
     '--store-dir', storeDir,
+    '--cache-dir', join(storeDir, 'cache'),
     '--prod',
     '--config.node-linker=hoisted',
     '--config.auto-install-peers=false',

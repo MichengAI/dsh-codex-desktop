@@ -99,8 +99,13 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | 上下文透视与管理 | [`dsh-context`](https://github.com/bowenliang123/dsh-context) |
 | 可扩展工作区侧边栏 | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
 | MCP 连接管理 | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
+| 用量与费用统计 | [`@kenz1117/dsh-ui-usage-billing`](https://github.com/kenz1117/dsh-ui-usage-billing) |
+| 一次性只读旁问 | [`@michengai/dsh-btw`](https://github.com/MichengAI/dsh-btw) |
+| Git 变更范围内的代码简化 | [`@michengai/dsh-simplify`](https://github.com/MichengAI/dsh-simplify) |
 
 后续可以在插件市场管理更多插件。桌面应用的运行时与 profile 中安装的社区插件保持隔离，插件变更不会覆盖应用运行时。
+
+桌面桥接能力随应用内置，仅在 Desktop 启动 DSH 时动态注入，无需安装到共享 Web profile。手动运行 `dsh web` 时使用 Web 自身的插件管理通道；旧版遗留的桥接配置会在 Desktop 启动时迁移并备份。
 
 ## DSH 产品生态
 
@@ -113,6 +118,8 @@ DSH Codex Desktop 把核心运行时、功能产品和插件市场组合成一�
 | 6 个功能产品 | [Codex UI](https://github.com/MichengAI/dsh-codex-ui) · [IM Connect](https://github.com/MichengAI/dsh-im-connect) · [Automation](https://github.com/MichengAI/dsh-automation) · [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) · [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) · [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | 各自可以独立安装，桌面端已全部内置 |
 | 集成的生态插件 | [DSH Context](https://github.com/bowenliang123/dsh-context) · [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) · [DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector) | 随桌面端内置，提供上下文洞察、工作区导航与 MCP 连接管理 |
 | `dshmarket` | 发现、安装和更新更多 DSH 插件 | 作为插件市场随桌面端提供 |
+| BTW 与 Simplify | 只读旁问与代码简化 | 两个自有工具插件均随桌面端内置，也可独立安装 |
+| [Usage Billing](https://github.com/kenz1117/dsh-ui-usage-billing) | 用量聚合、费用统计与计费看板 | 作为社区插件随桌面端内置 |
 
 ## 更新与自修复
 

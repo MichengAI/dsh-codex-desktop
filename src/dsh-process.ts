@@ -20,6 +20,7 @@ export interface DshServer {
 
 export interface StartDshOptions {
   bootstrapPath: string
+  desktopBridgePatch?: string
   environment?: NodeJS.ProcessEnv
   onUnexpectedExit?: (message: string) => void
   onIpcMessage?: (message: unknown) => void
@@ -41,11 +42,15 @@ export function resolveDesktopWebPort(value: string | undefined): string {
 
 /** 启动 DSH Web，并在收到本机就绪地址后返回。 */
 export function startDsh(options: StartDshOptions): Promise<DshServer> {
-  const child = spawn(options.nodeExecutable, [options.bootstrapPath, options.runtime.entry, ...DSH_WEB_LAUNCH_ARGS], {
+  const launchArgs = options.desktopBridgePatch === undefined
+    ? [...DSH_WEB_LAUNCH_ARGS]
+    : ['web', '--patch', options.desktopBridgePatch, ...DSH_WEB_LAUNCH_ARGS.slice(1)]
+  const child = spawn(options.nodeExecutable, [options.bootstrapPath, options.runtime.entry, ...launchArgs], {
     cwd: options.workingDirectory ?? options.runtime.workingDirectory ?? options.runtime.root,
     env: {
       ...process.env,
       ...options.environment,
+      DSH_DESKTOP_HOST: options.desktopBridgePatch === undefined ? undefined : '1',
       ...(options.pathPrefix === undefined ? {} : {
         PATH: prependPath(options.environment?.PATH ?? process.env.PATH, options.pathPrefix),
       }),

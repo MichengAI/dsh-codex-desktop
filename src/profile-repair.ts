@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { writeTextFileAtomic } from './atomic-file.js'
 import { OFFICIAL_PROFILE_BUNDLES } from './bundled-plugins.js'
-import { ensureDesktopBridgePatch } from './desktop-host.js'
+import { migrateDesktopBridgeProfile } from './desktop-bridge-migration.js'
 import {
   ensureAutoInstallPeersDisabled,
   assertOfficialProfileBundlesAvailable,
@@ -46,7 +46,7 @@ export async function repairBrokenProfile(profileDir: string, extraDirs: readonl
   if (!existsSync(join(profileDir, 'package.json'))) return []
   await stripOfficialProfileDependencies(profileDir)
   ensureAutoInstallPeersDisabled(profileDir)
-  ensureDesktopBridgePatch(profileDir)
+  migrateDesktopBridgeProfile(profileDir)
   const finalized = await finalizeProfileBundlesAfterInstall(profileDir, extraDirs)
   return finalized.removed
 }

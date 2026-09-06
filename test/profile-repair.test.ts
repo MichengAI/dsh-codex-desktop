@@ -27,6 +27,22 @@ test('自我修复会摘掉清单有、磁盘没有的社区插件', async () =>
   }
 })
 
+test('自修复及再次重载只移除遗留 bridge，不再向共享 profile 注入', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-repair-bridge-'))
+  try {
+    await writeFile(join(root, 'package.json'), JSON.stringify({ dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', 'dsh-desktop-bridge'] } } }), 'utf8')
+    await writeFile(join(root, 'cordis.patch.yml'), '- insert:\n  - id: dsh-desktop-bridge\n    name: dsh-desktop-bridge\n', 'utf8')
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await repairBrokenProfile(root)
+      const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+      assert.deepEqual(manifest.dsh.profile.bundles, ['@deepseek-ai/dsh-base'])
+      assert.doesNotMatch(await readFile(join(root, 'cordis.patch.yml'), 'utf8'), /dsh-desktop-bridge/)
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('自我修复会摘掉未登记依赖的残留 bundle', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-repair-orphan-'))
   try {

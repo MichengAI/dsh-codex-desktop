@@ -4,6 +4,10 @@ import { writeFileSync } from 'node:fs'
 const mode = process.env.DSH_FIXTURE_MODE
 let server
 
+if (process.env.DSH_FIXTURE_LAUNCH_FILE) {
+  writeFileSync(process.env.DSH_FIXTURE_LAUNCH_FILE, JSON.stringify({ args: process.argv.slice(2), desktop: process.env.DSH_DESKTOP_HOST, ipc: process.connected }), 'utf8')
+}
+
 if (process.env.DSH_FIXTURE_PID_FILE) {
   writeFileSync(process.env.DSH_FIXTURE_PID_FILE, String(process.pid), 'utf8')
 }
