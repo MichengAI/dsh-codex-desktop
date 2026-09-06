@@ -4,6 +4,15 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.49 — 2026-09-07
+
+- 启动时在插件补装前清理旧 bridge 的依赖声明和包文件，兼容此前只迁移配置留下的残留。文件清理失败时记录警告并在下次启动重试，不因此阻断启动；私有目录动态注入的 bridge 继续可用。
+- 修复旧 profile 仅在加载列表登记内置插件时，跳过补装并移除加载项的问题；补装以 `dependencies` 中的安装声明为准。
+- 兼容 pnpm 11 在 `.modules.yaml` 中写入的 JSON 状态，离线安装回退到在线安装时仍沿用原仓库，避免 `ERR_PNPM_UNEXPECTED_STORE`。
+- 修正离线冒烟测试的 pnpm 11 环境开关，并同时校验插件文件、依赖登记和加载列表。
+
+发布标签：[`v1.0.49`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.49)。
+
 ## 1.0.48 — 2026-09-07
 
 - Desktop 启动 DSH 时从应用私有目录动态注入桌面桥接。独立 `dsh web` 使用 Web 插件管理通道，旧版桥接配置会从共享 profile 中迁移并备份。
@@ -41,11 +50,3 @@
 - 稳住运行时解压超时测试：先挂上拒绝断言，再等孙进程 PID，避免 macOS Intel CI 在 200ms 内输掉竞态。本版取代未发布的 `v1.0.44` 标签。
 
 发布标签：[`v1.0.45`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.45)。
-
-## 1.0.43 — 2026-09-01
-
-- 将内置官方 DSH 运行时及其启动依赖升级到 `0.1.2-alpha.3`。
-- 将内置生态组件更新到 Codex UI 0.2.97、IM Connect 0.1.30、Archive Manager 0.1.22 和 MCP Connector 0.2.32。
-- 强化离线运行时初始化：Windows 冒烟复用共享插件校验器，鉴权与未鉴权路径都等待桌面就绪标记，并在取消或超时解压时清理完整进程树。
-
-发布标签：[`v1.0.43`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.43)。

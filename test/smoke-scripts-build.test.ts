@@ -11,7 +11,7 @@ test('构建产物包含所有平台冒烟脚本', () => {
     assert.match(source, /await waitForProcessExit\(bootstrapProcessId, 10_000\)/)
     assert.match(source, /--user-data-dir=/)
     assert.match(source, /DSH_DESKTOP_SMOKE_READY_FILE/)
-    assert.match(source, /npm_config_offline: 'true'/)
+    assert.match(source, /pnpm_config_offline: 'true'/)
     assert.match(source, /verifyBundledPluginsInstalled\(dshHome\)/)
     assert.match(source, /startup-ready/)
     assert.match(source, /dsh web authentication required/)

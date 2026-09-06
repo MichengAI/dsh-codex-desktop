@@ -97,8 +97,15 @@ export function shouldUsePackagedStore(targetDir: string): boolean {
 export function resolvePnpmStoreDir(targetDir: string, fallback?: string): string | undefined {
   try {
     const modulesState = readFileSync(join(targetDir, 'node_modules', '.modules.yaml'), 'utf8')
-    const value = /^storeDir:\s*(.+?)\s*$/m.exec(modulesState)?.[1]?.replace(/^['"]|['"]$/g, '')
-    if (value) return value
+    // pnpm 11 在 .yaml 文件中写 JSON；桥接包独立运行，使用原生解析避免引入运行依赖。
+    if (modulesState.trimStart().startsWith('{')) {
+      const state: unknown = JSON.parse(modulesState)
+      if (state !== null && typeof state === 'object' && 'storeDir' in state
+        && typeof state.storeDir === 'string' && state.storeDir !== '') return state.storeDir
+    } else {
+      const value = /^storeDir:\s*(.+?)\s*$/m.exec(modulesState)?.[1]?.replace(/^['"]|['"]$/g, '')
+      if (value) return value
+    }
   } catch {
     // 首次安装还没有 pnpm 状态文件。
   }
@@ -385,7 +392,7 @@ async function seedOfficialRuntime(options: SeedOptions): Promise<readonly strin
       await runner(args)
     } catch (error) {
       if (useStore) {
-        await runner(buildSeedPluginArgs([OFFICIAL_RUNTIME], runtimeDir, { autoInstallPeers: true }))
+        await runner(buildSeedPluginArgs([OFFICIAL_RUNTIME], runtimeDir, { storeDir, autoInstallPeers: true }))
       } else {
         throw error
       }
@@ -411,7 +418,7 @@ async function ensureOfficialLaunchPeers(options: SeedOptions, targetDir: string
   try {
     await runner(args)
   } catch (error) {
-    if (useStore) await runner(buildSeedPluginArgs([OFFICIAL_RUNTIME, ...missing], targetDir, { autoInstallPeers: true }))
+    if (useStore) await runner(buildSeedPluginArgs([OFFICIAL_RUNTIME, ...missing], targetDir, { storeDir, autoInstallPeers: true }))
     else throw error
   }
   const stillMissing = missingOfficialLaunchPeers(targetDir)
@@ -442,7 +449,7 @@ async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
     } catch (error) {
       if (useStore) {
         console.warn('内置插件离线补种失败，尝试在线安装。', error)
-        await runner(buildSeedPluginArgs(plan.packages, options.profileDir, {}))
+        await runner(buildSeedPluginArgs(plan.packages, options.profileDir, { storeDir }))
       }
       else throw error
     }
@@ -451,7 +458,7 @@ async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
     try {
       await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, storeOptions))
     } catch (error) {
-      if (useStore) await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, {}))
+      if (useStore) await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, { storeDir }))
       else throw error
     }
   }
@@ -641,12 +648,8 @@ async function readDeclaredPackages(profileDir: string): Promise<string[]> {
   try {
     const manifest = JSON.parse(await readFile(join(profileDir, 'package.json'), 'utf8')) as {
       dependencies?: Record<string, string>
-      dsh?: { profile?: { bundles?: string[] } }
     }
-    return [...new Set([
-      ...Object.keys(manifest.dependencies ?? {}),
-      ...(manifest.dsh?.profile?.bundles ?? []),
-    ])]
+    return Object.keys(manifest.dependencies ?? {})
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
     throw error

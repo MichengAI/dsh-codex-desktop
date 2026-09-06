@@ -89,6 +89,39 @@ test('node_modules 已有插件但未写入 dependencies 时仍要补进 depende
   assert.deepEqual(plan, { action: 'add', packages: [...catalog] })
 })
 
+test('旧 profile 仅在 bundles 登记的内置插件不能被跳过后清理掉', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-bundle-only-seed-'))
+  try {
+    const profile = join(root, 'profile')
+    const store = join(root, 'store')
+    await mkdir(store)
+    await mkdir(profile)
+    const manifest = { dependencies: {}, dsh: { profile: { bundles: catalog.map(plugin => plugin.packageName) } } }
+    await writeFile(join(profile, 'package.json'), JSON.stringify(manifest), 'utf8')
+    for (const plugin of catalog) {
+      const dir = join(profile, 'node_modules', plugin.packageName)
+      await mkdir(dir, { recursive: true })
+      await writeFile(join(dir, 'package.json'), JSON.stringify({ name: plugin.packageName, version: plugin.version, dsh: { bundle: { patch: './cordis.patch.yml' } } }), 'utf8')
+      await writeFile(join(dir, 'cordis.patch.yml'), '[]\n', 'utf8')
+    }
+    let installations = 0
+    await seedBundledPlugins({
+      nodeExecutable: 'node', profileDir: profile, pluginStoreDir: store, catalog,
+      runner: async () => {
+        installations++
+        manifest.dependencies = Object.fromEntries(catalog.map(plugin => [plugin.packageName, plugin.version]))
+        await writeFile(join(profile, 'package.json'), JSON.stringify(manifest), 'utf8')
+      },
+    })
+    assert.equal(installations, 1, 'bundles 不能代替 dependencies 的安装声明')
+    const result = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
+    assert.deepEqual(result.dependencies, Object.fromEntries(catalog.map(plugin => [plugin.packageName, plugin.version])))
+    assert.deepEqual(result.dsh.profile.bundles, catalog.map(plugin => plugin.packageName))
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('seedBundledPlugins 只调用一次 pnpm add，且写入用户 profile', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-seed-'))
   try {
@@ -350,6 +383,43 @@ test('启动前会摘掉磁盘上已经不存在的社区 bundle', async () => {
     assert.deepEqual(removed, ['dsh-file-upload'])
     const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }
     assert.deepEqual(manifest.dsh?.profile?.bundles, ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('pnpm 11 的 JSON 格式 modules 状态仍沿用原有 store', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-store-json-'))
+  try {
+    await mkdir(join(root, 'node_modules'))
+    const storeDir = 'C:\\Users\\example\\AppData\\Local\\pnpm\\store\\v11'
+    await writeFile(join(root, 'node_modules', '.modules.yaml'), JSON.stringify({ storeDir, packageManager: 'pnpm@11.24.0' }), 'utf8')
+    assert.equal(resolvePnpmStoreDir(root, 'D:\\bundled-store'), storeDir)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('旧 profile 离线补装缺缓存时在线重试也必须沿用原 store', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-seed-store-retry-'))
+  try {
+    const profile = join(root, 'profile')
+    const originalStore = join(root, 'original-store', 'v11')
+    const bundledStore = join(root, 'bundled-store')
+    await mkdir(join(profile, 'node_modules'), { recursive: true })
+    await mkdir(bundledStore)
+    await writeFile(join(profile, 'node_modules', '.modules.yaml'), JSON.stringify({ storeDir: originalStore }), 'utf8')
+    let attempts = 0
+    await seedBundledPlugins({
+      nodeExecutable: 'node', profileDir: profile, pluginStoreDir: bundledStore, catalog,
+      runner: async args => {
+        attempts++
+        if (args.includes('--offline')) throw new Error('ERR_PNPM_NO_OFFLINE_META')
+        assert.ok(args.includes(`--store-dir=${originalStore}`), '在线重试丢弃原 store 会导致 ERR_PNPM_UNEXPECTED_STORE')
+        assert.equal(args.some(arg => arg.startsWith('--cache-dir=')), false)
+      },
+    })
+    assert.equal(attempts, 2)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

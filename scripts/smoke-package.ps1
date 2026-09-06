@@ -31,9 +31,9 @@ foreach ($name in $isolatedEnvironment.Keys) {
 }
 $previousDshHome = $env:DSH_HOME
 $previousSmokeReadyFile = $env:DSH_DESKTOP_SMOKE_READY_FILE
-$previousNpmOffline = $env:npm_config_offline
+$previousPnpmOffline = $env:pnpm_config_offline
 $env:DSH_HOME = $dshHome
-$env:npm_config_offline = 'true'
+$env:pnpm_config_offline = 'true'
 $smokeReadyFile = Join-Path $userDataDir 'startup-ready'
 $env:DSH_DESKTOP_SMOKE_READY_FILE = $smokeReadyFile
 $application = $null
@@ -132,7 +132,7 @@ try {
   }
   $env:DSH_HOME = $previousDshHome
   $env:DSH_DESKTOP_SMOKE_READY_FILE = $previousSmokeReadyFile
-  $env:npm_config_offline = $previousNpmOffline
+  $env:pnpm_config_offline = $previousPnpmOffline
   foreach ($name in $previousEnvironment.Keys) {
     [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], 'Process')
   }

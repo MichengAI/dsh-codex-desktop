@@ -24,6 +24,20 @@ export async function verifyBundledPluginsInstalled(dshHome: string): Promise<vo
       throw new Error(`强制离线首启插件版本错误：${plugin.packageName}=${String(manifest.version)}`)
     }
   }
+  const manifest = JSON.parse(await readFile(join(profileDir, 'package.json'), 'utf8')) as {
+    dependencies?: Record<string, unknown>
+    dsh?: { profile?: { bundles?: unknown } }
+  }
+  const bundles = manifest.dsh?.profile?.bundles
+  for (const plugin of BUNDLED_PLUGINS) {
+    const declared = manifest.dependencies?.[plugin.packageName]
+    if (typeof declared !== 'string' || declared.trim() === '') {
+      throw new Error(`强制离线首启未登记内置插件：${plugin.packageName}`)
+    }
+    if (!Array.isArray(bundles) || !bundles.includes(plugin.packageName)) {
+      throw new Error(`强制离线首启未启用内置插件：${plugin.packageName}`)
+    }
+  }
 }
 
 const self = fileURLToPath(import.meta.url)

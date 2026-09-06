@@ -37,7 +37,7 @@ async function main(): Promise<void> {
       XDG_DATA_HOME: join(dshHome, '.local', 'share'),
       DSH_HOME: dshHome,
       DSH_DESKTOP_SMOKE_READY_FILE: smokeReadyFile,
-      npm_config_offline: 'true',
+      pnpm_config_offline: 'true',
     },
   })
   if (!application.pid) throw new Error('未获取到应用进程 ID。')

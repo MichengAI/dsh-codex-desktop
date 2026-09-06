@@ -281,7 +281,7 @@ test('Windows 冒烟保留便携版冷启动路径并检查窗口响应', async 
   assert.match(script, /\.Responding/)
   assert.match(script, /连续 10 秒未响应/)
   assert.match(script, /startupTimeoutSeconds = 180/)
-  assert.match(script, /npm_config_offline = 'true'/)
+  assert.match(script, /pnpm_config_offline = 'true'/)
   assert.match(script, /smoke-packaged-plugins\.mjs/)
   assert.doesNotMatch(script, /expectedPlugins/)
   assert.doesNotMatch(script, /@michengai\/dsh-codex-ui/)

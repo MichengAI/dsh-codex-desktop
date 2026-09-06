@@ -214,6 +214,8 @@ async function startApplication(): Promise<void> {
         ))
       }
     }
+    const desktopBridgePatch = prepareDesktopBridge(join(app.getPath('userData'), 'desktop-bridge'), resolveDesktopBridgeDir(runtimeOptions))
+    migrateDesktopBridgeProfile(profileDir)
     const pluginStoreDir = resolveBundledPluginStore({
       ...runtimeOptions,
       ...(extractedStoreDir === undefined ? {} : { extractedStoreDir }),
@@ -244,8 +246,6 @@ async function startApplication(): Promise<void> {
       await writeTextFile(join(app.getPath('userData'), 'plugin-update.log'), ` ${message}\n`, 'utf8').catch(() => undefined)
 
     }
-    const desktopBridgePatch = prepareDesktopBridge(join(app.getPath('userData'), 'desktop-bridge'), resolveDesktopBridgeDir(runtimeOptions))
-    migrateDesktopBridgeProfile(profileDir)
     lastSeedOptions = seedOptions
     const runtime = resolveDshRuntime({ ...runtimeOptions, profileDir, desktopRuntimeDir })
     const startOptions = {

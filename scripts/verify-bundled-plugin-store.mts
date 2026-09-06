@@ -31,7 +31,7 @@ const result = spawnSync(join(nodeRoot, process.platform === 'win32' ? 'node.exe
   ...buildSeedPluginArgs(BUNDLED_PLUGINS, profile, { storeDir: extracted, offline: true }),
 ], {
   env: {
-    ...process.env, CI: 'true', PATH: prependPath(process.env.PATH, nodeRoot), npm_config_offline: 'true',
+    ...process.env, CI: 'true', PATH: prependPath(process.env.PATH, nodeRoot), pnpm_config_offline: 'true',
     HOME: userHome, USERPROFILE: userHome,
     APPDATA: join(userHome, 'AppData', 'Roaming'), LOCALAPPDATA: join(userHome, 'AppData', 'Local'),
     XDG_CONFIG_HOME: join(userHome, '.config'), XDG_CACHE_HOME: join(userHome, '.cache'), XDG_DATA_HOME: join(userHome, '.local', 'share'),

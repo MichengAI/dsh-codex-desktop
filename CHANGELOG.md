@@ -4,6 +4,15 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.49 — 2026-09-07
+
+- Clean legacy bridge dependency declarations and package files before seeding plugins on startup, including files left by earlier migrations. File cleanup failures emit a warning and are retried on the next launch without blocking startup; the private dynamically injected bridge remains available.
+- Repair bundled plugins listed only in an existing profile's bundle list instead of skipping installation and then removing their entries. Seeding now checks installation declarations in `dependencies`.
+- Read pnpm 11 JSON state stored in `.modules.yaml` and preserve the original store when retrying an offline installation online, preventing `ERR_PNPM_UNEXPECTED_STORE`.
+- Use the pnpm 11 offline environment setting in smoke tests and verify plugin files, dependency declarations, and bundle activation together.
+
+Release tag: [`v1.0.49`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.49).
+
 ## 1.0.48 — 2026-09-07
 
 - Inject the desktop bridge from the application's private directory when Desktop starts DSH. Standalone `dsh web` now uses Web plugin management, and legacy bridge configuration is migrated out of the shared profile with a backup.
@@ -41,11 +50,3 @@ Release tag: [`v1.0.46`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Stabilized the runtime-extraction timeout test so macOS Intel CI no longer races a 200ms deadline before the hanging child writes its PID. This supersedes the unreleased `v1.0.44` tag.
 
 Release tag: [`v1.0.45`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.45).
-
-## 1.0.43 — 2026-09-01
-
-- Upgraded the bundled official DSH runtime and its launch peers to `0.1.2-alpha.3`.
-- Updated the bundled ecosystem to Codex UI 0.2.97, IM Connect 0.1.30, Archive Manager 0.1.22, and MCP Connector 0.2.32.
-- Hardened offline runtime initialization by sharing the bundled-plugin verifier across Windows smoke tests, waiting for the desktop ready marker on both HTTP paths, and cleaning the full extraction process tree when initialization is cancelled or times out.
-
-Release tag: [`v1.0.43`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.43).
