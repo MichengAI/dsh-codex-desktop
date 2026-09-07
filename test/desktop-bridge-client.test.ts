@@ -415,6 +415,46 @@ test('未启用 Codex UI 时不读取其遗留未读记录', () => {
   assert.deepEqual(client.notifications.filter(event => event.type === 'badge').map(event => event.count), [0])
 })
 
+for (const codexUiActive of [true, false]) {
+  test(`${codexUiActive ? 'Codex UI 未读记录' : '备用完成统计'}不把子代理计入任务栏角标`, () => {
+    const snapshot = {
+      ids: ['parent', 'completed-child', 'running-child', 'nested-child'],
+      byId: {
+        parent: { displayTitle: '父任务', running: true, completed: false, origin: 'user' },
+        'completed-child': { displayTitle: '已完成子代理', running: false, completed: true, origin: 'subagent' },
+        'running-child': { displayTitle: '运行中子代理', running: true, completed: false, origin: 'subagent' },
+        'nested-child': { displayTitle: '嵌套子代理', running: false, completed: true, origin: 'subagent' },
+      },
+    }
+    let unreadIds = ['completed-child', 'nested-child']
+    let listListener: (() => void) | undefined
+    const client = loadClient({ focused: false, unreadStorage: () => JSON.stringify({ version: 1, ids: unreadIds }) })
+    client.apply({
+      ...clientContext({}),
+      loader: { await: async () => {}, entries: () => codexUiActive ? [{ options: { name: '@michengai/dsh-codex-ui' }, fiber: { state: 2 } }] : [] },
+      sessions: {
+        binding: () => undefined,
+        list: { getSnapshot: () => snapshot, subscribe: (listener: () => void) => { listListener = listener; return () => {} } },
+      },
+    })
+    const counts = () => client.notifications.filter(event => event.type === 'badge').map(event => event.count)
+    assert.deepEqual(counts(), [0], '历史未读子代理不能影响角标')
+    assert.ok(listListener)
+    snapshot.byId['running-child'].running = false
+    unreadIds.push('running-child')
+    listListener()
+    client.syncUnread()
+    assert.deepEqual(counts(), [0], '子代理完成不能增加角标')
+    snapshot.byId.parent.running = false
+    unreadIds.push('parent')
+    listListener()
+    assert.deepEqual(counts(), [0, 1], '父任务完成只计一次')
+    snapshot.byId.parent.origin = 'subagent'
+    client.syncUnread()
+    assert.deepEqual(counts(), [0, 1, 0], '补齐子代理元数据后移除已有计数')
+  })
+}
+
 test('Codex UI 缺少未读记录时显示零；存储恢复后继续同步', () => {
   let stored: string | null = null
   const errors: string[] = []

@@ -10,6 +10,7 @@ interface SessionList {
   byId: Record<string, {
     completed?: boolean
     displayTitle: string
+    origin?: string
     pendingInteraction?: 'approval' | 'plan-review' | 'question'
     running: boolean
   }>
@@ -109,6 +110,7 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
       }
 
       const snapshot = (): SessionList => ctx.sessions.list.getSnapshot()
+      const isBadgeSession = (row: SessionList['byId'][string] | undefined): boolean => row !== undefined && row.origin !== 'subagent'
       const reportBoot = async (): Promise<void> => {
         let error: string | undefined
         try {
@@ -154,7 +156,7 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
           const current = snapshot()
           const archived = new Set(ctx.workspaces.list?.getSnapshot().archivedSessionIds ?? [])
           const unread = new Set((value as { ids: string[] }).ids
-            .filter(id => id.trim() !== '' && current.byId[id] !== undefined && !archived.has(id)))
+            .filter(id => id.trim() !== '' && isBadgeSession(current.byId[id]) && !archived.has(id)))
           unreadStorageErrorReported = false
           return unread.size
         } catch (error) {
@@ -164,7 +166,12 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         }
       }
       const reportBadge = (): void => {
-        const count = Math.min(999, sidebarUnreadCount() ?? unreadCompletions.size)
+        let unreadCount = sidebarUnreadCount()
+        if (unreadCount === undefined) {
+          const current = snapshot()
+          unreadCount = [...unreadCompletions].filter(id => isBadgeSession(current.byId[id])).length
+        }
+        const count = Math.min(999, unreadCount)
         if (reportedBadgeCount === count) return
         reportedBadgeCount = count
         bridge.reportNotification({ type: 'badge', count })

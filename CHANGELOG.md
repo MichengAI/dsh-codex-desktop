@@ -4,6 +4,10 @@
 
 The five most recent published versions are listed below.
 
+## Unreleased
+
+- Exclude subagent sessions from taskbar unread counts in both Codex UI unread records and fallback completion tracking, including existing unread entries and sessions whose origin becomes available later.
+
 ## 1.0.49 — 2026-09-07
 
 - Clean legacy bridge dependency declarations and package files before seeding plugins on startup, including files left by earlier migrations. File cleanup failures emit a warning and are retried on the next launch without blocking startup; the private dynamically injected bridge remains available.
