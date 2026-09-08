@@ -109,17 +109,22 @@ The desktop bridge ships with the app and is injected only when Desktop starts D
 
 ## DSH product ecosystem
 
-DSH Codex Desktop combines the core runtime, feature products, and plugin market into a ready-to-install desktop product. The same products can also be used separately for other DSH setups:
+For a ready-to-use workbench, download [DSH Codex Desktop](https://github.com/MichengAI/dsh-codex-desktop/releases). If you already use [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), install any of these eight plugins individually. The desktop app includes all eight.
 
-| Product | Primary role | Relationship to the desktop app |
-| --- | --- | --- |
-| [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | Models, sessions, tools, and plugin runtime | The core runtime bundled and started by the desktop app |
-| **DSH Codex Desktop** | Cross-platform workbench for end users | This product, responsible for ready-to-run installation, updates, and recovery |
-| Six feature products | [Codex UI](https://github.com/MichengAI/dsh-codex-ui) · [IM Connect](https://github.com/MichengAI/dsh-im-connect) · [Automation](https://github.com/MichengAI/dsh-automation) · [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) · [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) · [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | Each can be installed independently; all six are bundled with the desktop app |
-| Integrated ecosystem plugins | [DSH Context](https://github.com/bowenliang123/dsh-context) · [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) · [DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector) | Bundled with the desktop app for context insight, workspace navigation, and MCP connection management |
-| `dshmarket` | Discover, install, and update more DSH plugins | Included as the plugin market |
-| BTW and Simplify | Read-only side questions and code simplification | Both first-party tool plugins ship with Desktop and can also be installed independently |
-| [Usage Billing](https://github.com/kenz1117/dsh-ui-usage-billing) | Usage aggregation, cost tracking, and a billing dashboard | Bundled as a community plugin |
+| Plugin | What you can do |
+| --- | --- |
+| [Codex UI](https://github.com/MichengAI/dsh-codex-ui) | Organize projects and conversations, search tasks, and navigate chat turns |
+| [IM Connect](https://github.com/MichengAI/dsh-im-connect) | Send tasks and receive replies through your usual messenger |
+| [Automation](https://github.com/MichengAI/dsh-automation) | Schedule tasks and review each run |
+| [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) | Find, enable, create, and import local skills |
+| [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) | Search, restore, or clean up archived conversations |
+| [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | Choose and summon specialists for your task |
+| [BTW](https://github.com/MichengAI/dsh-btw) | Ask side questions without interrupting the main task |
+| [Simplify](https://github.com/MichengAI/dsh-simplify) | Use /simplify to improve code within your Git changes |
+
+The desktop introduction and download site is maintained in the [website repository](https://github.com/MichengAI/dsh-codex-desktop-website).
+
+The desktop app also integrates [DSH Context](https://github.com/bowenliang123/dsh-context), [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar), [DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector), [Usage Billing](https://github.com/kenz1117/dsh-ui-usage-billing) and the plugin market for context insights, file navigation, connections, and usage statistics.
 
 ## Updates and recovery
 

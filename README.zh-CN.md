@@ -109,17 +109,22 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 ## DSH 产品生态
 
-DSH Codex Desktop 把核心运行时、功能产品和插件市场组合成一个可以直接安装的桌面产品。它们也可以脱离桌面端，按不同使用方式独立使用：
+想直接使用完整工作台，可下载 [DSH Codex Desktop](https://github.com/MichengAI/dsh-codex-desktop/releases)；已有 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 环境，可按需独立安装以下 8 个自研插件。桌面端已随附这些插件。
 
-| 产品 | 主要作用 | 与桌面端的关系 |
-| --- | --- | --- |
-| [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | 提供模型、会话、工具和插件运行能力 | 桌面端内置并负责启动的核心运行时 |
-| **DSH Codex Desktop** | 面向终端用户的跨平台桌面工作台 | 当前产品，负责下载安装即用、更新与自修复 |
-| 6 个功能产品 | [Codex UI](https://github.com/MichengAI/dsh-codex-ui) · [IM Connect](https://github.com/MichengAI/dsh-im-connect) · [Automation](https://github.com/MichengAI/dsh-automation) · [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) · [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) · [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | 各自可以独立安装，桌面端已全部内置 |
-| 集成的生态插件 | [DSH Context](https://github.com/bowenliang123/dsh-context) · [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) · [DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector) | 随桌面端内置，提供上下文洞察、工作区导航与 MCP 连接管理 |
-| `dshmarket` | 发现、安装和更新更多 DSH 插件 | 作为插件市场随桌面端提供 |
-| BTW 与 Simplify | 只读旁问与代码简化 | 两个自有工具插件均随桌面端内置，也可独立安装 |
-| [Usage Billing](https://github.com/kenz1117/dsh-ui-usage-billing) | 用量聚合、费用统计与计费看板 | 作为社区插件随桌面端内置 |
+| 插件 | 你可以用它做什么 |
+| --- | --- |
+| [Codex UI](https://github.com/MichengAI/dsh-codex-ui) | 整理项目与会话、搜索任务、跳转对话轮次 |
+| [IM Connect](https://github.com/MichengAI/dsh-im-connect) | 从微信、飞书、钉钉等消息平台下任务、收回复 |
+| [Automation](https://github.com/MichengAI/dsh-automation) | 按计划执行任务，查看每次运行的结果 |
+| [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) | 统一查找、启停、创建和导入本机技能 |
+| [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) | 搜索、恢复或清理已归档会话 |
+| [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | 按任务选择并召唤专业角色 |
+| [BTW](https://github.com/MichengAI/dsh-btw) | 在当前上下文中临时旁问，不打断主任务 |
+| [Simplify](https://github.com/MichengAI/dsh-simplify) | 用 /simplify 整理 Git 改动范围内的代码 |
+
+桌面端介绍与下载站的源码见[官网仓库](https://github.com/MichengAI/dsh-codex-desktop-website)。
+
+桌面端还集成 [DSH Context](https://github.com/bowenliang123/dsh-context)、[DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)、[DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector)、[Usage Billing](https://github.com/kenz1117/dsh-ui-usage-billing) 和插件市场，提供上下文、文件导航、连接管理及用量统计。
 
 ## 更新与自修复
 
