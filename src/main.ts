@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu, Notification, Tray, WebContentsView, dialog, ipcMain, nativeImage, nativeTheme, net, protocol, session, shell, type Input, type MenuItemConstructorOptions, type WebContents } from 'electron'
 import { existsSync } from 'node:fs'
+import { release as osRelease } from 'node:os'
 import { readFile, writeFile as writeTextFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { dirname, join, resolve } from 'node:path'
@@ -30,7 +31,7 @@ import { migrateDesktopBridgeProfile } from './desktop-bridge-migration.js'
 import { isChineseLocale, localizedShellActions, localizedShellMenus, normalizeShellLocale, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId } from './shell-actions.js'
 import { SHELL_BAR_HEIGHT, SHELL_IPC, type DshNavigationState, type DshShellActionId, type ShellBootstrap, type ShellMenuPopupRequest, type ShellState } from './shell-contract.js'
 import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayCloseDesktopSettings, mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshBoot, mayReportDshLocale, mayReportDshNotification, mayReportDshState, mayReportDshTheme, mayReportDshSettingsVisibility, type ShellRendererKind } from './shell-ipc-policy.js'
-import { DESKTOP_THEME_PALETTES, normalizeDesktopThemeSnapshot, type DesktopColorScheme, type DesktopThemePreference } from './desktop-theme.js'
+import { DESKTOP_THEME_PALETTES, normalizeDesktopThemeSnapshot, supportsNativeBackdrop, type DesktopColorScheme, type DesktopThemePreference } from './desktop-theme.js'
 import { DSH_MARKET_STATUS_PATH, waitForDshMarketBatchToSettle } from './dshmarket-batch.js'
 import { DEFAULT_NOTIFICATION_PREFERENCES, buildWindowsReplyToastXml, loadNotificationPreferences, parseDesktopNotificationBridgeEvent, parseWindowsNotificationReplyActivation, saveNotificationPreferences, shouldShowDesktopNotification, windowsNotificationReplyArguments, type DesktopNotificationEvent, type DesktopNotificationPreferences } from './desktop-notifications.js'
 import { watchProfileActivation } from './profile-watch.js'
@@ -47,6 +48,7 @@ const dshProcessModule = await import(app.isPackaged
   : './dsh-process.js') as DshProcessModule
 const { isApplyPluginUpdatesIpc, startDsh } = dshProcessModule
 
+const nativeBackdropEnabled = supportsNativeBackdrop(process.platform, osRelease())
 let mainWindow: BrowserWindow | undefined
 let dshView: WebContentsView | undefined
 let recoveryView: WebContentsView | undefined
@@ -802,8 +804,9 @@ function createWindow(): BrowserWindow {
     // The small Windows non-client edge is painted from this color. Keep it
     // aligned with the title-bar wash instead of leaving a white seam above
     // the CSS gradient.
-    backgroundColor: palette.titleBarBackground,
-    ...(process.platform === 'darwin' ? {} : { titleBarOverlay: { color: palette.titleBarBackground, symbolColor: palette.titleBarSymbol, height: SHELL_BAR_HEIGHT } }),
+    backgroundColor: nativeBackdropEnabled ? '#00000000' : palette.titleBarBackground,
+    ...(nativeBackdropEnabled ? { backgroundMaterial: 'mica' as const } : {}),
+    ...(process.platform === 'darwin' ? {} : { titleBarOverlay: { color: nativeBackdropEnabled ? '#00000000' : palette.titleBarBackground, symbolColor: palette.titleBarSymbol, height: SHELL_BAR_HEIGHT } }),
     ...(windowIcon === undefined ? {} : { icon: windowIcon }),
     webPreferences: {
       contextIsolation: true,
@@ -816,8 +819,10 @@ function createWindow(): BrowserWindow {
     contextIsolation: true,
     nodeIntegration: false,
     preload: resolvePreload('dsh-view-preload.cjs'),
+    additionalArguments: nativeBackdropEnabled ? ['--dsh-native-backdrop'] : [],
     sandbox: true,
   } })
+  if (nativeBackdropEnabled) view.setBackgroundColor('#00000000')
   const recovery = new WebContentsView({ webPreferences: {
     contextIsolation: true,
     nodeIntegration: false,
@@ -834,7 +839,7 @@ function createWindow(): BrowserWindow {
   window.on('resize', () => { layoutDshView(window); layoutRecoveryView(window) })
   window.on('maximize', () => { layoutDshView(window); layoutRecoveryView(window) })
   window.on('unmaximize', () => { layoutDshView(window); layoutRecoveryView(window) })
-  runMainTask(window.loadFile(resolveShellAsset('shell.html'), { query: { theme: activeDshColorScheme } }))
+  runMainTask(window.loadFile(resolveShellAsset('shell.html'), { query: { theme: activeDshColorScheme, backdrop: nativeBackdropEnabled ? 'mica' : 'none' } }))
 
   view.webContents.setWindowOpenHandler(({ url }) => {
     if (isExternalOpenUrl(url, allowedOrigin)) runMainTask(shell.openExternal(url))
@@ -922,12 +927,12 @@ function applyDesktopTheme(colorScheme: DesktopColorScheme, preference?: Desktop
     nativeTheme.themeSource = preference
   }
   const palette = DESKTOP_THEME_PALETTES[colorScheme]
-  setWindowBackground(mainWindow, palette.titleBarBackground)
+  setWindowBackground(mainWindow, nativeBackdropEnabled ? '#00000000' : palette.titleBarBackground)
   setWindowBackground(settingsWindow, palette.settingsBackground)
   setWindowBackground(shortcutsWindow, palette.shortcutsBackground)
   setWindowBackground(aboutWindow, palette.aboutBackground)
   if (process.platform !== 'darwin' && mainWindow !== undefined && !mainWindow.isDestroyed()) {
-    mainWindow.setTitleBarOverlay({ color: palette.titleBarBackground, symbolColor: palette.titleBarSymbol, height: SHELL_BAR_HEIGHT })
+    mainWindow.setTitleBarOverlay({ color: nativeBackdropEnabled ? '#00000000' : palette.titleBarBackground, symbolColor: palette.titleBarSymbol, height: SHELL_BAR_HEIGHT })
   }
 }
 

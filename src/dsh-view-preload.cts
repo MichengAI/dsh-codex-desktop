@@ -151,6 +151,10 @@ ipcRenderer.on(IPC.dshAction, (_event, id: string) => {
 })
 
 window.addEventListener('DOMContentLoaded', () => {
+  // 仅主进程确认支持系统材质时暴露样式能力，不向网页开放原生窗口控制。
+  if (typeof process !== 'undefined' && process.argv.includes('--dsh-native-backdrop')) {
+    document.documentElement.dataset.dshNativeBackdrop = 'mica'
+  }
   document.addEventListener('click', scheduleTrackSelection, true)
   document.addEventListener('keydown', closeDshSettingsDialogOnEscape, true)
   new MutationObserver(scheduleTrackSelection).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected', 'class'] })

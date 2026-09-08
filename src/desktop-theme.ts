@@ -55,3 +55,10 @@ export function normalizeDesktopThemeSnapshot(value: unknown): DesktopThemeSnaps
     : undefined
   return preference === undefined ? { colorScheme } : { colorScheme, preference }
 }
+
+/** Windows 11 22H2 起支持系统窗口背景；旧系统保留实色。 */
+export function supportsNativeBackdrop(platform: string, release: string): boolean {
+  const parts = release.split('.').map(Number)
+  return platform === 'win32' && parts.length >= 3 && parts.every(Number.isFinite)
+    && (parts[0]! > 10 || (parts[0] === 10 && parts[2]! >= 22621))
+}
