@@ -162,10 +162,6 @@ pnpm run dist
 
 Local build artifacts are written to `release\` and are not committed. Pushing a `vX.Y.Z` tag starts the packaging workflow for Windows x64, macOS arm64/x64, and Linux x64/arm64 AppImage / deb artifacts.
 
-## Project documentation
-
-For current status, architecture constraints, and iteration records, start at the [documentation entry point](docs/00-交接入口/00-阅读导航.md).
-
 ## License
 
 This project is licensed under [Apache License 2.0](LICENSE).

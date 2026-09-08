@@ -162,10 +162,6 @@ pnpm run dist
 
 本地构建制品写入 `release\`，不会提交。推送 `vX.Y.Z` 标签后，工作流会打包 Windows x64、macOS arm64/x64，以及 Linux x64/arm64 的 AppImage / deb 制品。
 
-## 项目文档
-
-当前状态、架构约束和迭代记录，请从[文档交接入口](docs/00-交接入口/00-阅读导航.md)开始阅读。
-
 ## 许可证
 
 本项目采用 [Apache License 2.0](LICENSE)。
