@@ -26,19 +26,19 @@ export const OFFICIAL_LAUNCH_PEERS: readonly BundledPlugin[] = [
 ]
 /** 随桌面端离线仓库分发的社区插件和插件市场组件。 */
 export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
-  { packageName: '@michengai/dsh-codex-ui', version: '0.2.106' },
-  { packageName: '@michengai/dsh-im-connect', version: '0.1.34' },
-  { packageName: '@michengai/dsh-automation', version: '0.1.32' },
-  { packageName: '@michengai/dsh-skills-manager', version: '0.1.40' },
-  { packageName: '@michengai/dsh-archive-manager', version: '0.1.30' },
-  { packageName: '@michengai/dsh-agency-agents', version: '0.1.32' },
-  { packageName: '@michengai/dsh-btw', version: '0.1.3' },
+  { packageName: '@michengai/dsh-codex-ui', version: '0.2.112' },
+  { packageName: '@michengai/dsh-im-connect', version: '0.1.38' },
+  { packageName: '@michengai/dsh-automation', version: '0.1.34' },
+  { packageName: '@michengai/dsh-skills-manager', version: '0.1.43' },
+  { packageName: '@michengai/dsh-archive-manager', version: '0.1.32' },
+  { packageName: '@michengai/dsh-agency-agents', version: '0.1.34' },
+  { packageName: '@michengai/dsh-btw', version: '0.1.4' },
   { packageName: '@michengai/dsh-simplify', version: '0.1.2' },
-  { packageName: 'dsh-context', version: '0.44.0' },
+  { packageName: 'dsh-context', version: '0.46.0' },
   { packageName: 'dsh-better-sidebar', version: '0.18.0' },
-  { packageName: 'dsh-mcp-connector', version: '0.2.37' },
-  { packageName: '@kenz1117/dsh-ui-usage-billing', version: '1.0.31' },
-  { packageName: 'dshmarket', version: '1.44.0' },
+  { packageName: 'dsh-mcp-connector', version: '0.2.39' },
+  { packageName: '@kenz1117/dsh-ui-usage-billing', version: '1.0.42' },
+  { packageName: 'dshmarket', version: '1.45.0' },
 ]
 
 /** 离线 store 只放社区插件，官方运行时单独预装，避免安装包把同一份依赖打两遍。 */

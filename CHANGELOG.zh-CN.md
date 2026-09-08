@@ -6,7 +6,12 @@
 
 ## 未发布
 
+## 1.0.50 — 2026-09-08
+
+- 内置插件更新到 Codex UI 0.2.112、IM Connect 0.1.38、Automation 0.1.34、Skills Manager 0.1.43、Archive Manager 0.1.32、Agency Agents 0.1.34、BTW 0.1.4、`dsh-context` 0.46.0、MCP Connector 0.2.39、Usage Billing 1.0.42 和 `dshmarket` 1.45.0；DSH Better Sidebar 与 Simplify 维持当前最新版本。
 - 任务栏未读数量不再计入子代理会话，同时覆盖 Codex UI 未读记录和备用完成统计；已有未读记录及后续补齐子代理标识的会话也会正确过滤。
+
+发布标签：[`v1.0.50`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.50)。
 
 ## 1.0.49 — 2026-09-07
 
@@ -44,13 +49,3 @@
 - 修复 Windows 任务栏未读完成角标：打开已完成任务后会稳定清除未读状态，后续任务列表刷新不再把历史完成任务重复计入。
 
 发布标签：[`v1.0.46`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.46)。
-
-## 1.0.45 — 2026-09-04
-
-- 新增插件恢复模式：启动失败后隔离第三方插件，并提供独立恢复页，支持恢复、卸载或回到最近正常配置。
-- 没有仍需隔离的插件时自动退出恢复模式；恢复会话中的健康启动不再覆盖最近一次已验证的配置检查点。
-- 修复 Windows 关闭关于、设置或快捷键窗口时主窗口闪一下的问题。
-- 将内置插件更新到 Codex UI 0.2.102、IM Connect 0.1.34、Automation 0.1.27、Skills Manager 0.1.38、Archive Manager 0.1.29、Agency Agents 0.1.30、`dsh-context` 0.41.2、DSH Better Sidebar 0.18.0 和 `dshmarket` 1.41.0。
-- 稳住运行时解压超时测试：先挂上拒绝断言，再等孙进程 PID，避免 macOS Intel CI 在 200ms 内输掉竞态。本版取代未发布的 `v1.0.44` 标签。
-
-发布标签：[`v1.0.45`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.45)。
