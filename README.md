@@ -122,8 +122,6 @@ For a ready-to-use workbench, download [DSH Codex Desktop](https://github.com/Mi
 | [BTW](https://github.com/MichengAI/dsh-btw) | Ask side questions without interrupting the main task |
 | [Simplify](https://github.com/MichengAI/dsh-simplify) | Use /simplify to improve code within your Git changes |
 
-The desktop introduction and download site is maintained in the [website repository](https://github.com/MichengAI/dsh-codex-desktop-website).
-
 The desktop app also integrates [DSH Context](https://github.com/bowenliang123/dsh-context), [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar), [DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector), [Usage Billing](https://github.com/kenz1117/dsh-ui-usage-billing) and the plugin market for context insights, file navigation, connections, and usage statistics.
 
 ## Updates and recovery
@@ -171,7 +169,3 @@ For current status, architecture constraints, and iteration records, start at th
 ## License
 
 This project is licensed under [Apache License 2.0](LICENSE).
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for the five most recent releases.

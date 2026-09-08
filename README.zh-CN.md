@@ -122,8 +122,6 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | [BTW](https://github.com/MichengAI/dsh-btw) | 在当前上下文中临时旁问，不打断主任务 |
 | [Simplify](https://github.com/MichengAI/dsh-simplify) | 用 /simplify 整理 Git 改动范围内的代码 |
 
-桌面端介绍与下载站的源码见[官网仓库](https://github.com/MichengAI/dsh-codex-desktop-website)。
-
 桌面端还集成 [DSH Context](https://github.com/bowenliang123/dsh-context)、[DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)、[DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector)、[Usage Billing](https://github.com/kenz1117/dsh-ui-usage-billing) 和插件市场，提供上下文、文件导航、连接管理及用量统计。
 
 ## 更新与自修复
@@ -171,7 +169,3 @@ pnpm run dist
 ## 许可证
 
 本项目采用 [Apache License 2.0](LICENSE)。
-
-## 更新日志
-
-最近五个发布版本见 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)。
