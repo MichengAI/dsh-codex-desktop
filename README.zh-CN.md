@@ -191,6 +191,12 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 ## 开发
 
+### 内置宠物集成
+
+内置 `@michengai/dsh-codex-pet` 0.1.2，随离线资源分发并在首次启动时自动安装；在宠物设置中选择宠物并开启显示，即可启用原生桌面宠物。插件提供 `window.dshPet` v1 接口。Desktop 订阅状态、通过接口转发会话操作，并负责渲染、拖拽、位置存储、鼠标穿透及窗口恢复。宠物插件仍可在浏览器独立使用，不依赖 Desktop；本适配器不支持仅提供旧 `dshDesktopPet` 桥接的版本。
+
+运行 `npm run smoke:pet` 构建并验证真实 Electron 窗口、preload/IPC、多会话审批和问答、过期操作拦截、重载、隐藏及展示接管。测试使用协议与微型图片夹具，只依赖本仓库开发依赖，退出后清理临时用户目录；不能替代已安装插件联调或正式安装包验收。
+
 开发环境需要 Windows、Node.js `24.20.0` 和 pnpm `11.24.0`。
 
 ```powershell

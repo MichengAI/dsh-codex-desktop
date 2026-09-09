@@ -6,7 +6,10 @@
 
 ## 未发布
 
-- 升级 10 项内置插件至 npm latest：Codex UI 1.1.0、IM Connect 0.1.39、Automation 0.1.35、Skills Manager 0.1.44、Archive Manager 0.1.34、Agency Agents 0.1.35、dsh-context 0.47.0、Better Sidebar 0.18.1、Usage Billing 1.0.43、dshmarket 1.45.1。其余 3 项已是最新版。
+- 内置 `@michengai/dsh-codex-pet` 0.1.2，纳入离线资源、首次启动补种及已有配置的缺失插件补装；更新 Codex UI 至 1.1.1、Agency Agents 至 0.1.36、MCP Connector 至 0.2.40。
+
+- Desktop 主动消费宠物插件的 `window.dshPet` v1 公开接口，自行负责原生渲染、窗口生命周期与 IPC，不再加载已移除的插件桌面页面。支持多会话操作，原生窗口失败或关闭时恢复页内显示；新增独立 Electron 冒烟，无需相邻宠物仓库。
+- 升级 11 项内置插件至 npm latest：Codex UI 1.1.1、IM Connect 0.1.39、Automation 0.1.35、Skills Manager 0.1.44、Archive Manager 0.1.34、Agency Agents 0.1.36、dsh-context 0.47.0、Better Sidebar 0.18.1、MCP Connector 0.2.40、Usage Billing 1.0.43、dshmarket 1.45.1。其余 2 项已是最新版。
 - 内置社区插件 `@linxin666/dsh-client-ui-git-graph` 0.3.18，纳入离线资源与首次启动补种清单。
 
 ## 1.0.50 — 2026-09-08

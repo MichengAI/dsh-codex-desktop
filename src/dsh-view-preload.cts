@@ -1,10 +1,15 @@
 const { contextBridge, ipcRenderer } = require('electron') as typeof import('electron')
 
-// 宠物插件仅能提交经过主进程校验的展示状态，不能控制任意窗口或加载 URL。
-contextBridge.exposeInMainWorld('dshDesktopPet', {
+// Desktop 适配器提交经过主进程校验的展示状态，不开放任意窗口或 URL。
+contextBridge.exposeInMainWorld('dshPetHost', {
+  onCommand: (listener: (command: unknown) => Promise<void>) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, id: string, command: unknown) => { void Promise.resolve().then(() => listener(command)).then(() => ipcRenderer.send('dsh-pet:command-result', id, null), error => ipcRenderer.send('dsh-pet:command-result', id, error instanceof Error ? error.message : '操作失败')) }
+    ipcRenderer.on('dsh-pet:command', wrapped)
+    return () => ipcRenderer.removeListener('dsh-pet:command', wrapped)
+  },
   sync: (state: unknown) => ipcRenderer.invoke('dsh-pet:sync', state),
-  onAction: (listener: (action: 'hide' | 'open' | 'settings') => void) => {
-    const wrapped = (_event: Electron.IpcRendererEvent, action: 'hide' | 'open' | 'settings') => listener(action)
+  onAction: (listener: (action: 'hide' | 'open' | 'settings' | 'release') => void) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, action: 'hide' | 'open' | 'settings' | 'release') => listener(action)
     ipcRenderer.on('dsh-pet:action', wrapped)
     return () => ipcRenderer.removeListener('dsh-pet:action', wrapped)
   },
