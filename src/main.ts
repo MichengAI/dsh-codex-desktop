@@ -10,6 +10,7 @@ import { DESKTOP_APP_NAME, DESKTOP_APP_USER_MODEL_ID, DESKTOP_TOAST_ACTIVATOR_CL
 import { OFFICIAL_DSH_VERSION } from './bundled-plugins.js'
 import { resolveAppIconPath, resolveCompactIconCrop, resolveNotificationIconPath, resolveRasterIconPath, resolveTaskBadgeIconPath, TRAY_ICON_SIZE } from './app-icon.js'
 import { WINDOW_ICON_PIXEL_SIZES, isLoopbackFaviconRequest } from './window-icon.js'
+import { clearPreviousDshAuthCookies } from './desktop-auth-cookies.js'
 import { quitDesktopApp, shouldHideInsteadOfClose } from './app-lifecycle.js'
 import type { DshServer, StartDshOptions } from './dsh-process.js'
 import { isExternalOpenUrl, isSameOrigin } from './navigation.js'
@@ -407,6 +408,7 @@ async function createMainWindow(serverUrl: string): Promise<void> {
   allowedOrigin = new URL(serverUrl).origin
   mainWindow ??= createWindow()
   const view = requireDshView()
+  await clearPreviousDshAuthCookies(view.webContents.session.cookies, serverUrl)
   const profileDir = lastSeedOptions?.profileDir
   if (profileDir !== undefined) {
     await advanceDshStartupDiagnostic(profileDir, 'renderer-loading')
