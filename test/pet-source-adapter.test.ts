@@ -20,8 +20,37 @@ test('桌面接管等待同步成功；失败、卸载与释放不会隐藏页�
   action('release'); assert.equal(leases, 0)
   fail = true; listener(); await flush(); assert.equal(leases, 0); assert.equal(states.at(-1), null)
   fail = false; listener(); await flush(); assert.equal(leases, 1)
+  page.dshPet.updateConfig = async () => { throw new Error('配置写入失败') }
+  action('hide'); await flush(); assert.equal(leases, 0, '隐藏配置失败也必须归还页内显示')
+  listener(); await flush(); assert.equal(leases, 1)
   delete page.dshPet; events.get('dsh-pet-disposed')!(); await flush(); assert.equal(leases, 0); assert.equal(states.at(-1), null)
   page.__disposePetAdapter(); await flush(); assert.equal(events.size, 0)
+})
+
+test('释放发生在同步等待期间时，旧同步完成不能重新接管', async () => {
+  let leases = 0, action = (_: string) => {}, finish = () => {}, listener = () => {}
+  const page: Record<string, any> = {
+    addEventListener() {}, removeEventListener() {},
+    dshPetHost: {
+      sync: () => new Promise<void>(resolve => { finish = resolve }),
+      onAction: (fn: typeof action) => { action = fn; return () => {} }, onCommand: () => () => {},
+    },
+    dshPet: {
+      version: 1,
+      getSnapshot: () => ({ pet: { id: 'test', url: '/dsh-codex-pet/asset/test' }, config: { visible: true }, notifications: { activity: {}, items: [] } }),
+      subscribe: (fn: () => void) => { listener = fn; return () => {} },
+      acquireDisplay: () => { leases++; return () => { leases-- } },
+    },
+  }
+  const flush = () => new Promise(resolve => setImmediate(resolve))
+  runInNewContext(`(${installPetSourceAdapter.toString()})()`, { window: page, console, AbortSignal, fetch: async () => ({ ok: true, blob: async () => ({ type: 'image/png', size: 1 }) }), FileReader: class { result = 'data:image/png;base64,AA=='; onload = () => {}; readAsDataURL() { this.onload() } } })
+  await flush()
+  action('release'); finish(); await flush()
+  assert.equal(leases, 0)
+  listener(); await flush(); finish(); await flush()
+  assert.equal(leases, 1, '下一次新快照仍可正常接管')
+  page.__disposePetAdapter(); finish(); await flush()
+  assert.equal(leases, 0)
 })
 
 test('原生 HTML 仅允许内嵌图片与指定脚本哈希，不加载插件桌面页面', () => {

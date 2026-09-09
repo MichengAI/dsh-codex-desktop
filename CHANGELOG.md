@@ -6,7 +6,9 @@ The five most recent published versions are listed below.
 
 ## Unreleased
 
-- Bundle `@michengai/dsh-codex-pet` 0.1.2 for offline distribution, first-launch seeding and missing-plugin installation in existing profiles. Update Codex UI to 1.1.1, Agency Agents to 0.1.36 and MCP Connector to 0.2.40.
+- Release pet display ownership even when saving the hidden state fails, and prevent in-flight sync from reacquiring it after closure. Validate answer structure, question and option identity, single/multiple selection rules, and command kinds in the main process while preserving free-text answers.
+
+- Bundle `@michengai/dsh-codex-pet` 0.1.2 for offline distribution, first-launch seeding and missing-plugin installation in existing profiles.
 
 - Consume the pet plugin's public `window.dshPet` v1 API from Desktop. Desktop owns the native renderer, window lifecycle and IPC; it no longer loads the removed plugin desktop page. Add multi-session actions and restore in-page display when the native window fails or closes. A self-contained Electron smoke test covers the bridge without a sibling plugin checkout.
 - Update 11 bundled plugins to npm latest: Codex UI 1.1.1, IM Connect 0.1.39, Automation 0.1.35, Skills Manager 0.1.44, Archive Manager 0.1.34, Agency Agents 0.1.36, dsh-context 0.47.0, Better Sidebar 0.18.1, MCP Connector 0.2.40, Usage Billing 1.0.43, and dshmarket 1.45.1. The remaining two are already latest.

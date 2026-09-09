@@ -52,6 +52,11 @@ try {
   await read('delete window.dshPet;dispatchEvent(new Event("dsh-pet-disposed"))')
   await until(async()=>await read('leases===0')&&!pet(),'卸载关闭原生窗口')
   await source.loadURL(source.webContents.getURL());await until(()=>read('leases===1'),'重载接管')
+  await read(`window.originalUpdateConfig=dshPet.updateConfig;dshPet.updateConfig=async()=>{throw Error('expected hide failure')};void 0`)
+  await pet().webContents.executeJavaScript(`petWindow.action('hide')`)
+  await until(async()=>await read('snapshot.config.visible&&leases===0')&&!pet(),'隐藏写入失败也恢复页内')
+  await read('dshPet.updateConfig=originalUpdateConfig;publish()')
+  await until(()=>read('leases===1'),'隐藏失败后可重新接管')
   await pet().webContents.executeJavaScript(`petWindow.action('hide')`)
   await until(async()=>await read('!snapshot.config.visible&&leases===0')&&!pet(),'隐藏同步')
   dispose();dispose=undefined

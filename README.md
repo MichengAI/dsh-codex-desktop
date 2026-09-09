@@ -56,7 +56,7 @@ The application keeps DSH data in your existing user profile (`%USERPROFILE%\.ds
 
 ## Product preview
 
-New workspace screenshots in the dark theme with Codex UI 1.1.0. The conversation preview uses a new test session with a local command result.
+Screenshots were captured with Codex UI 1.1.0 in the dark theme; the current bundled version is 1.1.1. The conversation preview uses a new test session with a local command result.
 
 <p align="center"><em>Home: start a new task in a workspace.</em></p>
 
@@ -131,6 +131,7 @@ The installer ships with the local runtime required to start DSH. On first launc
 | Included capability | Package |
 | --- | --- |
 | Codex-style workspace UI | [`@michengai/dsh-codex-ui`](https://github.com/MichengAI/dsh-codex-ui) |
+| Native desktop pet and conversation notifications | [`@michengai/dsh-codex-pet`](https://github.com/MichengAI/dsh-codex-pet) |
 | Expert preset management | [`@michengai/dsh-agency-agents`](https://github.com/MichengAI/dsh-agency-agents) |
 | Skill management | [`@michengai/dsh-skills-manager`](https://github.com/MichengAI/dsh-skills-manager) |
 | Archive management | [`@michengai/dsh-archive-manager`](https://github.com/MichengAI/dsh-archive-manager) |
@@ -140,7 +141,7 @@ The installer ships with the local runtime required to start DSH. On first launc
 | Extensible workspace sidebar | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
 | MCP connection management | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
 | Usage and cost tracking | [`@kenz1117/dsh-ui-usage-billing`](https://github.com/kenz1117/dsh-ui-usage-billing) |
-| Git commit graph | [`@linxin666/dsh-client-ui-git-graph`](https://www.npmjs.com/package/@linxin666/dsh-client-ui-git-graph) |
+| Git commit graph | [`@linxin666/dsh-client-ui-git-graph`](https://github.com/zhu1090093659/dsh-web) |
 | One-off read-only side questions | [`@michengai/dsh-btw`](https://github.com/MichengAI/dsh-btw) |
 | Code simplification scoped to Git changes | [`@michengai/dsh-simplify`](https://github.com/MichengAI/dsh-simplify) |
 

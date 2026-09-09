@@ -30,3 +30,30 @@ test('多会话 IPC 校验结构与请求身份，拒绝过期及越界操作', 
   assert.equal(validPetCommand({ type: 'message', text: 'x'.repeat(10001) }, state), false)
   assert.equal(parsePetWindowState({ ...valid, notifications: { ...notifications, items: [{ ...notifications.items[0], request: { key: 'q', kind: 'question', questions: 'bad' } }] } }), null)
 })
+
+test('回答必须匹配当前问题并保留自由文本和多选语义', () => {
+  const questions = [
+    { id: 'single', question: '选择', options: [{ label: 'A' }, { label: 'B' }] },
+    { id: 'multi', question: '多选', multiSelect: true, options: [{ label: 'X' }, { label: 'Y' }] },
+    { id: 'text', question: '说明' },
+  ]
+  const state = parsePetWindowState({ ...valid, notifications: { items: [{ id: 'n', token: 't', pose: 'waiting', title: '', text: '', updatedAt: 1, request: { key: 'r', kind: 'question', questions } }], hidden: 0, activity: valid.activity } })!
+  const base = { type: 'answer', id: 'n', token: 't', requestKey: 'r' }
+  const answers = [{ id: 'single', selected: ['A'] }, { id: 'multi', selected: ['X', 'Y'], custom: '补充' }, { id: 'text', selected: [], custom: '说明' }]
+  const check = (value: unknown) => validPetCommand({ ...base, answers: value }, state)
+  assert.equal(check({ answers }), true)
+  assert.equal(check({ answers: [...answers].reverse() }), true)
+  for (const value of [undefined, null, 42, [], {}, { answers: [] }, { answers: [...answers, answers[0]] }]) assert.equal(check(value), false)
+  for (const replacement of [null, 42, { id: 'unknown', selected: ['A'] }, { id: 'multi', selected: ['X'] }, { id: 'single', selected: 'A' }, { id: 'single', selected: ['unknown'] }, { id: 'single', selected: ['A', 'A'] }, { id: 'single', selected: ['A', 'B'] }, { id: 'single', selected: [], custom: '  ' }, { id: 'single', selected: ['A'], custom: '同时填文本' }, { id: 'single', selected: [], custom: 42 }, { id: 'single', selected: [], custom: 'x'.repeat(10001) }]) {
+    assert.equal(check({ answers: [replacement, ...answers.slice(1)] }), false)
+  }
+  assert.equal(check({ answers: [{ id: 'single', selected: [], custom: '自由回答' }, ...answers.slice(1)] }), true)
+  assert.equal(validPetCommand({ ...base, type: 'approve' }, state), false)
+  assert.equal(validPetCommand({ ...base, type: 'reject' }, state), false)
+  state.notifications!.items[0]!.request!.kind = 'plan-review'
+  assert.equal(check({ answers }), true)
+  state.notifications!.items[0]!.request!.kind = 'approval'
+  assert.equal(check({ answers }), false)
+  assert.equal(validPetCommand({ ...base, type: 'approve' }, state), true)
+  assert.equal(validPetCommand({ ...base, type: 'reject' }, state), true)
+})

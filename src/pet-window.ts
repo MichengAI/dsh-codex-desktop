@@ -88,7 +88,16 @@ export function installPetWindow(options: { source(): WebContents | undefined; r
       const area = screen.getDisplayNearestPoint({ x: target.x + 160, y: target.y + 280 }).workArea
       const next = constrainPetBounds(target, area); window.setPosition(next.x, next.y)
     }],
-    ['action', (event, action: unknown) => { if (!isPet(event) || !['hide', 'open', 'settings'].includes(String(action))) return; if (action !== 'hide') options.reveal(); options.source()?.send(CHANNEL + 'action', action); if (action === 'hide') { state = null; close() } }],
+    ['action', (event, action: unknown) => {
+      if (!isPet(event) || !['hide', 'open', 'settings'].includes(String(action))) return
+      if (action !== 'hide') options.reveal()
+      options.source()?.send(CHANNEL + 'action', action)
+      if (action === 'hide') {
+        state = null
+        close()
+        release()
+      }
+    }],
   ]
   for (const [suffix, listener] of listeners) ipcMain.on(CHANNEL + suffix, listener)
   const clamp = () => { if (!window) return; const old = window.getBounds(); const area = screen.getDisplayNearestPoint(old).workArea; const next = constrainPetBounds(old, area); window.setPosition(next.x, next.y) }

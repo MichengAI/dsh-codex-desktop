@@ -56,7 +56,7 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 ## 产品预览
 
-新版工作台实拍：深色主题，Codex UI 1.1.0。会话页为新建测试会话，展示本地指令结果。
+截图拍摄于 Codex UI 1.1.0（深色主题）；当前内置版本为 1.1.1。会话页为新建测试会话，展示本地指令结果。
 
 <p align="center"><em>首页：从工作区开始新任务。</em></p>
 
@@ -131,6 +131,7 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | 随附能力 | npm 包 |
 | --- | --- |
 | Codex 风格工作区界面 | [`@michengai/dsh-codex-ui`](https://github.com/MichengAI/dsh-codex-ui) |
+| 原生桌面宠物与会话提醒 | [`@michengai/dsh-codex-pet`](https://github.com/MichengAI/dsh-codex-pet) |
 | 专家预设管理 | [`@michengai/dsh-agency-agents`](https://github.com/MichengAI/dsh-agency-agents) |
 | 技能管理 | [`@michengai/dsh-skills-manager`](https://github.com/MichengAI/dsh-skills-manager) |
 | 归档会话管理 | [`@michengai/dsh-archive-manager`](https://github.com/MichengAI/dsh-archive-manager) |
@@ -140,7 +141,7 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | 可扩展工作区侧边栏 | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
 | MCP 连接管理 | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
 | 用量与费用统计 | [`@kenz1117/dsh-ui-usage-billing`](https://github.com/kenz1117/dsh-ui-usage-billing) |
-| Git 提交图谱 | [`@linxin666/dsh-client-ui-git-graph`](https://www.npmjs.com/package/@linxin666/dsh-client-ui-git-graph) |
+| Git 提交图谱 | [`@linxin666/dsh-client-ui-git-graph`](https://github.com/zhu1090093659/dsh-web) |
 | 一次性只读旁问 | [`@michengai/dsh-btw`](https://github.com/MichengAI/dsh-btw) |
 | Git 变更范围内的代码简化 | [`@michengai/dsh-simplify`](https://github.com/MichengAI/dsh-simplify) |
 

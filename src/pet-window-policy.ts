@@ -51,5 +51,31 @@ export function validPetCommand(value: unknown, state: PetWindowState | null): b
   if (!item) return false
   if (v.type === 'stop') return item.pose === 'running'
   if (v.type === 'open' || v.type === 'dismiss') return true
-  return ['approve','reject','answer'].includes(String(v.type)) && !!item.request && item.request.key === v.requestKey
+  const request = item.request
+  if (!request || request.key !== v.requestKey) return false
+  if (v.type === 'approve' || v.type === 'reject') return request.kind === 'approval'
+  if (v.type !== 'answer' || !['question', 'plan-review'].includes(request.kind)) return false
+  return validAnswers(request.questions ?? [], v.answers)
+}
+
+/** 与插件公开回答协议对齐；插件仍须以最新请求身份再次校验。 */
+function validAnswers(questions: NonNullable<NonNullable<PetNotifications['items'][number]['request']>['questions']>, value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const answers = (value as Record<string, unknown>).answers
+  if (!Array.isArray(answers) || answers.length !== questions.length) return false
+  const ids = new Set<string>()
+  for (const answer of answers) {
+    if (!answer || typeof answer !== 'object' || Array.isArray(answer)) return false
+    const question = questions.find(question => question.id === answer.id)
+    if (!question || ids.has(question.id) || !Array.isArray(answer.selected)) return false
+    ids.add(question.id)
+    const selected: unknown[] = answer.selected
+    if (new Set(selected).size !== selected.length) return false
+    if (selected.some(label => typeof label !== 'string' || !question.options?.some(option => option.label === label))) return false
+    if (answer.custom !== undefined && (typeof answer.custom !== 'string' || answer.custom.length > 10000)) return false
+    const hasCustom = typeof answer.custom === 'string' && answer.custom.trim().length > 0
+    if (selected.length === 0 && !hasCustom) return false
+    if (!question.multiSelect && (selected.length > 1 || (selected.length > 0 && hasCustom))) return false
+  }
+  return true
 }

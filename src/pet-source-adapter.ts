@@ -9,6 +9,7 @@ export function installPetSourceAdapter(): void {
   if (!bridge) return
   let api: Api | undefined, off: (() => void) | undefined, release: (() => void) | undefined
   let requested = 0, processed = 0, running = false, disposed = false
+  let displayRevision = 0
   let imageUrl = '', imageData = ''
   const loadImage = async (pet: NonNullable<Snapshot['pet']>) => {
     if (pet.url !== `/dsh-codex-pet/asset/${encodeURIComponent(pet.id)}`) throw new Error('宠物图片路径无效')
@@ -20,20 +21,25 @@ export function installPetSourceAdapter(): void {
     const data = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob) })
     imageUrl = pet.url; imageData = data; return data
   }
-  const releaseDisplay = () => { release?.(); release = undefined }
+  const releaseDisplay = () => {
+    // 作废正在等待同步的接管，避免隐藏或关闭后旧请求再次隐藏页内宠物。
+    displayRevision++
+    release?.()
+    release = undefined
+  }
   const pump = async () => {
     if (running) return
     running = true
     try {
       while (processed !== requested) {
         processed = requested
-        const revision = processed, current = api
+        const revision = processed, current = api, display = displayRevision
         try {
           const snapshot = current?.getSnapshot()
           const sprite = snapshot?.pet && snapshot.config.visible ? await loadImage(snapshot.pet) : undefined
-          if (current !== api || revision !== requested || disposed) { if (disposed) await bridge.sync(null); continue }
+          if (current !== api || revision !== requested || disposed || display !== displayRevision) { if (disposed) await bridge.sync(null); continue }
           await bridge.sync(snapshot?.pet ? { ...snapshot, sprite, activity: snapshot.notifications.activity } : null)
-          if (current !== api || revision !== requested || disposed) continue
+          if (current !== api || revision !== requested || disposed || display !== displayRevision) continue
           if (snapshot?.pet && snapshot.config.visible) release ??= current!.acquireDisplay()
           else releaseDisplay()
         } catch (error) {
@@ -59,9 +65,14 @@ export function installPetSourceAdapter(): void {
   })
   const offAction = bridge.onAction(action => {
     if (action === 'release') { releaseDisplay(); return }
+    if (action === 'hide') releaseDisplay()
     if (!api) return
     if (action === 'settings') api.openSettings()
-    if (action === 'hide') void api.updateConfig({ visible: false }).catch(error => console.warn('[dsh-pet] 隐藏失败', error))
+    if (action === 'hide') {
+      const current = api
+      void Promise.resolve().then(() => current.updateConfig({ visible: false }))
+        .catch(error => console.warn('[dsh-pet] 隐藏失败，已恢复页内显示', error))
+    }
     if (action === 'open') {
       const item = api.getSnapshot()?.notifications.items[0]
       if (item) void api.command({ type: 'open', id: item.id, token: item.token }).catch(error => console.warn('[dsh-pet] 打开任务失败', error))
