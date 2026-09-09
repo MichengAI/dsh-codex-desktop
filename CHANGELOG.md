@@ -4,7 +4,7 @@
 
 The five most recent published versions are listed below.
 
-## Unreleased
+## 1.0.51 — 2026-09-09
 
 - Release pet display ownership even when saving the hidden state fails, and prevent in-flight sync from reacquiring it after closure. Validate answer structure, question and option identity, single/multiple selection rules, and command kinds in the main process while preserving free-text answers.
 
@@ -13,6 +13,11 @@ The five most recent published versions are listed below.
 - Consume the pet plugin's public `window.dshPet` v1 API from Desktop. Desktop owns the native renderer, window lifecycle and IPC; it no longer loads the removed plugin desktop page. Add multi-session actions and restore in-page display when the native window fails or closes. A self-contained Electron smoke test covers the bridge without a sibling plugin checkout.
 - Update 11 bundled plugins to npm latest: Codex UI 1.1.1, IM Connect 0.1.39, Automation 0.1.35, Skills Manager 0.1.44, Archive Manager 0.1.34, Agency Agents 0.1.36, dsh-context 0.47.0, Better Sidebar 0.18.1, MCP Connector 0.2.40, Usage Billing 1.0.43, and dshmarket 1.45.1. The remaining two are already latest.
 - Bundle community plugin `@linxin666/dsh-client-ui-git-graph` 0.3.18 in the offline store and first-launch seeding catalog.
+- Enable native Mica window backgrounds on Windows 11 22H2 and later, with opaque fallbacks on older systems and support for light and dark themes.
+- Clear stale DSH authentication cookies in the dedicated desktop session before startup to prevent HTTP 431 loading failures after repeated launches.
+- Refresh both README galleries with 14 optimized WebP screenshots covering the home page, conversations, first-party settings, and community plugins.
+
+Release tag: [`v1.0.51`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.51).
 
 ## 1.0.50 — 2026-09-08
 
@@ -51,9 +56,3 @@ Release tag: [`v1.0.48`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Updated bundled plugins to Codex UI 0.2.103, Automation 0.1.31, Skills Manager 0.1.40, Archive Manager 0.1.30, Agency Agents 0.1.32, `dsh-context` 0.43.0, MCP Connector 0.2.35, and `dshmarket` 1.44.0. IM Connect remains at 0.1.34 and DSH Better Sidebar at 0.18.0.
 
 Release tag: [`v1.0.47`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.47).
-
-## 1.0.46 — 2026-09-04
-
-- Fixed the Windows taskbar unread-completion badge so opening completed tasks clears them permanently; later session-list refreshes no longer count historical completed rows again.
-
-Release tag: [`v1.0.46`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.46).

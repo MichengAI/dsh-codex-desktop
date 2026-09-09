@@ -44,7 +44,9 @@ export function installPetWindow(options: { source(): WebContents | undefined; r
     sourceOwner = event.sender
     if (!state.config.visible) { close(); return }
     if (origin && origin !== sourceUrl.origin) close()
-    if (!window) {
+    if (window) {
+      send()
+    } else {
       origin = sourceUrl.origin
       window = new BrowserWindow({ ...areaPosition(), width: 320, height: 560, transparent: true, backgroundColor: '#00000000', frame: false, alwaysOnTop: true, skipTaskbar: true, resizable: false, hasShadow: false, show: false,
         webPreferences: { preload: join(app.getAppPath(), 'dist', 'src', 'pet-window-preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false } })
@@ -59,7 +61,7 @@ export function installPetWindow(options: { source(): WebContents | undefined; r
       window.webContents.on('render-process-gone', () => { if (window === created) { close(); release() } })
       window.on('moved', persist)
       try { await created.loadURL(permitted); if (window !== created) throw new Error('宠物窗口加载已取消'); if (options.show !== false) created.showInactive(); created.setAlwaysOnTop(true, 'floating'); send() } catch (error) { if (window === created) close(); throw error }
-    } else send()
+    }
   })
   ipcMain.handle(CHANNEL + 'command', async (event, command: unknown) => {
     if (event.sender !== window?.webContents || event.senderFrame !== event.sender.mainFrame || !validPetCommand(command, state)) throw new Error('通知已变化或操作无效')

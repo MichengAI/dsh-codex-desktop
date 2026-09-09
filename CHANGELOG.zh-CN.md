@@ -4,7 +4,7 @@
 
 以下记录最近发布的五个版本。
 
-## 未发布
+## 1.0.51 — 2026-09-09
 
 - 修复宠物隐藏配置保存失败时未释放页内显示接管的问题，并阻止关闭前的在途同步重新接管。主进程新增回答结构、题目与选项、单选/多选及命令类型校验，保留自由文本回答。
 
@@ -13,6 +13,11 @@
 - Desktop 主动消费宠物插件的 `window.dshPet` v1 公开接口，自行负责原生渲染、窗口生命周期与 IPC，不再加载已移除的插件桌面页面。支持多会话操作，原生窗口失败或关闭时恢复页内显示；新增独立 Electron 冒烟，无需相邻宠物仓库。
 - 升级 11 项内置插件至 npm latest：Codex UI 1.1.1、IM Connect 0.1.39、Automation 0.1.35、Skills Manager 0.1.44、Archive Manager 0.1.34、Agency Agents 0.1.36、dsh-context 0.47.0、Better Sidebar 0.18.1、MCP Connector 0.2.40、Usage Billing 1.0.43、dshmarket 1.45.1。其余 2 项已是最新版。
 - 内置社区插件 `@linxin666/dsh-client-ui-git-graph` 0.3.18，纳入离线资源与首次启动补种清单。
+- Windows 11 22H2 及以上启用原生 Mica 窗口背景，旧系统保留实色背景，并适配深浅主题。
+- 启动前清理专用桌面会话中的旧 DSH 认证 Cookie，修复多次启动后可能出现的 HTTP 431 加载失败。
+- 中英文 README 更新为 14 张压缩 WebP 实拍截图，覆盖首页、会话、自研设置和社区插件页面。
+
+发布标签：[`v1.0.51`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.51)。
 
 ## 1.0.50 — 2026-09-08
 
@@ -51,9 +56,3 @@
 - 内置插件更新到 Codex UI 0.2.103、Automation 0.1.31、Skills Manager 0.1.40、Archive Manager 0.1.30、Agency Agents 0.1.32、`dsh-context` 0.43.0、MCP Connector 0.2.35 和 `dshmarket` 1.44.0。IM Connect 保持 0.1.34，DSH Better Sidebar 保持 0.18.0。
 
 发布标签：[`v1.0.47`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.47)。
-
-## 1.0.46 — 2026-09-04
-
-- 修复 Windows 任务栏未读完成角标：打开已完成任务后会稳定清除未读状态，后续任务列表刷新不再把历史完成任务重复计入。
-
-发布标签：[`v1.0.46`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.46)。
