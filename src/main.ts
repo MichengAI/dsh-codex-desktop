@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Menu, Notification, Tray, WebContentsView, dialog, ipcMain, nativeImage, nativeTheme, net, protocol, session, shell, type Input, type MenuItemConstructorOptions, type WebContents } from 'electron'
+import { installPetWindow } from './pet-window.js'
 import { existsSync } from 'node:fs'
 import { release as osRelease } from 'node:os'
 import { readFile, writeFile as writeTextFile } from 'node:fs/promises'
@@ -1093,7 +1094,10 @@ function installRecoveryIpc(): void {
   })
 }
 
+let disposePetWindow: (() => void) | undefined
 function installShellIpc(): void {
+  disposePetWindow?.()
+  disposePetWindow = installPetWindow({ source: () => dshView?.webContents, reveal: () => { mainWindow?.show(); mainWindow?.focus() } })
   ipcMain.removeHandler(SHELL_IPC.getBootstrap)
   ipcMain.removeHandler(SHELL_IPC.action)
   ipcMain.removeHandler(SHELL_IPC.popupMenu)

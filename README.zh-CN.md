@@ -56,33 +56,73 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 ## 产品预览
 
-<p align="center"><em>深色工作区：项目上下文、长任务过程与桌面对话界面。</em></p>
+新版工作台实拍：深色主题，Codex UI 1.1.0。会话页为新建测试会话，展示本地指令结果。
 
-<p align="center"><img src="assets/screenshots/desktop-conversation-dark.png" alt="深色桌面对话工作区" width="960"></p>
+<p align="center"><em>首页：从工作区开始新任务。</em></p>
 
-<p align="center"><em>浅色工作区：同一任务界面的浅色主题。</em></p>
+<p align="center"><img src="assets/screenshots/preview-home.webp" alt="首页：从工作区开始新任务。" width="960"></p>
 
-<p align="center"><img src="assets/screenshots/desktop-conversation-light.png" alt="浅色桌面对话工作区" width="960"></p>
+<p align="center"><em>会话页面：对话、轨迹、上下文与任务输入区。</em></p>
 
-<p align="center"><em>在上下文面板中查看组成与演进，同时通过可扩展侧边栏浏览项目文件。</em></p>
+<p align="center"><img src="assets/screenshots/preview-conversation.webp" alt="会话页面：对话、轨迹、上下文与任务输入区。" width="960"></p>
 
-<p align="center"><img src="assets/screenshots/desktop-context-sidebar.png" alt="上下文管理面板与可扩展工作区侧边栏" width="960"></p>
+<details>
+<summary>自研插件页面（6 张）</summary>
 
-<p align="center"><em>已归档会话可检索，并能从设置中恢复。</em></p>
+<p align="center"><em>专家预设</em></p>
 
-<p align="center"><img src="assets/screenshots/desktop-archive.png" alt="已归档会话管理" width="960"></p>
+<p align="center"><img src="assets/screenshots/preview-experts.webp" alt="专家预设" width="960"></p>
 
-<p align="center"><em>集中管理 DSH 与 Agent 可使用的技能。</em></p>
+<p align="center"><em>技能管理</em></p>
 
-<p align="center"><img src="assets/screenshots/desktop-skills.png" alt="技能管理" width="960"></p>
+<p align="center"><img src="assets/screenshots/preview-skills.webp" alt="技能管理" width="960"></p>
 
-<p align="center"><em>为 IM 助理工作流连接多个消息平台。</em></p>
+<p align="center"><em>定时任务</em></p>
 
-<p align="center"><img src="assets/screenshots/desktop-im-channels.png" alt="IM 频道配置" width="960"></p>
+<p align="center"><img src="assets/screenshots/preview-automation.webp" alt="定时任务" width="960"></p>
 
-<p align="center"><em>仅启用当前任务真正需要的专家预设。</em></p>
+<p align="center"><em>IM 助理</em></p>
 
-<p align="center"><img src="assets/screenshots/desktop-experts.png" alt="专家预设管理" width="960"></p>
+<p align="center"><img src="assets/screenshots/preview-im-connect.webp" alt="IM 助理" width="960"></p>
+
+<p align="center"><em>归档会话</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-archive.webp" alt="归档会话" width="960"></p>
+
+<p align="center"><em>Codex UI 设置</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-codex-ui.webp" alt="Codex UI 设置" width="960"></p>
+
+</details>
+
+<details>
+<summary>社区插件页面（6 张）</summary>
+
+<p align="center"><em>上下文设置</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-context.webp" alt="上下文设置" width="960"></p>
+
+<p align="center"><em>侧边栏设置</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-sidebar.webp" alt="侧边栏设置" width="960"></p>
+
+<p align="center"><em>MCP 连接器</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-mcp-connector.webp" alt="MCP 连接器" width="960"></p>
+
+<p align="center"><em>用量统计</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-usage-billing.webp" alt="用量统计" width="960"></p>
+
+<p align="center"><em>插件市场</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-plugin-market.webp" alt="插件市场" width="960"></p>
+
+<p align="center"><em>Git 提交图谱</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-git-graph.webp" alt="Git 提交图谱" width="960"></p>
+
+</details>
 
 ## 首次启动已包含的能力
 
@@ -100,6 +140,7 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | 可扩展工作区侧边栏 | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
 | MCP 连接管理 | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
 | 用量与费用统计 | [`@kenz1117/dsh-ui-usage-billing`](https://github.com/kenz1117/dsh-ui-usage-billing) |
+| Git 提交图谱 | [`@linxin666/dsh-client-ui-git-graph`](https://www.npmjs.com/package/@linxin666/dsh-client-ui-git-graph) |
 | 一次性只读旁问 | [`@michengai/dsh-btw`](https://github.com/MichengAI/dsh-btw) |
 | Git 变更范围内的代码简化 | [`@michengai/dsh-simplify`](https://github.com/MichengAI/dsh-simplify) |
 

@@ -56,33 +56,73 @@ The application keeps DSH data in your existing user profile (`%USERPROFILE%\.ds
 
 ## Product preview
 
-<p align="center"><em>Dark workspace: project context, a long-running task, and the desktop conversation surface.</em></p>
+New workspace screenshots in the dark theme with Codex UI 1.1.0. The conversation preview uses a new test session with a local command result.
 
-<p align="center"><img src="assets/screenshots/desktop-conversation-dark.png" alt="DSH Codex Desktop dark conversation workspace" width="960"></p>
+<p align="center"><em>Home: start a new task in a workspace.</em></p>
 
-<p align="center"><em>Light workspace: the same task surface in the light theme.</em></p>
+<p align="center"><img src="assets/screenshots/preview-home.webp" alt="Home: start a new task in a workspace." width="960"></p>
 
-<p align="center"><img src="assets/screenshots/desktop-conversation-light.png" alt="DSH Codex Desktop light conversation workspace" width="960"></p>
+<p align="center"><em>Conversation: messages, trajectory, context, and task input.</em></p>
 
-<p align="center"><em>Inspect context composition while the extensible workspace sidebar keeps project files within reach.</em></p>
+<p align="center"><img src="assets/screenshots/preview-conversation.webp" alt="Conversation: messages, trajectory, context, and task input." width="960"></p>
 
-<p align="center"><img src="assets/screenshots/desktop-context-sidebar.png" alt="Context management dashboard with the extensible workspace sidebar" width="960"></p>
+<details>
+<summary>Our plugin pages (6 screenshots)</summary>
 
-<p align="center"><em>Archived conversations stay searchable and can be restored from Settings.</em></p>
+<p align="center"><em>Expert presets</em></p>
 
-<p align="center"><img src="assets/screenshots/desktop-archive.png" alt="Archived conversation management" width="960"></p>
+<p align="center"><img src="assets/screenshots/preview-experts.webp" alt="Expert presets" width="960"></p>
 
-<p align="center"><em>Manage the skills available to DSH and your Agents.</em></p>
+<p align="center"><em>Skill management</em></p>
 
-<p align="center"><img src="assets/screenshots/desktop-skills.png" alt="Skill management" width="960"></p>
+<p align="center"><img src="assets/screenshots/preview-skills.webp" alt="Skill management" width="960"></p>
 
-<p align="center"><em>Connect channels for IM-assisted workflows.</em></p>
+<p align="center"><em>Scheduled automation</em></p>
 
-<p align="center"><img src="assets/screenshots/desktop-im-channels.png" alt="IM channel configuration" width="960"></p>
+<p align="center"><img src="assets/screenshots/preview-automation.webp" alt="Scheduled automation" width="960"></p>
 
-<p align="center"><em>Enable only the expert presets that match the current task.</em></p>
+<p align="center"><em>IM assistant</em></p>
 
-<p align="center"><img src="assets/screenshots/desktop-experts.png" alt="Expert preset management" width="960"></p>
+<p align="center"><img src="assets/screenshots/preview-im-connect.webp" alt="IM assistant" width="960"></p>
+
+<p align="center"><em>Archived conversations</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-archive.webp" alt="Archived conversations" width="960"></p>
+
+<p align="center"><em>Codex UI settings</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-codex-ui.webp" alt="Codex UI settings" width="960"></p>
+
+</details>
+
+<details>
+<summary>Community plugin pages (6 screenshots)</summary>
+
+<p align="center"><em>Context settings</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-context.webp" alt="Context settings" width="960"></p>
+
+<p align="center"><em>Sidebar settings</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-sidebar.webp" alt="Sidebar settings" width="960"></p>
+
+<p align="center"><em>MCP connector</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-mcp-connector.webp" alt="MCP connector" width="960"></p>
+
+<p align="center"><em>Usage statistics</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-usage-billing.webp" alt="Usage statistics" width="960"></p>
+
+<p align="center"><em>Plugin market</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-plugin-market.webp" alt="Plugin market" width="960"></p>
+
+<p align="center"><em>Git commit graph</em></p>
+
+<p align="center"><img src="assets/screenshots/preview-git-graph.webp" alt="Git commit graph" width="960"></p>
+
+</details>
 
 ## Included on first launch
 
@@ -100,6 +140,7 @@ The installer ships with the local runtime required to start DSH. On first launc
 | Extensible workspace sidebar | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
 | MCP connection management | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
 | Usage and cost tracking | [`@kenz1117/dsh-ui-usage-billing`](https://github.com/kenz1117/dsh-ui-usage-billing) |
+| Git commit graph | [`@linxin666/dsh-client-ui-git-graph`](https://www.npmjs.com/package/@linxin666/dsh-client-ui-git-graph) |
 | One-off read-only side questions | [`@michengai/dsh-btw`](https://github.com/MichengAI/dsh-btw) |
 | Code simplification scoped to Git changes | [`@michengai/dsh-simplify`](https://github.com/MichengAI/dsh-simplify) |
 

@@ -1,5 +1,15 @@
 const { contextBridge, ipcRenderer } = require('electron') as typeof import('electron')
 
+// 宠物插件仅能提交经过主进程校验的展示状态，不能控制任意窗口或加载 URL。
+contextBridge.exposeInMainWorld('dshDesktopPet', {
+  sync: (state: unknown) => ipcRenderer.invoke('dsh-pet:sync', state),
+  onAction: (listener: (action: 'hide' | 'open' | 'settings') => void) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, action: 'hide' | 'open' | 'settings') => listener(action)
+    ipcRenderer.on('dsh-pet:action', wrapped)
+    return () => ipcRenderer.removeListener('dsh-pet:action', wrapped)
+  },
+})
+
 const IPC = {
   dshAction: 'dsh-shell:dsh-action',
   dshBoot: 'dsh-shell:dsh-boot',

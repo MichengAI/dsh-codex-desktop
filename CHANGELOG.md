@@ -6,6 +6,9 @@ The five most recent published versions are listed below.
 
 ## Unreleased
 
+- Update 10 bundled plugins to npm latest: Codex UI 1.1.0, IM Connect 0.1.39, Automation 0.1.35, Skills Manager 0.1.44, Archive Manager 0.1.34, Agency Agents 0.1.35, dsh-context 0.47.0, Better Sidebar 0.18.1, Usage Billing 1.0.43, and dshmarket 1.45.1. The remaining three are already latest.
+- Bundle community plugin `@linxin666/dsh-client-ui-git-graph` 0.3.18 in the offline store and first-launch seeding catalog.
+
 ## 1.0.50 — 2026-09-08
 
 - Update bundled plugins to Codex UI 0.2.112, IM Connect 0.1.38, Automation 0.1.34, Skills Manager 0.1.43, Archive Manager 0.1.32, Agency Agents 0.1.34, BTW 0.1.4, `dsh-context` 0.46.0, MCP Connector 0.2.39, Usage Billing 1.0.42, and `dshmarket` 1.45.0. DSH Better Sidebar and Simplify remain at their current latest versions.

@@ -6,6 +6,9 @@
 
 ## 未发布
 
+- 升级 10 项内置插件至 npm latest：Codex UI 1.1.0、IM Connect 0.1.39、Automation 0.1.35、Skills Manager 0.1.44、Archive Manager 0.1.34、Agency Agents 0.1.35、dsh-context 0.47.0、Better Sidebar 0.18.1、Usage Billing 1.0.43、dshmarket 1.45.1。其余 3 项已是最新版。
+- 内置社区插件 `@linxin666/dsh-client-ui-git-graph` 0.3.18，纳入离线资源与首次启动补种清单。
+
 ## 1.0.50 — 2026-09-08
 
 - 内置插件更新到 Codex UI 0.2.112、IM Connect 0.1.38、Automation 0.1.34、Skills Manager 0.1.43、Archive Manager 0.1.32、Agency Agents 0.1.34、BTW 0.1.4、`dsh-context` 0.46.0、MCP Connector 0.2.39、Usage Billing 1.0.42 和 `dshmarket` 1.45.0；DSH Better Sidebar 与 Simplify 维持当前最新版本。
