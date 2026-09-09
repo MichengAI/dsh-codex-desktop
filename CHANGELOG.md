@@ -6,18 +6,17 @@ The five most recent published versions are listed below.
 
 ## 1.0.51 — 2026-09-09
 
-- Release pet display ownership even when saving the hidden state fails, and prevent in-flight sync from reacquiring it after closure. Validate answer structure, question and option identity, single/multiple selection rules, and command kinds in the main process while preserving free-text answers.
+This update brings a desktop pet and a Git commit graph, along with improvements to window appearance and startup reliability.
 
-- Bundle `@michengai/dsh-codex-pet` 0.1.2 for offline distribution, first-launch seeding and missing-plugin installation in existing profiles.
+- **New desktop pet**: Choose a pet in pet settings and turn on visibility to bring it onto your desktop. Drag it into place, view notifications from multiple conversations, and respond to tool approvals and questions directly.
+- **New Git commit graph**: Git Graph is now included, so you can visually explore commit history and branch relationships without installing it separately.
+- **More reliable pet display**: Improve recovery after hiding, closing, or an unexpected exit to reduce cases where the pet disappears. Answers are checked against the current questions and options to help prevent actions on changed requests.
+- **Updated Windows appearance**: Windows 11 22H2 and later support Mica backgrounds that follow the light or dark theme. Older systems continue to use solid backgrounds.
+- **More reliable startup**: Fix page loading failures and HTTP 431 errors that could occur after repeated launches.
+- **Updated bundled plugins**: Update 11 plugins covering the workspace UI, experts, skills, archives, IM assistant, scheduled tasks, context, sidebar, MCP connections, usage statistics, and plugin market. The desktop pet and Git Graph are both included in the installer.
+- **New feature previews**: Add 14 screenshots to the project README showing the home page, conversations, and plugin settings.
 
-- Consume the pet plugin's public `window.dshPet` v1 API from Desktop. Desktop owns the native renderer, window lifecycle and IPC; it no longer loads the removed plugin desktop page. Add multi-session actions and restore in-page display when the native window fails or closes. A self-contained Electron smoke test covers the bridge without a sibling plugin checkout.
-- Update 11 bundled plugins to npm latest: Codex UI 1.1.1, IM Connect 0.1.39, Automation 0.1.35, Skills Manager 0.1.44, Archive Manager 0.1.34, Agency Agents 0.1.36, dsh-context 0.47.0, Better Sidebar 0.18.1, MCP Connector 0.2.40, Usage Billing 1.0.43, and dshmarket 1.45.1. The remaining two are already latest.
-- Bundle community plugin `@linxin666/dsh-client-ui-git-graph` 0.3.18 in the offline store and first-launch seeding catalog.
-- Enable native Mica window backgrounds on Windows 11 22H2 and later, with opaque fallbacks on older systems and support for light and dark themes.
-- Clear stale DSH authentication cookies in the dedicated desktop session before startup to prevent HTTP 431 loading failures after repeated launches.
-- Refresh both README galleries with 14 optimized WebP screenshots covering the home page, conversations, first-party settings, and community plugins.
-
-Release tag: [`v1.0.51`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.51).
+Release tag: [v1.0.51](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.51).
 
 ## 1.0.50 — 2026-09-08
 
