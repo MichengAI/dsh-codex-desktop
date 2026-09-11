@@ -56,7 +56,7 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 ## 产品预览
 
-截图拍摄于 Codex UI 1.1.0（深色主题）；当前内置版本为 1.1.1。会话页为新建测试会话，展示本地指令结果。
+截图拍摄于 Codex UI 1.1.0（深色主题）；当前内置版本为 1.1.2。会话页为新建测试会话，展示本地指令结果。
 
 <p align="center"><em>首页：从工作区开始新任务。</em></p>
 

@@ -56,7 +56,7 @@ The application keeps DSH data in your existing user profile (`%USERPROFILE%\.ds
 
 ## Product preview
 
-Screenshots were captured with Codex UI 1.1.0 in the dark theme; the current bundled version is 1.1.1. The conversation preview uses a new test session with a local command result.
+Screenshots were captured with Codex UI 1.1.0 in the dark theme; the current bundled version is 1.1.2. The conversation preview uses a new test session with a local command result.
 
 <p align="center"><em>Home: start a new task in a workspace.</em></p>
 

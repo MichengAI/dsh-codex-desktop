@@ -17,7 +17,9 @@ process.on('message', message => {
 process.on('disconnect', requestShutdown)
 
 process.argv = [process.execPath, entry, ...process.argv.slice(3)]
-await import(pathToFileURL(entry).href)
+const cli = await import(pathToFileURL(entry).href)
+// 0.1.5-rc.2 起导入 CLI 不再自动启动；旧版仍通过导入时的副作用启动。
+if (typeof cli.runCli === 'function') await cli.runCli()
 initialized = true
 
 if (shutdownRequested) process.emit('SIGTERM')

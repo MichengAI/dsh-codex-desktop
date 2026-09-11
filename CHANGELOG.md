@@ -4,6 +4,12 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.52 — 2026-09-11
+
+- Upgrade bundled DSH to `0.1.5-rc.2` and update 14 bundled plugins; the plugin market remains on the latest `1.45.1`.
+- Adapt to the new DSH startup entry so the desktop app can launch the workspace correctly.
+- The new DSH uses the Session V3 format. Back up important conversations before upgrading; conversations written by the new version cannot be read directly by older versions.
+
 ## 1.0.51 — 2026-09-09
 
 This update brings a desktop pet and a Git commit graph, along with improvements to window appearance and startup reliability.
@@ -45,13 +51,3 @@ Release tag: [`v1.0.49`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Update Codex UI to 0.2.106, Automation to 0.1.32, `dsh-context` to 0.44.0, and MCP Connector to 0.2.37. Other bundled plugin versions remain unchanged.
 
 Release tag: [`v1.0.48`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.48).
-
-## 1.0.47 — 2026-09-06
-
-- Plugin installation errors now remain separate from DSH startup: the desktop still attempts to load the workbench after a failed installation.
-- Recovery identifies only plugins associated with the loading failure, including owners of broken dependencies. Unrelated plugins remain enabled, and candidates are shown before isolation is confirmed.
-- Fixed noncritical plugin errors forcing a usable workbench into recovery. Failed plugins still produce diagnostic logs, and restored plugins must pass a complete health check before recovery backups are cleared.
-- Retained recovery after a 30-second client loading timeout when recent plugin changes identify possible causes.
-- Updated bundled plugins to Codex UI 0.2.103, Automation 0.1.31, Skills Manager 0.1.40, Archive Manager 0.1.30, Agency Agents 0.1.32, `dsh-context` 0.43.0, MCP Connector 0.2.35, and `dshmarket` 1.44.0. IM Connect remains at 0.1.34 and DSH Better Sidebar at 0.18.0.
-
-Release tag: [`v1.0.47`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.47).

@@ -116,6 +116,21 @@ test('本地联调可以复用已有 DSH Web origin', () => {
   assert.equal(resolveDesktopWebPort('not-a-port'), '0')
 })
 
+test('通过公开 runCli 启动仅直接执行时自动运行的新版 DSH 入口', async () => {
+  const server = await startDsh({
+    bootstrapPath,
+    environment: { ...process.env, DSH_FIXTURE_MODE: 'healthy' },
+    nodeExecutable: process.execPath,
+    runtime: { entry: join(projectRoot, 'test', 'fixtures', 'dsh-cli-fixture.mjs'), root: projectRoot },
+    startupTimeoutMs: 3_000,
+  })
+  try {
+    assert.equal((await fetch(`${server.url}asset.js`)).status, 200)
+  } finally {
+    await server.stop()
+  }
+})
+
 test('启动 overlay 位于 Web 参数之前，热重启继续注入且不依赖继承标识', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-overlay-'))
   const launchFile = join(root, 'launch.json')
