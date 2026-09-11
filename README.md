@@ -56,42 +56,55 @@ The application keeps DSH data in your existing user profile (`%USERPROFILE%\.ds
 
 ## Product preview
 
-Screenshots were captured with Codex UI 1.1.0 in the dark theme; the current bundled version is 1.1.2. The conversation preview uses a new test session with a local command result.
+Explore the desktop workspace, light-theme settings, and plugin management pages. The home screen and 11 settings and plugin screenshots come from the newly supplied desktop captures; the conversation, context, sidebar, and Git graph previews are retained from earlier captures. Plugin versions, counts, and states reflect each capture. Click any image to view it at its original resolution.
 
-<p align="center"><em>Home: start a new task in a workspace.</em></p>
+<p align="center"><em>Home: project navigation, task entry points, and composer.</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-home.webp" alt="Home: start a new task in a workspace." width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-home.webp"><img src="assets/screenshots/preview-home.webp" alt="Home: project navigation, task entry points, and composer." width="960"></a></p>
 
 <p align="center"><em>Conversation: messages, trajectory, context, and task input.</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-conversation.webp" alt="Conversation: messages, trajectory, context, and task input." width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-conversation.webp"><img src="assets/screenshots/preview-conversation.webp" alt="Conversation: messages, trajectory, context, and task input." width="960"></a></p>
+
+<details>
+<summary>Appearance and desktop pets (2 screenshots)</summary>
+
+<p align="center"><em>Light-theme settings: permissions, language, appearance, and editor preferences.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-general-light.webp"><img src="assets/screenshots/preview-general-light.webp" alt="Light-theme settings: permissions, language, appearance, and editor preferences." width="960"></a></p>
+
+<p align="center"><em>Pet settings: choose a companion, manage custom pets, and adjust size.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-pets.webp"><img src="assets/screenshots/preview-pets.webp" alt="Pet settings: choose a companion, manage custom pets, and adjust size." width="960"></a></p>
+
+</details>
 
 <details>
 <summary>Our plugin pages (6 screenshots)</summary>
 
-<p align="center"><em>Expert presets</em></p>
+<p align="center"><em>Expert presets: filter, search, and enable specialist roles.</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-experts.webp" alt="Expert presets" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-experts.webp"><img src="assets/screenshots/preview-experts.webp" alt="Expert presets: filter, search, and enable specialist roles." width="960"></a></p>
 
-<p align="center"><em>Skill management</em></p>
+<p align="center"><em>Skill management: manage local Agent Skills across sources.</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-skills.webp" alt="Skill management" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-skills.webp"><img src="assets/screenshots/preview-skills.webp" alt="Skill management: manage local Agent Skills across sources." width="960"></a></p>
 
-<p align="center"><em>Scheduled automation</em></p>
+<p align="center"><em>Scheduled automation: examples, task schedules, and run history access.</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-automation.webp" alt="Scheduled automation" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-automation.webp"><img src="assets/screenshots/preview-automation.webp" alt="Scheduled automation: examples, task schedules, and run history access." width="960"></a></p>
 
-<p align="center"><em>IM assistant</em></p>
+<p align="center"><em>IM assistant: manage messaging channels, accounts, and incoming messages.</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-im-connect.webp" alt="IM assistant" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-im-connect.webp"><img src="assets/screenshots/preview-im-connect.webp" alt="IM assistant: manage messaging channels, accounts, and incoming messages." width="960"></a></p>
 
-<p align="center"><em>Archived conversations</em></p>
+<p align="center"><em>Archived conversations: filter by project, search, and restore past chats.</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-archive.webp" alt="Archived conversations" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-archive.webp"><img src="assets/screenshots/preview-archive.webp" alt="Archived conversations: filter by project, search, and restore past chats." width="960"></a></p>
 
-<p align="center"><em>Codex UI settings</em></p>
+<p align="center"><em>Codex UI settings: feature overview and companion plugin installation status.</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-codex-ui.webp" alt="Codex UI settings" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-codex-ui.webp"><img src="assets/screenshots/preview-codex-ui.webp" alt="Codex UI settings: feature overview and companion plugin installation status." width="960"></a></p>
 
 </details>
 
@@ -100,27 +113,27 @@ Screenshots were captured with Codex UI 1.1.0 in the dark theme; the current bun
 
 <p align="center"><em>Context settings</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-context.webp" alt="Context settings" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-context.webp"><img src="assets/screenshots/preview-context.webp" alt="Context settings" width="960"></a></p>
 
 <p align="center"><em>Sidebar settings</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-sidebar.webp" alt="Sidebar settings" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-sidebar.webp"><img src="assets/screenshots/preview-sidebar.webp" alt="Sidebar settings" width="960"></a></p>
 
-<p align="center"><em>MCP connector</em></p>
+<p align="center"><em>MCP connector: browse services by category and add connections.</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-mcp-connector.webp" alt="MCP connector" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-mcp-connector.webp"><img src="assets/screenshots/preview-mcp-connector.webp" alt="MCP connector: browse services by category and add connections." width="960"></a></p>
 
-<p align="center"><em>Usage statistics</em></p>
+<p align="center"><em>Usage statistics: costs, tokens, cache hit rate, and activity heatmap.</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-usage-billing.webp" alt="Usage statistics" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-usage-billing.webp"><img src="assets/screenshots/preview-usage-billing.webp" alt="Usage statistics: costs, tokens, cache hit rate, and activity heatmap." width="960"></a></p>
 
-<p align="center"><em>Plugin market</em></p>
+<p align="center"><em>Plugin market: discover community plugins and inspect installation and update status.</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-plugin-market.webp" alt="Plugin market" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-plugin-market.webp"><img src="assets/screenshots/preview-plugin-market.webp" alt="Plugin market: discover community plugins and inspect installation and update status." width="960"></a></p>
 
 <p align="center"><em>Git commit graph</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-git-graph.webp" alt="Git commit graph" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-git-graph.webp"><img src="assets/screenshots/preview-git-graph.webp" alt="Git commit graph" width="960"></a></p>
 
 </details>
 

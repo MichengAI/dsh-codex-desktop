@@ -56,42 +56,55 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 ## 产品预览
 
-截图拍摄于 Codex UI 1.1.0（深色主题）；当前内置版本为 1.1.2。会话页为新建测试会话，展示本地指令结果。
+以下展示桌面工作区、浅色设置及插件管理页面。首页及 11 张设置、插件截图来自本次提供的实机截图；会话、上下文、侧边栏和 Git 图谱沿用此前截图。各图中的插件版本、数量和状态以拍摄时为准，点击图片可查看原始分辨率大图。
 
-<p align="center"><em>首页：从工作区开始新任务。</em></p>
+<p align="center"><em>首页：项目导航、任务入口与输入区。</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-home.webp" alt="首页：从工作区开始新任务。" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-home.webp"><img src="assets/screenshots/preview-home.webp" alt="首页：项目导航、任务入口与输入区。" width="960"></a></p>
 
 <p align="center"><em>会话页面：对话、轨迹、上下文与任务输入区。</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-conversation.webp" alt="会话页面：对话、轨迹、上下文与任务输入区。" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-conversation.webp"><img src="assets/screenshots/preview-conversation.webp" alt="会话页面：对话、轨迹、上下文与任务输入区。" width="960"></a></p>
+
+<details>
+<summary>外观与桌面宠物（2 张）</summary>
+
+<p align="center"><em>浅色常规设置：权限、语言、外观与编辑器偏好。</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-general-light.webp"><img src="assets/screenshots/preview-general-light.webp" alt="浅色常规设置：权限、语言、外观与编辑器偏好。" width="960"></a></p>
+
+<p align="center"><em>宠物设置：选择伙伴、管理自定义宠物与调整大小。</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-pets.webp"><img src="assets/screenshots/preview-pets.webp" alt="宠物设置：选择伙伴、管理自定义宠物与调整大小。" width="960"></a></p>
+
+</details>
 
 <details>
 <summary>自研插件页面（6 张）</summary>
 
-<p align="center"><em>专家预设</em></p>
+<p align="center"><em>专家预设：分类筛选、搜索与启停专业角色。</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-experts.webp" alt="专家预设" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-experts.webp"><img src="assets/screenshots/preview-experts.webp" alt="专家预设：分类筛选、搜索与启停专业角色。" width="960"></a></p>
 
-<p align="center"><em>技能管理</em></p>
+<p align="center"><em>技能管理：统一管理不同来源的本机 Agent Skills。</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-skills.webp" alt="技能管理" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-skills.webp"><img src="assets/screenshots/preview-skills.webp" alt="技能管理：统一管理不同来源的本机 Agent Skills。" width="960"></a></p>
 
-<p align="center"><em>定时任务</em></p>
+<p align="center"><em>定时任务：推荐案例、任务计划与执行记录入口。</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-automation.webp" alt="定时任务" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-automation.webp"><img src="assets/screenshots/preview-automation.webp" alt="定时任务：推荐案例、任务计划与执行记录入口。" width="960"></a></p>
 
-<p align="center"><em>IM 助理</em></p>
+<p align="center"><em>IM 助理：统一管理消息渠道、账号与接收状态。</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-im-connect.webp" alt="IM 助理" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-im-connect.webp"><img src="assets/screenshots/preview-im-connect.webp" alt="IM 助理：统一管理消息渠道、账号与接收状态。" width="960"></a></p>
 
-<p align="center"><em>归档会话</em></p>
+<p align="center"><em>归档会话：按项目筛选，搜索并恢复历史对话。</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-archive.webp" alt="归档会话" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-archive.webp"><img src="assets/screenshots/preview-archive.webp" alt="归档会话：按项目筛选，搜索并恢复历史对话。" width="960"></a></p>
 
-<p align="center"><em>Codex UI 设置</em></p>
+<p align="center"><em>Codex UI 设置：功能说明与配套插件安装状态。</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-codex-ui.webp" alt="Codex UI 设置" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-codex-ui.webp"><img src="assets/screenshots/preview-codex-ui.webp" alt="Codex UI 设置：功能说明与配套插件安装状态。" width="960"></a></p>
 
 </details>
 
@@ -100,27 +113,27 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 <p align="center"><em>上下文设置</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-context.webp" alt="上下文设置" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-context.webp"><img src="assets/screenshots/preview-context.webp" alt="上下文设置" width="960"></a></p>
 
 <p align="center"><em>侧边栏设置</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-sidebar.webp" alt="侧边栏设置" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-sidebar.webp"><img src="assets/screenshots/preview-sidebar.webp" alt="侧边栏设置" width="960"></a></p>
 
-<p align="center"><em>MCP 连接器</em></p>
+<p align="center"><em>MCP 连接器：按分类浏览服务并添加连接。</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-mcp-connector.webp" alt="MCP 连接器" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-mcp-connector.webp"><img src="assets/screenshots/preview-mcp-connector.webp" alt="MCP 连接器：按分类浏览服务并添加连接。" width="960"></a></p>
 
-<p align="center"><em>用量统计</em></p>
+<p align="center"><em>使用统计：费用、Token 用量、缓存命中率与活跃热力图。</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-usage-billing.webp" alt="用量统计" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-usage-billing.webp"><img src="assets/screenshots/preview-usage-billing.webp" alt="使用统计：费用、Token 用量、缓存命中率与活跃热力图。" width="960"></a></p>
 
-<p align="center"><em>插件市场</em></p>
+<p align="center"><em>插件市场：发现社区插件并查看安装与更新状态。</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-plugin-market.webp" alt="插件市场" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-plugin-market.webp"><img src="assets/screenshots/preview-plugin-market.webp" alt="插件市场：发现社区插件并查看安装与更新状态。" width="960"></a></p>
 
 <p align="center"><em>Git 提交图谱</em></p>
 
-<p align="center"><img src="assets/screenshots/preview-git-graph.webp" alt="Git 提交图谱" width="960"></p>
+<p align="center"><a href="assets/screenshots/preview-git-graph.webp"><img src="assets/screenshots/preview-git-graph.webp" alt="Git 提交图谱" width="960"></a></p>
 
 </details>
 
