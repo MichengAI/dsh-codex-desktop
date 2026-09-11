@@ -6,6 +6,8 @@ The five most recent published versions are listed below.
 
 ## Unreleased
 
+- The Git commit graph plugin is no longer preinstalled with Desktop. It can be installed separately; existing installations are preserved.
+- Added Developer Tools to the View menu, with a keyboard shortcut for inspecting the current page, console, and network requests.
 - The startup window now shows measured progress for resource verification, extraction, and dependency syncing, plus plugin installation counts and elapsed time during first launch or upgrades.
 - Desktop upgrades now bring older bundled plugins and dependencies up to the packaged baseline while preserving newer versions; bundled plugins can no longer remain pinned below that baseline. Complete packaged resources are preferred, with online retries retained on failure.
 - Fix automatic upgrades in existing plugin environments while preserving the original dependency store and user configuration; show a clear message when updates cannot be completed.

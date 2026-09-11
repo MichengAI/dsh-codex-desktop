@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -167,20 +167,27 @@ async function extractOnce(archivePath: string, destDir: string, readyPath: (dir
 /** 在独立初始化进程中复制；只在文件实际落盘后增加计数。 */
 function copyRuntimeFiles(source: string, destination: string, onProgress?: (progress: StartupProgress) => void): void {
   onProgress?.({ phase: 'scan' })
-  const files: string[] = []
+  const files: { path: string; regular: boolean }[] = []
   function collect(directory: string): void {
     mkdirSync(join(destination, directory), { recursive: true })
     for (const entry of readdirSync(join(source, directory), { withFileTypes: true })) {
       const path = join(directory, entry.name)
       if (entry.isDirectory()) collect(path)
-      else files.push(path)
+      else files.push({ path, regular: entry.isFile() })
     }
   }
   collect('')
   let completed = 0, lastReport = 0
   onProgress?.({ phase: 'copy', completed, total: files.length })
-  for (const path of files) {
-    cpSync(join(source, path), join(destination, path), { force: true })
+  for (const { path, regular } of files) {
+    const from = join(source, path), to = join(destination, path)
+    // 普通文件使用直接复制，避免数万次重复执行通用目录复制检查；链接仍沿用原语义。
+    if (regular) {
+      try { copyFileSync(from, to) } catch (error) {
+        if (!['EACCES', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error
+        cpSync(from, to, { force: true })
+      }
+    } else cpSync(from, to, { force: true })
     completed++
     if (Date.now() - lastReport >= 100 || completed === files.length) {
       onProgress?.({ phase: 'copy', completed, total: files.length })

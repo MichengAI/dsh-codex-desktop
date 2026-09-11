@@ -35,3 +35,15 @@ test('全局快捷键使用同一动作注册表并正确区分平台修饰键',
   assert.equal(shellActionForShortcut({ key: 'F11', control: false, meta: false, alt: false, shift: false }, 'win32'), 'toggle-fullscreen')
   assert.equal(shellActionForShortcut({ key: 'n', control: false, meta: false, alt: false, shift: false }, 'win32'), undefined)
 })
+
+test('开发者工具位于视图菜单，按平台提供快捷键和搜索关键词', () => {
+  const action = localizedShellActions('zh-CN', 'win32').find(action => action.id === 'toggle-devtools')
+  assert.equal(action?.menu, 'view')
+  assert.equal(action?.label, '开发者工具')
+  assert.equal(action?.acceleratorLabel, 'F12')
+  assert.match(action?.keywords ?? '', /开发者模式/)
+  assert.equal(shellActionForShortcut({ key: 'F12', control: false, meta: false, alt: false, shift: false }, 'win32'), 'toggle-devtools')
+  assert.equal(shellActionForShortcut({ key: 'F12', control: false, meta: false, alt: false, shift: false }, 'linux'), 'toggle-devtools')
+  assert.equal(shellActionForShortcut({ key: 'i', control: false, meta: true, alt: true, shift: false }, 'darwin'), 'toggle-devtools')
+  assert.equal(localizedShellActions('en-US', 'darwin').find(action => action.id === 'toggle-devtools')?.acceleratorLabel, 'Cmd+Alt+I')
+})

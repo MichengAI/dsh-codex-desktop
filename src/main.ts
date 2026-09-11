@@ -888,6 +888,7 @@ function createWindow(): BrowserWindow {
   recovery.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   installShortcutHandler(window.webContents)
   installShortcutHandler(view.webContents)
+  installShortcutHandler(recovery.webContents)
   applyInitialWindowState(window)
   window.on('enter-full-screen', broadcastShellState)
   window.on('leave-full-screen', broadcastShellState)
@@ -1251,7 +1252,14 @@ function shellRendererKind(sender: WebContents): ShellRendererKind {
   return 'unknown'
 }
 
+/** 调试当前显示的内容页面；不把菜单所在的桌面外壳误当作工作台。 */
+function resolveDevToolsContents(): WebContents | undefined {
+  const contents = (recoveryView?.getVisible() ? recoveryView : dshView)?.webContents
+  return contents === undefined || contents.isDestroyed() ? undefined : contents
+}
+
 function isActionEnabled(id: ShellActionId): boolean {
+  if (id === 'toggle-devtools') return resolveDevToolsContents() !== undefined
   if (id === 'reload') return !isRecycling && lastStartOptions !== undefined && lastSeedOptions !== undefined
   if (id === 'back') return dshNavigationState.canBack
   if (id === 'forward') return dshNavigationState.canForward
@@ -1277,6 +1285,7 @@ function popupShellMenu(request: ShellMenuPopupRequest): Promise<void> {
       template.push({
         label: action.label,
         enabled: isActionEnabled(action.id),
+        ...(action.id === 'toggle-devtools' ? { type: 'checkbox' as const, checked: resolveDevToolsContents()?.isDevToolsOpened() ?? false } : {}),
         ...(action.acceleratorLabel === undefined ? {} : { accelerator: action.acceleratorLabel }),
         click: () => { runMainTask(Promise.resolve(executeShellAction(action.id))) },
       })
@@ -1327,6 +1336,8 @@ function dismissDshSettingsDialog(): void {
 function installShortcutHandler(contents: Electron.WebContents): void {
   contents.on('before-input-event', (event, input: Input) => {
     if (input.type !== 'keyDown') return
+    // 恢复页只新增调试快捷键，不接管它原有的按键行为。
+    if (contents === recoveryView?.webContents && shellActionForShortcut(input, process.platform) !== 'toggle-devtools') return
     const auxiliaryWindow = [shortcutsWindow, aboutWindow, settingsWindow].find(window => window?.webContents === contents)
     const route = escapeRoute({
       key: input.key,
@@ -1362,6 +1373,12 @@ function sendDshAction(id: DshShellActionId): void {
 
 async function executeShellAction(id: ShellActionId): Promise<void> {
   if (!isActionEnabled(id)) return
+  if (id === 'toggle-devtools') {
+    const target = resolveDevToolsContents()
+    if (target?.isDevToolsOpened()) target.closeDevTools()
+    else target?.openDevTools({ mode: 'detach' })
+    return
+  }
   const contents = dshView?.webContents
   if (id === 'new-chat' || id === 'open-folder' || id === 'settings' || id === 'toggle-sidebar' || id === 'find' || id === 'previous-chat' || id === 'next-chat' || id === 'back' || id === 'forward') {
     sendDshAction(id)

@@ -39,7 +39,6 @@ export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
   { packageName: 'dsh-better-sidebar', version: '0.19.0' },
   { packageName: 'dsh-mcp-connector', version: '0.2.41' },
   { packageName: '@kenz1117/dsh-ui-usage-billing', version: '1.2.3' },
-  { packageName: '@linxin666/dsh-client-ui-git-graph', version: '0.3.20' },
   { packageName: 'dshmarket', version: '1.45.1' },
 ]
 

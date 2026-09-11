@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { BUNDLED_PLUGINS, OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, compareReleaseVersions, isDeepSeekOfficialPackage, isOfficialDshPackage, officialDshVersionOverrides, officialRuntimeDependencies, officialRuntimePnpmConfig, planOfficialRuntimeTarget, pnpmAllowBuildsManifest, pnpmWorkspaceYaml, SUITE_PACKAGE, bundledPluginNames, seededPackageNames } from '../src/bundled-plugins.js'
 
-test('内置目录包含十五个社区插件和市场组件', () => {
+test('内置目录包含十四个社区插件和市场组件', () => {
   assert.deepEqual(bundledPluginNames(), [
     '@michengai/dsh-codex-ui',
     '@michengai/dsh-im-connect',
@@ -18,10 +18,9 @@ test('内置目录包含十五个社区插件和市场组件', () => {
     'dsh-better-sidebar',
     'dsh-mcp-connector',
     '@kenz1117/dsh-ui-usage-billing',
-    '@linxin666/dsh-client-ui-git-graph',
     'dshmarket',
   ])
-  assert.equal(BUNDLED_PLUGINS.length, 15)
+  assert.equal(BUNDLED_PLUGINS.length, 14)
   assert.equal(SUITE_PACKAGE, '@michengai/dsh-codex-suite')
 })
 
@@ -37,7 +36,7 @@ test('每个内置插件都钉死精确版本', () => {
     assert.match(plugin.version, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/)
     assert.equal(
       plugin.packageName.startsWith('@michengai/')
-        || ['dsh-context', 'dsh-better-sidebar', 'dsh-mcp-connector', '@kenz1117/dsh-ui-usage-billing', '@linxin666/dsh-client-ui-git-graph', 'dshmarket'].includes(plugin.packageName),
+        || ['dsh-context', 'dsh-better-sidebar', 'dsh-mcp-connector', '@kenz1117/dsh-ui-usage-billing', 'dshmarket'].includes(plugin.packageName),
       true,
     )
   }
@@ -56,7 +55,6 @@ test('每个内置插件都钉死精确版本', () => {
     'dsh-better-sidebar': '0.19.0',
     'dsh-mcp-connector': '0.2.41',
     '@kenz1117/dsh-ui-usage-billing': '1.2.3',
-    '@linxin666/dsh-client-ui-git-graph': '0.3.20',
     dshmarket: '1.45.1',
   })
 })

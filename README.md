@@ -131,10 +131,6 @@ Explore the desktop workspace, light-theme settings, and plugin management pages
 
 <p align="center"><a href="assets/screenshots/preview-plugin-market.webp"><img src="assets/screenshots/preview-plugin-market.webp" alt="Plugin market: discover community plugins and inspect installation and update status." width="960"></a></p>
 
-<p align="center"><em>Git commit graph</em></p>
-
-<p align="center"><a href="assets/screenshots/preview-git-graph.webp"><img src="assets/screenshots/preview-git-graph.webp" alt="Git commit graph" width="960"></a></p>
-
 </details>
 
 ## Included on first launch
@@ -154,7 +150,6 @@ The installer ships with the local runtime required to start DSH. On first launc
 | Extensible workspace sidebar | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
 | MCP connection management | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
 | Usage and cost tracking | [`@kenz1117/dsh-ui-usage-billing`](https://github.com/kenz1117/dsh-ui-usage-billing) |
-| Git commit graph | [`@linxin666/dsh-client-ui-git-graph`](https://github.com/zhu1090093659/dsh-web) |
 | One-off read-only side questions | [`@michengai/dsh-btw`](https://github.com/MichengAI/dsh-btw) |
 | Code simplification scoped to Git changes | [`@michengai/dsh-simplify`](https://github.com/MichengAI/dsh-simplify) |
 

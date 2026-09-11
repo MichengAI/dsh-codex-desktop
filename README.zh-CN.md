@@ -131,10 +131,6 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 <p align="center"><a href="assets/screenshots/preview-plugin-market.webp"><img src="assets/screenshots/preview-plugin-market.webp" alt="插件市场：发现社区插件并查看安装与更新状态。" width="960"></a></p>
 
-<p align="center"><em>Git 提交图谱</em></p>
-
-<p align="center"><a href="assets/screenshots/preview-git-graph.webp"><img src="assets/screenshots/preview-git-graph.webp" alt="Git 提交图谱" width="960"></a></p>
-
 </details>
 
 ## 首次启动已包含的能力
@@ -154,7 +150,6 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | 可扩展工作区侧边栏 | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
 | MCP 连接管理 | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
 | 用量与费用统计 | [`@kenz1117/dsh-ui-usage-billing`](https://github.com/kenz1117/dsh-ui-usage-billing) |
-| Git 提交图谱 | [`@linxin666/dsh-client-ui-git-graph`](https://github.com/zhu1090093659/dsh-web) |
 | 一次性只读旁问 | [`@michengai/dsh-btw`](https://github.com/MichengAI/dsh-btw) |
 | Git 变更范围内的代码简化 | [`@michengai/dsh-simplify`](https://github.com/MichengAI/dsh-simplify) |
 
