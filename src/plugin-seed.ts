@@ -660,7 +660,22 @@ export async function prepareBundledPluginStore(profileDir: string, bundledStore
       }
     }
   }
-  return { storeDir, cacheDir: join(bundledStore, 'cache'), offline: true }
+  const bundledCache = join(bundledStore, 'cache')
+  const cacheDir = existing === undefined ? bundledCache
+    : join(basename(existing) === 'v11' ? dirname(existing) : existing, 'cache')
+  if (resolve(cacheDir) !== resolve(bundledCache)) await mergeBundledMetadata(bundledCache, cacheDir)
+  return { storeDir, cacheDir, offline: true }
+}
+
+/** 更新随包包的元数据，保留旧仓库独有包；否则移出内置的插件会令离线锁文件校验失败。 */
+async function mergeBundledMetadata(source: string, destination: string): Promise<void> {
+  await mkdir(destination, { recursive: true })
+  for (const entry of await readdir(source, { withFileTypes: true })) {
+    const from = join(source, entry.name), to = join(destination, entry.name)
+    if (entry.isDirectory()) await mergeBundledMetadata(from, to)
+    else if (entry.isFile()) await writeTextFileAtomic(to, await readFile(from, 'utf8'))
+    else throw new Error('随包元数据缓存存在非普通文件。')
+  }
 }
 
 function assertStoreSchema(db: DatabaseSync): void {

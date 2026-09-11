@@ -4,7 +4,7 @@
 
 The five most recent published versions are listed below.
 
-## 1.0.54 — 2026-09-12
+## 1.0.55 — 2026-09-12
 
 - Desktop upgrades now bring older bundled plugins and dependencies up to the packaged baseline while preserving newer versions, the original dependency store, and user configuration. Offline installation is preferred, with online retries and clear notices for incomplete updates. Bundled plugins can no longer remain below that baseline.
 - Startup now shows measured resource verification, extraction, and dependency sync steps, counts, and elapsed time, with faster file copying. The first dependency import may require about 450 MB of additional disk space; duration depends on disk performance.

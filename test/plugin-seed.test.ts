@@ -755,6 +755,25 @@ test('pnpm 失败保留跨块 UTF-8 错误和无换行的末尾诊断', async ()
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 
+test('离线升级合并元数据并保留移出内置清单的包', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-metadata-upgrade-'))
+  try {
+    const bundled = join(root, 'bundled'), existing = join(root, 'existing'), profile = join(root, 'profile')
+    await createBundledStore(bundled)
+    await createBundledStore(existing)
+    await mkdir(join(profile, 'node_modules'), { recursive: true })
+    await writeFile(join(profile, 'node_modules', '.modules.yaml'), JSON.stringify({ storeDir: join(existing, 'v11') }))
+    await writeFile(join(existing, 'cache', 'retired.jsonl'), 'retired metadata\n')
+    await writeFile(join(existing, 'cache', 'current.jsonl'), 'old metadata\n')
+    await writeFile(join(bundled, 'cache', 'current.jsonl'), 'new metadata\n')
+    const options = await prepareBundledPluginStore(profile, bundled)
+    assert.equal(options.cacheDir, join(existing, 'cache'))
+    assert.equal(await readFile(join(options.cacheDir!, 'retired.jsonl'), 'utf8'), 'retired metadata\n')
+    assert.equal(await readFile(join(options.cacheDir!, 'current.jsonl'), 'utf8'), 'new metadata\n')
+    assert.equal(existsSync(join(bundled, 'cache', 'retired.jsonl')), false)
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 test('在线拆分套件不使用随包缓存', () => {
   assert.ok(!buildSeedRemoveArgs(['fixture'],'profile',{storeDir:'store',cacheDir:'cache',offline:false}).some(arg=>arg.startsWith('--cache-dir=')))
 })
