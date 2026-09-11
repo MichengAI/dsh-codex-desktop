@@ -4,6 +4,11 @@
 
 The five most recent published versions are listed below.
 
+## Unreleased
+
+- Desktop upgrades now bring older bundled plugins and dependencies up to the packaged baseline while preserving newer versions; bundled plugins can no longer remain pinned below that baseline. Complete packaged resources are preferred, with online retries retained on failure.
+- Fix automatic upgrades in existing plugin environments while preserving the original dependency store and user configuration; show a clear message when updates cannot be completed.
+
 ## 1.0.53 — 2026-09-11
 
 - Fix dark title bar and sidebar backgrounds in Windows light mode; Mica now follows light, dark, and system appearance preferences correctly.

@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
-import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { constants, existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
+import { copyFile, link, lstat, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
@@ -128,7 +129,7 @@ export function buildSeedRemoveArgs(packageNames: readonly string[], targetDir: 
     `--dir=${targetDir}`,
     ...(options.storeDir === undefined ? [] : [`--store-dir=${options.storeDir}`]),
     ...(options.offline === true ? ['--offline'] : []),
-    ...(options.cacheDir === undefined ? [] : [`--cache-dir=${options.cacheDir}`]),
+    ...(options.offline !== true || options.cacheDir === undefined ? [] : [`--cache-dir=${options.cacheDir}`]),
     '--config.node-linker=hoisted',
     '--config.minimumReleaseAge=0',
     '--registry=https://registry.npmjs.org/',
@@ -458,23 +459,35 @@ async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
     installedVersions,
   })
   if (plan.action === 'skip') return { seeded: [], skipped: plan.reason }
-  const storeOptions = await prepareBundledPluginStore(options.profileDir, options.pluginStoreDir)
   const runner = options.runner ?? ((pluginArgs) => runPnpm(options, pluginArgs))
+  // 只沿用 Profile 明确记录的仓库；未知位置时让 pnpm 选择默认仓库。
+  const originalStore = resolvePnpmStoreDir(options.profileDir)
+  const onlineOptions = originalStore === undefined ? {} : { storeDir: originalStore }
+  let storeOptions: SeedPnpmOptions
+  try {
+    storeOptions = await prepareBundledPluginStore(options.profileDir, options.pluginStoreDir)
+  } catch (error) {
+    console.warn('随包依赖准备失败，使用原仓库在线更新。', error)
+    storeOptions = onlineOptions
+  }
   if (plan.packages.length > 0) {
     const args = buildSeedPluginArgs(plan.packages, options.profileDir, storeOptions)
     try {
       await runner(args)
     } catch (error) {
+      if (storeOptions.offline !== true) throw error
       console.warn('随包插件离线安装失败，尝试在线安装。', error)
-      await runner(buildSeedPluginArgs(plan.packages, options.profileDir, { ...storeOptions, offline: false }))
+      storeOptions = onlineOptions
+      await runner(buildSeedPluginArgs(plan.packages, options.profileDir, onlineOptions))
     }
   }
   if (plan.action === 'replace-suite') {
     try {
       await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, storeOptions))
     } catch (error) {
+      if (storeOptions.offline !== true) throw error
       console.warn('离线拆分旧套件失败，尝试在线安装。', error)
-      await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, { ...storeOptions, offline: false }))
+      await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, onlineOptions))
     }
   }
   await reconcileProfileBundles(options.profileDir)
@@ -595,7 +608,7 @@ export async function prepareBundledPluginStore(profileDir: string, bundledStore
     }
   }
   const existing = resolvePnpmStoreDir(profileDir)
-  if (existing === undefined && existsSync(join(profileDir, 'node_modules', '.modules.yaml'))) {
+  if (existing === undefined && existsSync(join(profileDir, 'node_modules'))) {
     throw new Error('无法读取已有 pnpm 仓库位置，已停止离线升级。')
   }
   const storeDir = existing ?? bundledStore
@@ -606,15 +619,23 @@ export async function prepareBundledPluginStore(profileDir: string, bundledStore
     const destination = basename(existing) === 'v11' ? existing : join(existing, 'v11')
     const source = join(bundledStore, 'v11')
     if (resolve(source) !== resolve(destination)) {
-      await mkdir(destination, { recursive: true })
-      await cp(join(source, 'files'), join(destination, 'files'), { recursive: true, force: true })
       // v11 的 SQLite 索引必须合并，不能覆盖原索引或复制 projects 中的临时链接。
       const sourceDb = new DatabaseSync(join(source, 'index.db'), { readOnly: true })
       try {
+        assertStoreSchema(sourceDb)
+        const targetPath = join(destination, 'index.db')
+        if (existsSync(targetPath)) {
+          const checkDb = new DatabaseSync(targetPath, { readOnly: true })
+          try { assertStoreSchema(checkDb) } finally { checkDb.close() }
+        }
+        await mkdir(destination, { recursive: true })
         const targetDb = new DatabaseSync(join(destination, 'index.db'))
         try {
-          targetDb.exec('PRAGMA busy_timeout = 10000; CREATE TABLE IF NOT EXISTS package_index (key TEXT PRIMARY KEY, data BLOB NOT NULL) WITHOUT ROWID; BEGIN IMMEDIATE')
+          targetDb.exec('PRAGMA busy_timeout = 1000; BEGIN IMMEDIATE')
           try {
+            targetDb.exec('CREATE TABLE IF NOT EXISTS package_index (key TEXT PRIMARY KEY, data BLOB NOT NULL) WITHOUT ROWID')
+            assertStoreSchema(targetDb)
+            await importMissingStoreFiles(join(source, 'files'), join(destination, 'files'))
             const insert = targetDb.prepare('INSERT OR IGNORE INTO package_index (key, data) VALUES (?, ?)')
             for (const row of sourceDb.prepare('SELECT key, data FROM package_index').iterate()) {
               insert.run(row.key!, row.data!)
@@ -633,6 +654,41 @@ export async function prepareBundledPluginStore(profileDir: string, bundledStore
     }
   }
   return { storeDir, cacheDir: join(bundledStore, 'cache'), offline: true }
+}
+
+function assertStoreSchema(db: DatabaseSync): void {
+  const columns = db.prepare('PRAGMA table_info(package_index)').all()
+  if (columns.length !== 2 || columns[0]?.name !== 'key' || columns[0]?.type !== 'TEXT'
+    || columns[0]?.pk !== 1 || columns[1]?.name !== 'data' || columns[1]?.type !== 'BLOB'
+    || columns[1]?.notnull !== 1) throw new Error('pnpm 仓库索引结构不兼容，已停止离线导入。')
+}
+
+/** 完整复制到临时文件后原子创建目标硬链接；已有内容不覆盖，中断不暴露半个包文件。 */
+async function importMissingStoreFiles(source: string, destination: string): Promise<void> {
+  await mkdir(destination, { recursive: true })
+  for (const entry of await readdir(source, { withFileTypes: true })) {
+    const from = join(source, entry.name), to = join(destination, entry.name)
+    if (entry.isDirectory()) {
+      await importMissingStoreFiles(from, to)
+      continue
+    }
+    if (!entry.isFile()) throw new Error('随包依赖仓库存在非普通文件。')
+    try {
+      if (!(await lstat(to)).isFile()) throw new Error('已有依赖路径不是普通文件。')
+      continue
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+    const temporary = join(destination, `.dsh-import-${randomUUID()}`)
+    try {
+      await copyFile(from, temporary, constants.COPYFILE_EXCL)
+      try { await link(temporary, to) } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+      }
+    } finally {
+      await rm(temporary, { force: true })
+    }
+  }
 }
 
 export function isResolvableProfileBundle(profileDir: string, packageName: string, extraDirs: readonly string[] = []): boolean {

@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
-import { existsSync } from 'node:fs'
-import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { pathToFileURL } from 'node:url'
 
-import { copyWorkspacePackages, officialRuntimeGlobalNodeModulesRoot, officialRuntimeNpmDependencies, officialRuntimeNpmInstallArgs, pruneStoreForPackaging, removePreparedPath, resolveBundledNodeSha256, validateOfficialRuntimeLayout, writePnpmShims } from '../scripts/prepare-runtime.js'
+import { verifyBundledPluginStore, copyWorkspacePackages, officialRuntimeGlobalNodeModulesRoot, officialRuntimeNpmDependencies, officialRuntimeNpmInstallArgs, pruneStoreForPackaging, removePreparedPath, resolveBundledNodeSha256, validateOfficialRuntimeLayout, writePnpmShims } from '../scripts/prepare-runtime.js'
 import { DESKTOP_BRIDGE_FILES } from '../src/desktop-host.js'
 
 test('按目标平台选择随包 Node 的 SHA256', () => {
@@ -438,4 +438,41 @@ test('Linux ARM64 使用原生 runner、独立更新元数据与双格式制品'
     build?: { linux?: { target?: string[] } }
   }
   assert.deepEqual(manifest.build?.linux?.target, ['AppImage', 'deb'])
+})
+
+test('打包离线门禁传播安装失败并清理临时 Profile', async () => {
+  const root=await mkdtemp(join(tmpdir(),'dsh-offline-gate-'))
+  try {
+    let calls=0
+    await assert.rejects(verifyBundledPluginStore(root,'unused',args=>{
+      calls++
+      assert.ok(args.includes('--offline'))
+      throw new Error('ERR_PNPM_NO_OFFLINE_META')
+    }),/ERR_PNPM_NO_OFFLINE_META/)
+    assert.equal(calls,1)
+    assert.deepEqual(await readdir(root),[])
+  } finally { await rm(root,{recursive:true,force:true}) }
+})
+
+test('pnpm 返回成功但未装全插件时打包门禁仍拒绝', async () => {
+  const root=await mkdtemp(join(tmpdir(),'dsh-offline-incomplete-'))
+  try {
+    await assert.rejects(verifyBundledPluginStore(root,'unused',()=>{}),/ENOENT/)
+    assert.deepEqual(await readdir(root),[])
+  } finally { await rm(root,{recursive:true,force:true}) }
+})
+
+test('离线安装返回错误插件版本时阻止打包', async () => {
+  const root=await mkdtemp(join(tmpdir(),'dsh-offline-version-'))
+  try {
+    await assert.rejects(verifyBundledPluginStore(root,'unused',args=>{
+      const profile=args[args.indexOf('--dir')+1]!
+      const spec=args[1]!
+      const name=spec.slice(0,spec.lastIndexOf('@'))
+      const dir=join(profile,'node_modules',name)
+      mkdirSync(dir,{recursive:true})
+      writeFileSync(join(dir,'package.json'),JSON.stringify({name,version:'0.0.0'}),'utf8')
+    }),/版本不匹配/)
+    assert.deepEqual(await readdir(root),[])
+  } finally {await rm(root,{recursive:true,force:true})}
 })

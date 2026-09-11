@@ -181,13 +181,14 @@ export async function stageBundledPlugins(destinationRoot: string, nodeRoot: str
 }
 
 /** 打包前用空 Profile 和随包元数据离线安装，缺少任何依赖即阻止生成安装包。 */
-export async function verifyBundledPluginStore(destinationRoot: string, nodeRoot: string): Promise<void> {
+export async function verifyBundledPluginStore(destinationRoot: string, nodeRoot: string,
+  run: (args: readonly string[]) => void = args => runStagedPnpm(nodeRoot, args)): Promise<void> {
   const profile = await mkdtemp(join(destinationRoot, 'verify-offline-'))
   const store = join(destinationRoot, 'store')
   try {
     await writeFile(join(profile, 'package.json'), JSON.stringify({ private: true }), 'utf8')
     await writeFile(join(profile, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml(false), 'utf8')
-    runStagedPnpm(nodeRoot, [
+    run([
       'add', ...STORE_PACKAGES.map(plugin => `${plugin.packageName}@${plugin.version}`),
       '--dir', profile, '--store-dir', store, '--cache-dir', join(store, 'cache'), '--offline',
       '--config.node-linker=hoisted', '--config.auto-install-peers=false', '--config.minimumReleaseAge=0',
@@ -201,8 +202,6 @@ export async function verifyBundledPluginStore(destinationRoot: string, nodeRoot
     await rm(profile, { recursive: true, force: true })
   }
 }
-
-
 
 /** 预装完整官方运行时，首启只需复制，避免现场 pnpm add。 */
 export async function stageOfficialRuntime(destinationRoot: string, nodeRoot: string, storeDir: string): Promise<void> {

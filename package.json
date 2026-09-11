@@ -28,6 +28,7 @@
     "build": "tsc",
     "check": "tsc --noEmit",
     "smoke:pet": "npm run build && node scripts/run-pet-smoke.cjs",
+    "smoke:upgrade": "pnpm run build && node dist/scripts/smoke-profile-upgrade.mjs",
     "test": "pnpm run build && node --test dist/test/*.test.js",
     "start": "pnpm run build && electron .",
     "prepare-runtime": "pnpm run build && node dist/scripts/prepare-runtime.js",

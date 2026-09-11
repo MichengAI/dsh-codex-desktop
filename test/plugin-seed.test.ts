@@ -7,7 +7,7 @@ import { DatabaseSync } from 'node:sqlite'
 import test from 'node:test'
 
 import { OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, SUITE_PACKAGE, officialDshVersionOverrides } from '../src/bundled-plugins.js'
-import { applyPendingProfileUpdates, buildSeedPluginArgs, ensureAutoInstallPeersEnabled, isOfficialRuntimeLaunchable, missingOfficialLaunchPeers, officialRuntimeInstallArgs, planBundledPluginSeed, finalizeProfileBundlesAfterInstall, pruneMissingProfileBundles, resolvePnpmStoreDir, seedBundledPlugins, shouldUsePackagedStore, stripOfficialProfileDependencies, writeOfficialRuntimeManifest } from '../src/plugin-seed.js'
+import { prepareBundledPluginStore, buildSeedRemoveArgs, applyPendingProfileUpdates, buildSeedPluginArgs, ensureAutoInstallPeersEnabled, isOfficialRuntimeLaunchable, missingOfficialLaunchPeers, officialRuntimeInstallArgs, planBundledPluginSeed, finalizeProfileBundlesAfterInstall, pruneMissingProfileBundles, resolvePnpmStoreDir, seedBundledPlugins, shouldUsePackagedStore, stripOfficialProfileDependencies, writeOfficialRuntimeManifest } from '../src/plugin-seed.js'
 
 async function createBundledStore(store: string): Promise<void> {
   await mkdir(join(store, 'v11', 'files'), { recursive: true })
@@ -448,6 +448,7 @@ test('旧用户升级按配套版本安装，重复启动不重装且旧 pending
       },
     }
     await createBundledStore(options.pluginStoreDir)
+    await writeFile(join(profile, 'node_modules', '.modules.yaml'), JSON.stringify({ storeDir: join(options.pluginStoreDir, 'v11') }))
     assert.deepEqual((await seedBundledPlugins(options)).seeded, [plugin.packageName])
     assert.deepEqual(await applyPendingProfileUpdates(options), [])
     assert.deepEqual((await seedBundledPlugins(options)).seeded, [])
@@ -512,18 +513,18 @@ test('旧 profile 优先使用随包资源，失败时联网兜底仍沿用原 s
   }
 })
 
-test('随包仓库缺失或缺少版本元数据时不运行安装命令', async () => {
+test('随包仓库缺失或缺少版本元数据时退回默认仓库在线安装', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-incomplete-store-'))
   try {
     let calls = 0
     const options = {
       nodeExecutable: 'node', profileDir: join(root, 'profile'), pluginStoreDir: join(root, 'store'), catalog,
-      runner: async () => { calls++ },
+      runner: async (args: readonly string[]) => { calls++; assert.ok(!args.includes('--offline')); assert.ok(!args.some(arg => arg.startsWith('--store-dir='))) },
     }
-    await assert.rejects(seedBundledPlugins(options), /随包插件资源不完整/)
+    await seedBundledPlugins(options)
     await mkdir(join(options.pluginStoreDir, 'v11'), { recursive: true })
-    await assert.rejects(seedBundledPlugins(options), /缺少 cache/)
-    assert.equal(calls, 0)
+    await seedBundledPlugins(options)
+    assert.equal(calls, 2)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -698,4 +699,103 @@ test('官方 pending 会改运行时目录，不写进 Web profile', async () =>
 test('官方运行时更新会同步锁文件，避免 CI 冻结锁文件阻断启动', () => {
   const args = officialRuntimeInstallArgs('D:\\runtime')
   assert.equal(args.includes('--no-frozen-lockfile'), true)
+})
+
+test('旧 Profile 缺少或无法解析仓库位置时在线兜底不指定 store', async () => {
+  for (const state of [undefined, '{}', 'invalid: [']) {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-unknown-store-'))
+    try {
+      const profile = join(root, 'profile')
+      const store = join(root, 'store')
+      await createBundledStore(store)
+      await mkdir(join(profile, 'node_modules'), { recursive: true })
+      if (state !== undefined) await writeFile(join(profile, 'node_modules', '.modules.yaml'), state, 'utf8')
+      const calls: string[][] = []
+      await seedBundledPlugins({nodeExecutable:'node',profileDir:profile,pluginStoreDir:store,catalog,
+        runner:async args=>{calls.push([...args])}})
+      assert.equal(calls.length,1)
+      assert.ok(!calls[0]!.includes('--offline'))
+      assert.ok(!calls[0]!.some(arg=>arg.startsWith('--store-dir=')||arg.startsWith('--cache-dir=')))
+    } finally { await rm(root,{recursive:true,force:true}) }
+  }
+})
+
+test('在线拆分套件不使用随包缓存', () => {
+  assert.ok(!buildSeedRemoveArgs(['fixture'],'profile',{storeDir:'store',cacheDir:'cache',offline:false}).some(arg=>arg.startsWith('--cache-dir=')))
+})
+
+test('重复导入不覆盖已有文件，未知数据库结构在复制前拒绝', async () => {
+  const root=await mkdtemp(join(tmpdir(),'dsh-safe-store-'))
+  try {
+    const profile=join(root,'profile'), source=join(root,'source'), target=join(root,'target','v11')
+    await createBundledStore(source)
+    await mkdir(join(profile,'node_modules'),{recursive:true})
+    await mkdir(join(target,'files'),{recursive:true})
+    await writeFile(join(profile,'node_modules','.modules.yaml'),JSON.stringify({storeDir:target}))
+    await writeFile(join(source,'v11','files','existing'),'replacement')
+    await writeFile(join(target,'files','existing'),'keep')
+    await prepareBundledPluginStore(profile,source)
+    assert.equal(await readFile(join(target,'files','existing'),'utf8'),'keep')
+    const db=new DatabaseSync(join(target,'index.db'))
+    db.exec('ALTER TABLE package_index ADD COLUMN unknown TEXT')
+    db.close()
+    await writeFile(join(source,'v11','files','new'),'new')
+    await assert.rejects(prepareBundledPluginStore(profile,source),/结构/)
+    assert.equal(existsSync(join(target,'files','new')),false)
+  } finally { await rm(root,{recursive:true,force:true}) }
+})
+
+test('索引被锁时复制前失败，原数据库和文件保留', async () => {
+  const root=await mkdtemp(join(tmpdir(),'dsh-locked-index-'))
+  let lock: DatabaseSync | undefined
+  try {
+    const profile=join(root,'profile'), source=join(root,'source'), target=join(root,'target')
+    await createBundledStore(source)
+    await createBundledStore(target)
+    await mkdir(join(profile,'node_modules'),{recursive:true})
+    await writeFile(join(profile,'node_modules','.modules.yaml'),JSON.stringify({storeDir:join(target,'v11')}))
+    await writeFile(join(source,'v11','files','new'),'new')
+    lock=new DatabaseSync(join(target,'v11','index.db'))
+    lock.exec('BEGIN IMMEDIATE')
+    await assert.rejects(prepareBundledPluginStore(profile,source),/locked/)
+    assert.equal(existsSync(join(target,'v11','files','new')),false)
+    lock.exec('ROLLBACK')
+    assert.equal(lock.prepare('SELECT count(*) as total FROM package_index').get()?.total,1)
+  } finally { lock?.close(); await rm(root,{recursive:true,force:true}) }
+})
+
+test('复制失败不提交新索引，也不改写已有依赖文件', async () => {
+  const root=await mkdtemp(join(tmpdir(),'dsh-copy-failure-'))
+  try {
+    const profile=join(root,'profile'), source=join(root,'source'), target=join(root,'target')
+    await createBundledStore(source)
+    await createBundledStore(target)
+    await mkdir(join(profile,'node_modules'),{recursive:true})
+    await writeFile(join(profile,'node_modules','.modules.yaml'),JSON.stringify({storeDir:join(target,'v11')}))
+    const db=new DatabaseSync(join(source,'v11','index.db'))
+    db.prepare('INSERT INTO package_index VALUES (?,?)').run('new',Buffer.from('new'))
+    db.close()
+    await writeFile(join(source,'v11','files','blocked'),'new')
+    await mkdir(join(target,'v11','files','blocked'))
+    await assert.rejects(prepareBundledPluginStore(profile,source),/不是普通文件/)
+    const check=new DatabaseSync(join(target,'v11','index.db'),{readOnly:true})
+    assert.equal(check.prepare('SELECT count(*) as total FROM package_index WHERE key=?').get('new')?.total,0)
+    check.close()
+  } finally { await rm(root,{recursive:true,force:true}) }
+})
+
+test('首次安装的随包仓库失败后在线重试不复用随包 store', async () => {
+  const root=await mkdtemp(join(tmpdir(),'dsh-readonly-bundle-'))
+  try {
+    const store=join(root,'store')
+    await createBundledStore(store)
+    let calls=0
+    await seedBundledPlugins({nodeExecutable:'node',profileDir:join(root,'profile'),pluginStoreDir:store,catalog,
+      runner:async args=>{
+        calls++
+        if(calls===1){assert.ok(args.includes('--offline'));throw new Error('EACCES')}
+        assert.ok(!args.some(arg=>arg==='--offline'||arg.startsWith('--store-dir=')||arg.startsWith('--cache-dir=')))
+      }})
+    assert.equal(calls,2)
+  } finally {await rm(root,{recursive:true,force:true})}
 })

@@ -241,6 +241,13 @@ async function startApplication(): Promise<void> {
     } catch (error) {
       const message = error instanceof Error ? error.message : '内置插件补种失败。'
       await writeTextFile(join(app.getPath('userData'), 'plugin-seed.log'), `${message}\n`, 'utf8').catch(() => undefined)
+      await dialog.showMessageBox({
+        type: 'warning',
+        title: desktopText('内置插件更新未完成', 'Bundled plugin update incomplete'),
+        message: desktopText('未能安装此桌面版本配套的插件。', 'Could not install the plugins bundled with this desktop version.'),
+        detail: desktopText('将尝试使用现有插件启动。若进入恢复模式，请检查网络后重新启动，或重新安装完整安装包。', 'Startup will continue with the existing plugins. If recovery mode opens, check your network and restart, or reinstall the full desktop package.') + '\n\n' + message,
+        buttons: [desktopText('继续启动', 'Continue startup')],
+      })
     }
     try {
       const updated = await applyPendingProfileUpdates(seedOptions)
