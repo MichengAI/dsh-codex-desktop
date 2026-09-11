@@ -28,7 +28,7 @@ export const OFFICIAL_LAUNCH_PEERS: readonly BundledPlugin[] = [
 export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
   { packageName: '@michengai/dsh-codex-ui', version: '1.1.2' },
   { packageName: '@michengai/dsh-im-connect', version: '0.1.45' },
-  { packageName: '@michengai/dsh-automation', version: '0.1.38' },
+  { packageName: '@michengai/dsh-automation', version: '0.1.39' },
   { packageName: '@michengai/dsh-skills-manager', version: '0.1.48' },
   { packageName: '@michengai/dsh-archive-manager', version: '0.1.39' },
   { packageName: '@michengai/dsh-agency-agents', version: '0.1.40' },

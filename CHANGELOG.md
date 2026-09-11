@@ -4,14 +4,12 @@
 
 The five most recent published versions are listed below.
 
-## Unreleased
+## 1.0.54 — 2026-09-12
 
-- Updated the bundled archive manager, context, sidebar, MCP connector, and usage billing plugins together with their offline dependencies.
-- The Git commit graph plugin is no longer preinstalled with Desktop. It can be installed separately; existing installations are preserved.
-- Added Developer Tools to the View menu, with a keyboard shortcut for inspecting the current page, console, and network requests.
-- The startup window now shows measured progress for resource verification, extraction, and dependency syncing, plus plugin installation counts and elapsed time during first launch or upgrades.
-- Desktop upgrades now bring older bundled plugins and dependencies up to the packaged baseline while preserving newer versions; bundled plugins can no longer remain pinned below that baseline. Complete packaged resources are preferred, with online retries retained on failure.
-- Fix automatic upgrades in existing plugin environments while preserving the original dependency store and user configuration; show a clear message when updates cannot be completed.
+- Desktop upgrades now bring older bundled plugins and dependencies up to the packaged baseline while preserving newer versions, the original dependency store, and user configuration. Offline installation is preferred, with online retries and clear notices for incomplete updates. Bundled plugins can no longer remain below that baseline.
+- Startup now shows measured resource verification, extraction, and dependency sync steps, counts, and elapsed time, with faster file copying. The first dependency import may require about 450 MB of additional disk space; duration depends on disk performance.
+- Added Developer Tools to the View menu. Use F12 on Windows/Linux or Cmd+Alt+I on macOS to inspect the workspace and recovery pages.
+- Updated the automation, archive manager, context, sidebar, MCP connector, and usage billing plugins and their offline dependencies. The Git commit graph plugin is no longer preinstalled; it remains available for separate installation, and existing installations are preserved.
 
 ## 1.0.53 — 2026-09-11
 
@@ -45,12 +43,3 @@ Release tag: [v1.0.51](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.
 - Exclude subagent sessions from taskbar unread counts in both Codex UI unread records and fallback completion tracking, including existing unread entries and sessions whose origin becomes available later.
 
 Release tag: [`v1.0.50`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.50).
-
-## 1.0.49 — 2026-09-07
-
-- Clean legacy bridge dependency declarations and package files before seeding plugins on startup, including files left by earlier migrations. File cleanup failures emit a warning and are retried on the next launch without blocking startup; the private dynamically injected bridge remains available.
-- Repair bundled plugins listed only in an existing profile's bundle list instead of skipping installation and then removing their entries. Seeding now checks installation declarations in `dependencies`.
-- Read pnpm 11 JSON state stored in `.modules.yaml` and preserve the original store when retrying an offline installation online, preventing `ERR_PNPM_UNEXPECTED_STORE`.
-- Use the pnpm 11 offline environment setting in smoke tests and verify plugin files, dependency declarations, and bundle activation together.
-
-Release tag: [`v1.0.49`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.49).

@@ -44,7 +44,7 @@ test('每个内置插件都钉死精确版本', () => {
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
     '@michengai/dsh-codex-ui': '1.1.2',
     '@michengai/dsh-im-connect': '0.1.45',
-    '@michengai/dsh-automation': '0.1.38',
+    '@michengai/dsh-automation': '0.1.39',
     '@michengai/dsh-skills-manager': '0.1.48',
     '@michengai/dsh-archive-manager': '0.1.39',
     '@michengai/dsh-agency-agents': '0.1.40',
