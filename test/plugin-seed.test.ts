@@ -720,6 +720,25 @@ test('旧 Profile 缺少或无法解析仓库位置时在线兜底不指定 stor
   }
 })
 
+test('真实安装子进程的分片输出会转为进度，普通日志不进入界面', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-seed-progress-'))
+  try {
+    const store = join(root, 'store'), profile = join(root, 'profile'), pnpmEntry = join(root, 'pnpm.cjs')
+    await createBundledStore(store)
+    await mkdir(profile)
+    await writeFile(pnpmEntry, [
+      "process.stdout.write('普通日志 /private/path\\nProgress: resolved 15, reused ')",
+      "setTimeout(() => process.stdout.write('12, downloaded 3, added 8\\n'), 25)",
+    ].join('\n'), 'utf8')
+    const progress: import('../src/startup-progress.js').StartupProgress[] = []
+    await seedBundledPlugins({ nodeExecutable: process.execPath, profileDir: profile, pluginStoreDir: store,
+      catalog: [catalog[0]], pnpmEntry, onProgress: event => progress.push(event) })
+    assert.ok(progress.some(event => event.phase === 'install' && event.detail === undefined))
+    assert.deepEqual(progress.find(event => event.detail)?.detail, { resolved: 15, reused: 12, downloaded: 3, added: 8 })
+    assert.equal(JSON.stringify(progress).includes('/private/path'), false)
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 test('在线拆分套件不使用随包缓存', () => {
   assert.ok(!buildSeedRemoveArgs(['fixture'],'profile',{storeDir:'store',cacheDir:'cache',offline:false}).some(arg=>arg.startsWith('--cache-dir=')))
 })
@@ -734,7 +753,15 @@ test('重复导入不覆盖已有文件，未知数据库结构在复制前拒�
     await writeFile(join(profile,'node_modules','.modules.yaml'),JSON.stringify({storeDir:target}))
     await writeFile(join(source,'v11','files','existing'),'replacement')
     await writeFile(join(target,'files','existing'),'keep')
-    await prepareBundledPluginStore(profile,source)
+    await writeFile(join(source,'v11','files','new-complete'),'new')
+    const progress: import('../src/startup-progress.js').StartupProgress[] = []
+    await prepareBundledPluginStore(profile,source, event => progress.push(event))
+    const measured = progress.filter(event => event.phase === 'sync')
+    assert.equal(measured[0]!.completed, 0)
+    assert.equal(measured.at(-1)!.completed, measured.at(-1)!.total)
+    assert.ok(measured.at(-1)!.total! >= 2, '已有文件和新文件都应计入处理总数')
+    assert.equal(progress.at(-1)!.phase, 'index')
+    assert.equal(await readFile(join(target,'files','new-complete'),'utf8'),'new')
     assert.equal(await readFile(join(target,'files','existing'),'utf8'),'keep')
     const db=new DatabaseSync(join(target,'index.db'))
     db.exec('ALTER TABLE package_index ADD COLUMN unknown TEXT')

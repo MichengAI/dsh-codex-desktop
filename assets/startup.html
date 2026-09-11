@@ -30,6 +30,18 @@
       align-items: center;
       gap: 10px;
     }
+    .progress-area { width: min(360px, calc(100vw - 48px)); }
+    progress { display: block; width: 100%; height: 6px; border: 0; border-radius: 4px; overflow: hidden; accent-color: #6ea8ff; }
+    progress::-webkit-progress-bar { background: rgba(128,140,160,.2); border-radius: 4px; }
+    progress::-webkit-progress-value { background: #6ea8ff; border-radius: 4px; transition: width .15s; }
+    progress:indeterminate { background: linear-gradient(90deg,transparent,#6ea8ff,transparent) 0 0 / 45% 100% no-repeat rgba(128,140,160,.2); animation: working 1.6s ease-in-out infinite alternate; }
+    progress:indeterminate::-webkit-progress-bar { background: transparent; }
+    .meta { display: flex; justify-content: space-between; margin-top: 10px; color: #9aa3af; font-size: 12px; font-variant-numeric: tabular-nums; }
+    #detail { min-height: 20px; margin-top: 10px; color: #9aa3af; font-size: 12px; text-align: center; }
+    body[data-failed="true"] progress { display: none; }
+    body[data-failed="true"] .spinner { animation: none; border-color: #e58686; }
+    @keyframes working { from { background-position: 0 0; } to { background-position: 100% 0; } }
+    @media (prefers-reduced-motion: reduce) { .stage, .spinner, progress:indeterminate { animation: none; } }
     .icon {
       width: 72px;
       height: 72px;
@@ -65,6 +77,7 @@
     :root[data-color-scheme="light"] .icon{box-shadow:0 12px 32px rgba(15,17,21,.18)}
     :root[data-color-scheme="light"] .spinner{border-color:rgba(15,17,21,.12);border-top-color:#4176e6}
     :root[data-color-scheme="light"] #msg{color:#61666b}
+    :root[data-color-scheme="light"] .meta,:root[data-color-scheme="light"] #detail{color:#61666b}
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
@@ -82,6 +95,39 @@
       <h1>DSH Codex Desktop</h1>
       <p id="msg">正在启动</p>
     </section>
+    <div class="progress-area">
+      <progress id="progress" aria-label="当前步骤进度"></progress>
+      <div class="meta"><span id="percentage">正在处理</span><span id="elapsed"></span></div>
+      <div id="detail"></div>
+    </div>
   </main>
+  <script>
+    const zh = new URLSearchParams(location.search).get('lang') !== 'en'
+    document.documentElement.lang = zh ? 'zh-CN' : 'en'
+    const started = Date.now()
+    let stoppedAt
+    const bar = document.getElementById('progress')
+    bar.setAttribute('aria-label', zh ? '当前步骤进度' : 'Current step progress')
+    window.updateStartupProgress = (state) => {
+      document.getElementById('msg').textContent = state.message
+      document.getElementById('detail').textContent = state.detail || ''
+      const measured = Number.isFinite(state.completed) && Number.isFinite(state.total) && state.total > 0 && state.completed >= 0 && state.completed <= state.total
+      if (measured) { bar.max = state.total; bar.value = state.completed }
+      else { bar.removeAttribute('value') }
+      const failed = state.failed === true
+      document.body.dataset.failed = String(failed)
+      stoppedAt = failed ? Date.now() : undefined
+      document.getElementById('percentage').textContent = failed ? (zh ? '启动未完成' : 'Startup incomplete')
+        : measured ? `${zh ? '当前步骤' : 'Current step'} ${Math.floor(state.completed / state.total * 100)}%`
+        : (zh ? '正在处理' : 'Working')
+    }
+    const updateElapsed = () => {
+      const seconds = Math.floor(((stoppedAt || Date.now()) - started) / 1000)
+      document.getElementById('elapsed').textContent = zh ? `已用时 ${seconds} 秒` : `${seconds}s elapsed`
+    }
+    setInterval(updateElapsed, 1000)
+    updateElapsed()
+    window.updateStartupProgress({ message: zh ? '正在启动' : 'Starting' })
+  </script>
 </body>
 </html>

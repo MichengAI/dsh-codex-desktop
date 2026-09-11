@@ -1,16 +1,18 @@
 import { spawn } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { extractTarGz, verifyFileSha256 } from './runtime-archive.js'
+import { extractTarGzWithProgress, verifyFileSha256 } from './runtime-archive.js'
 import { terminateProcessTree } from './process-control.js'
+import type { StartupProgress } from './startup-progress.js'
 
 export const RUNTIME_EXTRACTION_PROGRESS_PREFIX = 'DSH_EXTRACT_PROGRESS '
 
 export interface RuntimeExtractionProgress {
   phase: 'runtime' | 'plugins'
-  state: 'start' | 'complete' | 'skip'
+  state: 'start' | 'complete' | 'skip' | 'progress'
+  progress?: StartupProgress
 }
 
 interface RuntimeExtractionProcessOptions {
@@ -28,19 +30,21 @@ function officialEntry(dir: string): string {
 }
 
 /** 首启把随包压缩包原子解压到已选定的可写目录。 */
-export function extractPackagedRuntimes(
+export async function extractPackagedRuntimes(
   resourcesDir: string,
   officialDest: string,
   storeDest: string,
   onProgress?: (progress: RuntimeExtractionProgress) => void,
-): { official: boolean; store: boolean } {
+): Promise<{ official: boolean; store: boolean }> {
   const officialArchive = join(resourcesDir, 'dsh-runtime.tgz')
   const storeArchive = join(resourcesDir, 'plugins-store.tgz')
   onProgress?.({ phase: 'runtime', state: 'start' })
-  const official = extractOnce(officialArchive, officialDest, officialEntry)
+  const official = await extractOnce(officialArchive, officialDest, officialEntry,
+    progress => onProgress?.({ phase: 'runtime', state: 'progress', progress }))
   onProgress?.({ phase: 'runtime', state: official ? 'complete' : 'skip' })
   onProgress?.({ phase: 'plugins', state: 'start' })
-  const store = extractOnce(storeArchive, storeDest, dir => join(dir, 'v11'))
+  const store = await extractOnce(storeArchive, storeDest, dir => join(dir, 'v11'),
+    progress => onProgress?.({ phase: 'plugins', state: 'progress', progress }))
   onProgress?.({ phase: 'plugins', state: store ? 'complete' : 'skip' })
   return { official, store }
 }
@@ -99,7 +103,7 @@ export function extractPackagedRuntimesInChild(options: RuntimeExtractionProcess
       try {
         const progress = JSON.parse(line.slice(RUNTIME_EXTRACTION_PROGRESS_PREFIX.length)) as RuntimeExtractionProgress
         if ((progress.phase === 'runtime' || progress.phase === 'plugins')
-          && (progress.state === 'start' || progress.state === 'complete' || progress.state === 'skip')) {
+          && (progress.state === 'start' || progress.state === 'complete' || progress.state === 'skip' || progress.state === 'progress')) {
           options.onProgress?.(progress)
         }
       } catch {
@@ -130,23 +134,25 @@ export function extractPackagedRuntimesInChild(options: RuntimeExtractionProcess
   })
 }
 
-function extractOnce(archivePath: string, destDir: string, readyPath: (dir: string) => string): boolean {
+async function extractOnce(archivePath: string, destDir: string, readyPath: (dir: string) => string, onProgress?: (progress: StartupProgress) => void): Promise<boolean> {
   const completeMarker = join(destDir, '.dsh-extract-complete')
   if (!existsSync(archivePath)) return false
   if (isExtractionCurrent(archivePath, destDir, readyPath)) return false
   rmSync(completeMarker, { force: true })
-  verifyFileSha256(archivePath)
+  verifyFileSha256(archivePath, (completed, total) => onProgress?.({ phase: 'verify', completed, total, unit: 'bytes' }))
   const archiveVersion = readArchiveVersion(archivePath)
   if (archiveVersion === undefined) throw new Error(`无法读取压缩包 SHA256：${archivePath}`)
   mkdirSync(dirname(destDir), { recursive: true })
   const stagingDir = mkdtempSync(join(dirname(destDir), `.${basename(destDir)}-`))
   try {
-    extractTarGz(archivePath, stagingDir)
+    onProgress?.({ phase: 'extract' })
+    await extractTarGzWithProgress(archivePath, stagingDir,
+      (completed, total) => onProgress?.({ phase: 'extract', completed, total, unit: 'entries' }))
     if (!existsSync(readyPath(stagingDir))) throw new Error(`压缩包内容不完整：${archivePath}`)
     if (isExtractionCurrent(archivePath, destDir, readyPath)) return false
     if (process.platform === 'win32') {
       mkdirSync(destDir, { recursive: true })
-      cpSync(stagingDir, destDir, { recursive: true, force: true })
+      copyRuntimeFiles(stagingDir, destDir, onProgress)
     } else {
       rmSync(destDir, { recursive: true, force: true })
       renameSync(stagingDir, destDir)
@@ -155,6 +161,31 @@ function extractOnce(archivePath: string, destDir: string, readyPath: (dir: stri
     return true
   } finally {
     rmSync(stagingDir, { recursive: true, force: true })
+  }
+}
+
+/** 在独立初始化进程中复制；只在文件实际落盘后增加计数。 */
+function copyRuntimeFiles(source: string, destination: string, onProgress?: (progress: StartupProgress) => void): void {
+  onProgress?.({ phase: 'scan' })
+  const files: string[] = []
+  function collect(directory: string): void {
+    mkdirSync(join(destination, directory), { recursive: true })
+    for (const entry of readdirSync(join(source, directory), { withFileTypes: true })) {
+      const path = join(directory, entry.name)
+      if (entry.isDirectory()) collect(path)
+      else files.push(path)
+    }
+  }
+  collect('')
+  let completed = 0, lastReport = 0
+  onProgress?.({ phase: 'copy', completed, total: files.length })
+  for (const path of files) {
+    cpSync(join(source, path), join(destination, path), { force: true })
+    completed++
+    if (Date.now() - lastReport >= 100 || completed === files.length) {
+      onProgress?.({ phase: 'copy', completed, total: files.length })
+      lastReport = Date.now()
+    }
   }
 }
 
@@ -189,5 +220,5 @@ if (process.argv[1] && resolve(process.argv[1]) === self) {
   const progress = process.argv.includes('--progress-json')
     ? (event: RuntimeExtractionProgress): void => { console.log(RUNTIME_EXTRACTION_PROGRESS_PREFIX + JSON.stringify(event)) }
     : undefined
-  extractPackagedRuntimes(resourcesDir, join(installDir, 'dsh-runtime'), join(installDir, 'plugins', 'store'), progress)
+  await extractPackagedRuntimes(resourcesDir, join(installDir, 'dsh-runtime'), join(installDir, 'plugins', 'store'), progress)
 }

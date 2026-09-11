@@ -265,6 +265,7 @@ export const DESKTOP_BRIDGE_FILES = [
   'readiness.js',
   'runtime-archive.js',
   'runtime-prebuilt.js',
+  'startup-progress.js',
 ] as const
 
 export function resolveDesktopBridgeDir(options: { isPackaged: boolean; appPath: string; resourcesPath: string }): string {

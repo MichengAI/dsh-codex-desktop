@@ -24,6 +24,7 @@ import { captureProfileHealthCheckpoint, readProfileHealthCheckpoint, restorePro
 import { resolveBundledPluginStore, resolvePluginBinDir } from './plugin-toolchain.js'
 import { resolveDshBootstrap, resolveDshRuntime, resolveNodeExecutable } from './runtime.js'
 import { extractPackagedRuntimesInChild, packagedRuntimesNeedExtraction, type RuntimeExtractionProgress } from './extract-runtime.js'
+import { formatStartupProgress, type StartupProgress } from './startup-progress.js'
 import { resolvePrebuiltOfficialRuntime } from './runtime-prebuilt.js'
 import { applyInitialWindowState } from './window-state.js'
 import { WindowNavigationCoordinator } from './window-navigation.js'
@@ -203,7 +204,10 @@ async function startApplication(): Promise<void> {
           installDir: dirname(desktopRuntimeDir),
           resourcesDir: process.resourcesPath,
           signal: controller.signal,
-          onProgress: progress => { void updateStartupMessage(runtimeExtractionMessage(progress)) },
+          onProgress: progress => {
+            if (progress.progress) reportStartupProgress(progress.progress)
+            else void updateStartupMessage(runtimeExtractionMessage(progress))
+          },
         })
         runtimeExtractionTask = extraction
         try {
@@ -227,6 +231,7 @@ async function startApplication(): Promise<void> {
     const profileStoreDir = resolvePnpmStoreDir(profileDir, pluginStoreDir)
     const prebuiltRuntimeDir = resolvePrebuiltOfficialRuntime(runtimeOptions)
     const seedOptions = {
+      onProgress: reportStartupProgress,
       nodeExecutable,
       ...(pnpmEntry === undefined ? {} : { pnpmEntry }),
       profileDir,
@@ -236,6 +241,7 @@ async function startApplication(): Promise<void> {
       ...(pathPrefix === undefined ? {} : { pathPrefix }),
     }
     try {
+      await updateStartupMessage(desktopText('正在检查配套插件', 'Checking bundled plugins'))
       const seeded = await seedBundledPlugins(seedOptions)
       if (seeded.seeded.length > 0) console.log(`已补种官方运行时和社区插件：${seeded.seeded.join('、')}`)
     } catch (error) {
@@ -250,6 +256,7 @@ async function startApplication(): Promise<void> {
       })
     }
     try {
+      await updateStartupMessage(desktopText('正在检查待应用的插件更新', 'Checking pending plugin updates'))
       const updated = await applyPendingProfileUpdates(seedOptions)
       if (updated.length > 0) console.log('已在启动前应用插件更新：' + updated.join('、'))
     } catch (error) {
@@ -277,6 +284,7 @@ async function startApplication(): Promise<void> {
     lastStartOptions = startOptions
     let started: { result: DshServer; repaired: string[] }
     try {
+      reportStartupProgress({ phase: 'server' })
       await beginDshStartupDiagnostic(profileDir)
       started = await startWithProfileSelfRepair({
         profileDir,
@@ -296,6 +304,7 @@ async function startApplication(): Promise<void> {
     if (started.repaired.length > 0) console.log('已自我修复损坏的插件清单：' + started.repaired.join('、'))
     profileWatcher?.stop()
     profileWatcher = watchProfileActivation(profileDir, scheduleProfileActivationRecycle, { onError: handleUnexpectedMainError })
+    reportStartupProgress({ phase: 'renderer' })
     await openWorkbenchOrRecovery(profileDir, server.url)
     const smokeReadyFile = process.env.DSH_DESKTOP_SMOKE_READY_FILE
     if (smokeReadyFile !== undefined && smokeReadyFile !== '') {
@@ -368,7 +377,7 @@ function installDesktopFaviconReplacement(): void {
   })
 }
 
-async function showStartupWindow(message: string): Promise<void> {
+async function showStartupWindow(message: string, failed = false): Promise<void> {
   const window = mainWindow ??= createWindow()
   const view = requireDshView()
   showDshContentView()
@@ -376,8 +385,8 @@ async function showStartupWindow(message: string): Promise<void> {
   if (html !== undefined) {
     await windowNavigation.navigate(
       view,
-      () => view.webContents.loadFile(html, { query: { theme: activeDshColorScheme } }),
-      () => view.webContents.executeJavaScript('document.getElementById("msg").textContent = ' + JSON.stringify(message)),
+      () => view.webContents.loadFile(html, { query: { theme: activeDshColorScheme, lang: isChineseLocale(desktopLocale()) ? 'zh' : 'en' } }),
+      () => view.webContents.executeJavaScript('window.updateStartupProgress?.(' + JSON.stringify({ message, failed }) + ')'),
     )
     return
   }
@@ -388,11 +397,16 @@ async function showStartupWindow(message: string): Promise<void> {
   )
 }
 
-async function updateStartupMessage(message: string): Promise<void> {
+async function updateStartupMessage(message: string, progress: { detail?: string; completed?: number; total?: number } = {}): Promise<void> {
   const view = requireDshView()
   if (view.webContents.isDestroyed()) return
-  await view.webContents.executeJavaScript(`document.getElementById('msg')?.replaceChildren(document.createTextNode(${JSON.stringify(message)}))`)
+  await view.webContents.executeJavaScript(`window.updateStartupProgress?.(${JSON.stringify({ message, ...progress })})`)
     .catch(() => undefined)
+}
+
+function reportStartupProgress(progress: StartupProgress): void {
+  const state = formatStartupProgress(progress, isChineseLocale(desktopLocale()))
+  void updateStartupMessage(state.message, state)
 }
 
 function firstInitializationMessage(): string {
@@ -589,7 +603,7 @@ async function presentDshLoadFailure(profileDir: string, message: string, candid
   } else {
     clearRecoverySessionHints()
     await showStartupWindow(desktopText('DSH 加载失败：', 'DSH failed to load: ') + message.slice(0, 240)
-      + desktopText('\n日志：', '\nLog: ') + startupErrorLogPath(profileDir))
+      + desktopText('\n日志：', '\nLog: ') + startupErrorLogPath(profileDir), true)
   }
 }
 
@@ -609,7 +623,7 @@ async function reportStartupFailure(error: unknown, profileDir?: string): Promis
   const short = message.split(/\r?\n/)[0]?.slice(0, 240) ?? '未知启动错误。'
   try {
     if (profileDir !== undefined) await presentDshLoadFailure(profileDir, message, candidates)
-    else await showStartupWindow(desktopText('启动失败：', 'Startup failed: ') + short + desktopText('\n日志：', '\nLog: ') + logPath)
+    else await showStartupWindow(desktopText('启动失败：', 'Startup failed: ') + short + desktopText('\n日志：', '\nLog: ') + logPath, true)
   } catch (displayError) {
     console.error('显示启动错误页面失败。', displayError)
   }
@@ -705,6 +719,7 @@ async function recycleDshForPluginUpdate(): Promise<void> {
         await writeTextFile(join(app.getPath('userData'), 'plugin-update.log'), `${message}\n`, 'utf8')
       },
       start: async () => {
+        reportStartupProgress({ phase: 'server' })
         await beginDshStartupDiagnostic(seedOptions.profileDir)
         return startWithProfileSelfRepair({
           profileDir: seedOptions.profileDir,
@@ -749,7 +764,7 @@ function handleUnexpectedDshExit(message: string): void {
     return
   }
   void writeTextFile(startupErrorLogPath(lastSeedOptions?.profileDir), `${message}\n`, 'utf8').catch(() => undefined)
-  runMainTask(showStartupWindow(desktopText('DSH 已停止运行。请重新启动应用。', 'DSH has stopped. Restart the app.')))
+  runMainTask(showStartupWindow(desktopText('DSH 已停止运行。请重新启动应用。', 'DSH has stopped. Restart the app.'), true))
 }
 
 function resolveWindowIconPath(): string | undefined {

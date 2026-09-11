@@ -171,7 +171,8 @@
           "process-control.js",
           "readiness.js",
           "runtime-archive.js",
-          "runtime-prebuilt.js"
+          "runtime-prebuilt.js",
+          "startup-progress.js"
         ]
       }
     ],

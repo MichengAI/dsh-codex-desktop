@@ -248,5 +248,5 @@ test('DSH 主题变化同步到桌面外壳、原生菜单和辅助窗口', asyn
     assert.match(source, /data-color-scheme="light"/)
   }
   for (const source of [shell, settings, shortcuts, about]) assert.match(source, /dataset\.colorScheme=value\.colorScheme/)
-  assert.match(main, /loadFile\(html, \{ query: \{ theme: activeDshColorScheme \} \}\)/)
+  assert.match(main, /loadFile\(html, \{ query: \{ theme: activeDshColorScheme[, }]/)
 })

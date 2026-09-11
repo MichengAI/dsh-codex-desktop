@@ -66,6 +66,7 @@ async function harness(t: TestContext, options: { installError?: Error; loadErro
     presentation: 'workbench', allowedOrigin: undefined,
     profileWatcher: { sync: () => events.push('sync') }, broadcastShellState: () => {},
     handleUnexpectedDshExit: () => {}, handleDshIpc: () => {},
+    reportStartupProgress: () => {},
     applyPendingProfileUpdates: async () => { events.push('install'); if (options.installError) throw options.installError; return [] },
     startDsh: async () => { events.push('start'); if (options.loadError) throw options.loadError; return server },
     createMainWindow: async () => { scope.presentation = 'workbench'; events.push('workbench') },

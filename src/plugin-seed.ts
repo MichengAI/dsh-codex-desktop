@@ -27,6 +27,7 @@ import { prependPath } from './plugin-toolchain.js'
 import { terminateProcessTree } from './process-control.js'
 import { mergeProfileUpdates, officialRuntimeUpdateVersion, parsePendingUpdates, partitionPackageUpdates, resolvePendingUpdatesPath, type ProfilePackageUpdate } from './profile-updates.js'
 import { copyPrebuiltOfficialRuntime } from './runtime-prebuilt.js'
+import { parsePnpmProgress, type StartupProgress } from './startup-progress.js'
 
 export type SeedSkipReason = 'already-installed'
 
@@ -50,6 +51,7 @@ interface SeedPnpmOptions {
 }
 
 interface SeedOptions {
+  onProgress?: (progress: StartupProgress) => void
   nodeExecutable: string
   profileDir: string
   pluginStoreDir: string
@@ -465,7 +467,7 @@ async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
   const onlineOptions = originalStore === undefined ? {} : { storeDir: originalStore }
   let storeOptions: SeedPnpmOptions
   try {
-    storeOptions = await prepareBundledPluginStore(options.profileDir, options.pluginStoreDir)
+    storeOptions = await prepareBundledPluginStore(options.profileDir, options.pluginStoreDir, options.onProgress)
   } catch (error) {
     console.warn('随包依赖准备失败，使用原仓库在线更新。', error)
     storeOptions = onlineOptions
@@ -600,7 +602,7 @@ export async function finalizeProfileBundlesAfterInstall(profileDir: string, ext
 }
 
 /** 将随包内容寻址仓库合入原 store，避免改 store-dir 破坏已有 pnpm 安装。 */
-export async function prepareBundledPluginStore(profileDir: string, bundledStore: string): Promise<SeedPnpmOptions> {
+export async function prepareBundledPluginStore(profileDir: string, bundledStore: string, onProgress?: (progress: StartupProgress) => void): Promise<SeedPnpmOptions> {
   for (const part of ['v11', 'cache', 'v11/files', 'v11/index.db']) {
     const path = join(bundledStore, part)
     if (!existsSync(path) || (part.endsWith('.db') ? !statSync(path).isFile() : !statSync(path).isDirectory())) {
@@ -628,6 +630,8 @@ export async function prepareBundledPluginStore(profileDir: string, bundledStore
           const checkDb = new DatabaseSync(targetPath, { readOnly: true })
           try { assertStoreSchema(checkDb) } finally { checkDb.close() }
         }
+        onProgress?.({ phase: 'scan' })
+        const total = onProgress === undefined ? 0 : await countStoreFiles(join(source, 'files'))
         await mkdir(destination, { recursive: true })
         const targetDb = new DatabaseSync(join(destination, 'index.db'))
         try {
@@ -635,7 +639,10 @@ export async function prepareBundledPluginStore(profileDir: string, bundledStore
           try {
             targetDb.exec('CREATE TABLE IF NOT EXISTS package_index (key TEXT PRIMARY KEY, data BLOB NOT NULL) WITHOUT ROWID')
             assertStoreSchema(targetDb)
-            await importMissingStoreFiles(join(source, 'files'), join(destination, 'files'))
+            const counts = { completed: 0, total, lastReport: 0 }
+            onProgress?.({ phase: 'sync', completed: 0, total })
+            await importMissingStoreFiles(join(source, 'files'), join(destination, 'files'), counts, onProgress)
+            onProgress?.({ phase: 'index' })
             const insert = targetDb.prepare('INSERT OR IGNORE INTO package_index (key, data) VALUES (?, ?)')
             for (const row of sourceDb.prepare('SELECT key, data FROM package_index').iterate()) {
               insert.run(row.key!, row.data!)
@@ -664,17 +671,34 @@ function assertStoreSchema(db: DatabaseSync): void {
 }
 
 /** 完整复制到临时文件后原子创建目标硬链接；已有内容不覆盖，中断不暴露半个包文件。 */
-async function importMissingStoreFiles(source: string, destination: string): Promise<void> {
+async function countStoreFiles(source: string): Promise<number> {
+  let count = 0
+  for (const entry of await readdir(source, { withFileTypes: true })) {
+    count += entry.isDirectory() ? await countStoreFiles(join(source, entry.name)) : 1
+  }
+  return count
+}
+
+async function importMissingStoreFiles(source: string, destination: string,
+  counts: { completed: number; total: number; lastReport: number }, onProgress?: (progress: StartupProgress) => void): Promise<void> {
+  const advance = (): void => {
+    counts.completed++
+    if (Date.now() - counts.lastReport >= 100 || counts.completed === counts.total) {
+      onProgress?.({ phase: 'sync', completed: counts.completed, total: counts.total })
+      counts.lastReport = Date.now()
+    }
+  }
   await mkdir(destination, { recursive: true })
   for (const entry of await readdir(source, { withFileTypes: true })) {
     const from = join(source, entry.name), to = join(destination, entry.name)
     if (entry.isDirectory()) {
-      await importMissingStoreFiles(from, to)
+      await importMissingStoreFiles(from, to, counts, onProgress)
       continue
     }
     if (!entry.isFile()) throw new Error('随包依赖仓库存在非普通文件。')
     try {
       if (!(await lstat(to)).isFile()) throw new Error('已有依赖路径不是普通文件。')
+      advance()
       continue
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
@@ -688,6 +712,7 @@ async function importMissingStoreFiles(source: string, destination: string): Pro
     } finally {
       await rm(temporary, { force: true })
     }
+    advance()
   }
 }
 
@@ -785,10 +810,11 @@ async function readInstalledPackages(profileDir: string, names: readonly string[
 }
 
 function runPnpm(options: SeedOptions, args: readonly string[]): Promise<void> {
+  options.onProgress?.({ phase: 'install' })
   const pnpmEntry = options.pnpmEntry ?? (options.pathPrefix === undefined ? undefined : join(options.pathPrefix, 'pnpm-package', 'bin', 'pnpm.cjs'))
   if (pnpmEntry === undefined) throw new Error('未找到随包 pnpm，无法补种官方运行时和社区插件。')
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(options.nodeExecutable, [pnpmEntry, ...args], {
+    const child = spawn(options.nodeExecutable, [pnpmEntry, ...args, '--reporter=append-only'], {
       cwd: dirname(pnpmEntry),
       env: {
         ...process.env,
@@ -819,6 +845,21 @@ function runPnpm(options: SeedOptions, args: readonly string[]): Promise<void> {
     timeout.unref?.()
     const collect = (chunk: Buffer): void => { output = (output + String(chunk)).slice(-8_000) }
     child.stdout?.on('data', collect)
+    let pending = ''
+    child.stdout?.setEncoding('utf8')
+    child.stdout?.on('data', (chunk: string) => {
+      pending += chunk
+      const lines = pending.split(/\r?\n/)
+      pending = (lines.pop() ?? '').slice(-4096)
+      for (const line of lines) {
+        const progress = parsePnpmProgress(line)
+        if (progress) options.onProgress?.(progress)
+      }
+    })
+    child.stdout?.on('end', () => {
+      const progress = parsePnpmProgress(pending)
+      if (progress) options.onProgress?.(progress)
+    })
     child.stderr?.on('data', collect)
     child.once('error', () => { finish(new Error('无法启动随包 pnpm 补种命令。')) })
     child.once('exit', code => {

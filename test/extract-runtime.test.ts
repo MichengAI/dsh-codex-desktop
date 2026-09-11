@@ -81,25 +81,35 @@ test('已解压过的运行时不会重复解压，内容缺失时会自愈', as
     const storeDir = join(root, 'app', 'plugins', 'store')
     const progress: RuntimeExtractionProgress[] = []
     assert.equal(packagedRuntimesNeedExtraction(resources, runtimeDir, storeDir), true)
-    assert.deepEqual(extractPackagedRuntimes(resources, runtimeDir, storeDir, event => progress.push(event)), { official: true, store: true })
-    assert.deepEqual(progress, [
+    assert.deepEqual(await extractPackagedRuntimes(resources, runtimeDir, storeDir, event => progress.push(event)), { official: true, store: true })
+    assert.deepEqual(progress.filter(event => event.state !== 'progress'), [
       { phase: 'runtime', state: 'start' },
       { phase: 'runtime', state: 'complete' },
       { phase: 'plugins', state: 'start' },
       { phase: 'plugins', state: 'complete' },
     ])
+    for (const phase of ['runtime', 'plugins']) {
+      for (const step of ['verify', 'extract', ...(process.platform === 'win32' ? ['copy'] : [])]) {
+        const measured = progress.filter(event => event.phase === phase && event.progress?.phase === step && event.progress.total !== undefined).map(event => event.progress!)
+        assert.ok(measured.length > 0, `${phase}/${step} 必须报告真实数量`)
+        assert.equal(measured.at(-1)!.completed, measured.at(-1)!.total)
+        assert.ok(measured.every((event, index) => event.total! > 0 && event.completed! <= event.total! && (index === 0 || event.completed! >= measured[index - 1]!.completed!)))
+      }
+    }
     assert.equal(packagedRuntimesNeedExtraction(resources, runtimeDir, storeDir), false)
-    assert.deepEqual(extractPackagedRuntimes(resources, runtimeDir, storeDir), { official: false, store: false })
+    const skipped: RuntimeExtractionProgress[] = []
+    assert.deepEqual(await extractPackagedRuntimes(resources, runtimeDir, storeDir, event => skipped.push(event)), { official: false, store: false })
+    assert.equal(skipped.some(event => event.state === 'progress'), false, '跳过时不伪造处理进度')
     await writeFile(join(runtimeDir, '.dsh-extract-complete'), '', 'utf8')
     await writeFile(join(storeDir, '.dsh-extract-complete'), '', 'utf8')
     await writeFile(join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'), 'stale', 'utf8')
     assert.equal(packagedRuntimesNeedExtraction(resources, runtimeDir, storeDir), true)
-    assert.deepEqual(extractPackagedRuntimes(resources, runtimeDir, storeDir), { official: true, store: true })
+    assert.deepEqual(await extractPackagedRuntimes(resources, runtimeDir, storeDir), { official: true, store: true })
     assert.equal(await readFile(join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'), 'utf8'), 'ok')
     assert.equal((await readFile(join(runtimeDir, '.dsh-extract-complete'), 'utf8')).trim(), (await readFile(join(resources, 'dsh-runtime.tgz.sha256'), 'utf8')).trim())
     assert.equal((await readFile(join(storeDir, '.dsh-extract-complete'), 'utf8')).trim(), (await readFile(join(resources, 'plugins-store.tgz.sha256'), 'utf8')).trim())
     await unlink(join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'))
-    assert.deepEqual(extractPackagedRuntimes(resources, runtimeDir, storeDir), { official: true, store: false })
+    assert.deepEqual(await extractPackagedRuntimes(resources, runtimeDir, storeDir), { official: true, store: false })
     assert.equal(await readFile(join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'), 'utf8'), 'ok')
   } finally {
     await rm(root, { recursive: true, force: true })
@@ -112,6 +122,7 @@ test('便携版通过独立 Node 进程初始化并转发阶段进度', async ()
     const scriptPath = join(root, 'fake-extractor.mjs')
     await writeFile(scriptPath, [
       `console.log(${JSON.stringify(RUNTIME_EXTRACTION_PROGRESS_PREFIX)} + JSON.stringify({ phase: 'runtime', state: 'start' }))`,
+      `console.log(${JSON.stringify(RUNTIME_EXTRACTION_PROGRESS_PREFIX)} + JSON.stringify({ phase: 'runtime', state: 'progress', progress: { phase: 'extract', completed: 3, total: 10, unit: 'entries' } }))`,
       `console.log(${JSON.stringify(RUNTIME_EXTRACTION_PROGRESS_PREFIX)} + JSON.stringify({ phase: 'runtime', state: 'complete' }))`,
       `console.log(${JSON.stringify(RUNTIME_EXTRACTION_PROGRESS_PREFIX)} + JSON.stringify({ phase: 'plugins', state: 'start' }))`,
       `console.log(${JSON.stringify(RUNTIME_EXTRACTION_PROGRESS_PREFIX)} + JSON.stringify({ phase: 'plugins', state: 'complete' }))`,
@@ -124,7 +135,8 @@ test('便携版通过独立 Node 进程初始化并转发阶段进度', async ()
       resourcesDir: root,
       onProgress: event => progress.push(event),
     })
-    assert.deepEqual(progress, [
+    assert.deepEqual(progress.find(event => event.state === 'progress')?.progress, { phase: 'extract', completed: 3, total: 10, unit: 'entries' })
+    assert.deepEqual(progress.filter(event => event.state !== 'progress'), [
       { phase: 'runtime', state: 'start' },
       { phase: 'runtime', state: 'complete' },
       { phase: 'plugins', state: 'start' },
@@ -197,7 +209,7 @@ test('运行时和插件仓库可以解压到用户数据回退目录', async ()
     packDirectoryToTarGz(officialSrc, join(resources, 'dsh-runtime.tgz'))
     packDirectoryToTarGz(storeSrc, join(resources, 'plugins-store.tgz'))
     createChecksums(resources)
-    assert.deepEqual(extractPackagedRuntimes(resources, runtimeDir, storeDir), { official: true, store: true })
+    assert.deepEqual(await extractPackagedRuntimes(resources, runtimeDir, storeDir), { official: true, store: true })
     assert.equal(await readFile(join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'), 'utf8'), 'ok')
     assert.equal(await readFile(join(storeDir, 'v11', 'keep.txt'), 'utf8'), 'store')
   } finally {
@@ -217,7 +229,7 @@ test('随包归档被篡改时拒绝解压', async () => {
     packDirectoryToTarGz(source, archive)
     writeFileSha256(archive)
     await writeFile(archive, 'tampered', 'utf8')
-    assert.throws(() => extractPackagedRuntimes(resources, join(root, 'runtime'), join(root, 'store')), /SHA256/)
+    await assert.rejects(() => extractPackagedRuntimes(resources, join(root, 'runtime'), join(root, 'store')), /SHA256/)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
