@@ -6,6 +6,7 @@ The five most recent published versions are listed below.
 
 ## Unreleased
 
+- Updated the bundled archive manager, context, sidebar, MCP connector, and usage billing plugins together with their offline dependencies.
 - The Git commit graph plugin is no longer preinstalled with Desktop. It can be installed separately; existing installations are preserved.
 - Added Developer Tools to the View menu, with a keyboard shortcut for inspecting the current page, console, and network requests.
 - The startup window now shows measured progress for resource verification, extraction, and dependency syncing, plus plugin installation counts and elapsed time during first launch or upgrades.
