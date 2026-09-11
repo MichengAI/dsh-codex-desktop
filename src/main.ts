@@ -247,13 +247,7 @@ async function startApplication(): Promise<void> {
     } catch (error) {
       const message = error instanceof Error ? error.message : '内置插件补种失败。'
       await writeTextFile(join(app.getPath('userData'), 'plugin-seed.log'), `${message}\n`, 'utf8').catch(() => undefined)
-      await dialog.showMessageBox({
-        type: 'warning',
-        title: desktopText('内置插件更新未完成', 'Bundled plugin update incomplete'),
-        message: desktopText('未能安装此桌面版本配套的插件。', 'Could not install the plugins bundled with this desktop version.'),
-        detail: desktopText('将尝试使用现有插件启动。若进入恢复模式，请检查网络后重新启动，或重新安装完整安装包。', 'Startup will continue with the existing plugins. If recovery mode opens, check your network and restart, or reinstall the full desktop package.') + '\n\n' + message,
-        buttons: [desktopText('继续启动', 'Continue startup')],
-      })
+      await showStartupPluginWarning('seed', message)
     }
     try {
       await updateStartupMessage(desktopText('正在检查待应用的插件更新', 'Checking pending plugin updates'))
@@ -261,8 +255,8 @@ async function startApplication(): Promise<void> {
       if (updated.length > 0) console.log('已在启动前应用插件更新：' + updated.join('、'))
     } catch (error) {
       const message = error instanceof Error ? error.message : '启动前应用插件更新失败。'
-      await writeTextFile(join(app.getPath('userData'), 'plugin-update.log'), ` ${message}\n`, 'utf8').catch(() => undefined)
-
+      await writeTextFile(join(app.getPath('userData'), 'plugin-update.log'), `${message}\n`, 'utf8').catch(() => undefined)
+      await showStartupPluginWarning('pending', message)
     }
     lastSeedOptions = seedOptions
     const runtime = resolveDshRuntime({ ...runtimeOptions, profileDir, desktopRuntimeDir })
@@ -813,6 +807,22 @@ function layoutDshView(window: BrowserWindow): void {
 function layoutRecoveryView(window: BrowserWindow): void {
   const bounds = window.getContentBounds()
   recoveryView?.setBounds({ x: 0, y: 0, width: bounds.width, height: bounds.height })
+}
+
+/** 冒烟由错误日志判定失败，不能等待人工关闭提示框。 */
+async function showStartupPluginWarning(kind: 'seed' | 'pending', message: string): Promise<void> {
+  if (process.env.DSH_DESKTOP_SMOKE_READY_FILE?.trim()) return
+  await dialog.showMessageBox({
+    type: 'warning',
+    title: kind === 'seed'
+      ? desktopText('内置插件更新未完成', 'Bundled plugin update incomplete')
+      : desktopText('插件更新未完成', 'Plugin update incomplete'),
+    message: kind === 'seed'
+      ? desktopText('未能安装此桌面版本配套的插件。', 'Could not install the plugins bundled with this desktop version.')
+      : desktopText('未能应用等待安装的插件更新。', 'Could not apply pending plugin updates.'),
+    detail: desktopText('将尝试使用现有插件启动。请检查网络后重新启动；若仍失败，可在恢复页面处理相关插件或重新安装完整安装包。', 'Startup will continue with the existing plugins. Check your network and restart; if the problem persists, manage the affected plugins on the recovery page or reinstall the full desktop package.') + '\n\n' + message,
+    buttons: [desktopText('继续启动', 'Continue startup')],
+  })
 }
 
 function createWindow(): BrowserWindow {

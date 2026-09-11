@@ -8,6 +8,8 @@ import { dirname, join, resolve } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { BUNDLED_PLUGINS } from '../src/bundled-plugins.js'
 import { terminateProcessTree } from '../src/process-control.js'
+import { assertNoStartupErrors } from './smoke-startup-errors.mjs'
+import { parse } from 'yaml'
 import { extractTarGz } from '../src/runtime-archive.js'
 
 const [oldArgument, newArgument] = process.argv.slice(2)
@@ -42,12 +44,11 @@ async function boot(application: string, stage: string, store?: string): Promise
     while (!existsSync(ready)) {
       if (launchError) throw launchError
       if (child.exitCode !== null) throw new Error(`${stage} 提前退出：${child.exitCode}`)
-      for (const name of ['startup-error.log', 'plugin-seed.log', 'plugin-update.log']) {
-        if (existsSync(join(userData, name))) throw new Error(await readFile(join(userData, name), 'utf8'))
-      }
+      assertNoStartupErrors(userData)
       if (Date.now() > deadline) throw new Error(`${stage} 启动超时。`)
       await delay(250)
     }
+    assertNoStartupErrors(userData)
     assert.equal(existsSync(join(profile, '.dsh-desktop-recovery.json')), false, `${stage} 不应进入恢复模式`)
   } finally {
     terminateProcessTree(child)
@@ -64,7 +65,7 @@ try {
   const oldArchive = JSON.parse(await readFile(archiveManifest, 'utf8')).version
   assert.equal(oldArchive, '0.1.34', '旧版归档插件应为待验证的 0.1.34')
   const modulesPath = join(profile, 'node_modules', '.modules.yaml')
-  const oldStore = JSON.parse(await readFile(modulesPath, 'utf8')).storeDir
+  const oldStore = parse(await readFile(modulesPath, 'utf8')).storeDir
   assert.equal(oldStore, join(legacyStore, 'v11'), '必须使用隔离旧仓库')
   const patchPath = join(profile, 'cordis.patch.yml')
   const patch = await readFile(patchPath, 'utf8') + '\n# 升级冒烟：保留用户配置\n'
@@ -75,7 +76,7 @@ try {
     const installed = JSON.parse(await readFile(join(profile, 'node_modules', plugin.packageName, 'package.json'), 'utf8'))
     assert.equal(installed.version, plugin.version, plugin.packageName)
   }
-  assert.equal(JSON.parse(await readFile(modulesPath, 'utf8')).storeDir, oldStore)
+  assert.equal(parse(await readFile(modulesPath, 'utf8')).storeDir, oldStore)
   assert.equal(await readFile(patchPath, 'utf8'), patch)
   assert.equal(await readFile(join(profile, 'user-preserved.txt'), 'utf8'), 'preserved')
   console.log(`PASS: 真实旧版 Profile（归档 ${oldArchive}）离线升级，全部 ${BUNDLED_PLUGINS.length} 个配套插件版本正确，配置和原仓库保留，未进入恢复模式。`)

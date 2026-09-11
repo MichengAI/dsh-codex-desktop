@@ -739,6 +739,22 @@ test('真实安装子进程的分片输出会转为进度，普通日志不进�
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 
+test('pnpm 失败保留跨块 UTF-8 错误和无换行的末尾诊断', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-pnpm-error-output-'))
+  try {
+    const store = join(root, 'store'), profile = join(root, 'profile'), pnpmEntry = join(root, 'pnpm.cjs')
+    await createBundledStore(store)
+    await mkdir(profile)
+    await writeFile(pnpmEntry, [
+      "const bytes = Buffer.from('依赖安装失败：末尾诊断', 'utf8')",
+      'process.stderr.write(bytes.subarray(0, 1))',
+      'setTimeout(() => { process.stderr.write(bytes.subarray(1)); process.exitCode = 1 }, 50)',
+    ].join('\n'), 'utf8')
+    await assert.rejects(seedBundledPlugins({ nodeExecutable: process.execPath, profileDir: profile, pluginStoreDir: store,
+      catalog: [catalog[0]], pnpmEntry }), /依赖安装失败：末尾诊断/)
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 test('在线拆分套件不使用随包缓存', () => {
   assert.ok(!buildSeedRemoveArgs(['fixture'],'profile',{storeDir:'store',cacheDir:'cache',offline:false}).some(arg=>arg.startsWith('--cache-dir=')))
 })

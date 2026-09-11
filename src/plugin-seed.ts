@@ -843,11 +843,11 @@ function runPnpm(options: SeedOptions, args: readonly string[]): Promise<void> {
       killDeadline = setTimeout(() => finish(timeoutError), 2_000)
     }, options.timeoutMs ?? 300_000)
     timeout.unref?.()
-    const collect = (chunk: Buffer): void => { output = (output + String(chunk)).slice(-8_000) }
-    child.stdout?.on('data', collect)
+    const collect = (chunk: string): void => { output = (output + chunk).slice(-8_000) }
     let pending = ''
     child.stdout?.setEncoding('utf8')
     child.stdout?.on('data', (chunk: string) => {
+      collect(chunk)
       pending += chunk
       const lines = pending.split(/\r?\n/)
       pending = (lines.pop() ?? '').slice(-4096)
@@ -860,9 +860,10 @@ function runPnpm(options: SeedOptions, args: readonly string[]): Promise<void> {
       const progress = parsePnpmProgress(pending)
       if (progress) options.onProgress?.(progress)
     })
+    child.stderr?.setEncoding('utf8')
     child.stderr?.on('data', collect)
     child.once('error', () => { finish(new Error('无法启动随包 pnpm 补种命令。')) })
-    child.once('exit', code => {
+    child.once('close', code => {
       if (timeoutError !== undefined) {
         finish(timeoutError)
         return

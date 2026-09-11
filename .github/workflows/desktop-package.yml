@@ -174,6 +174,31 @@ jobs:
           $OutputEncoding = [System.Text.Encoding]::UTF8
           .\scripts\smoke-package.ps1 -ApplicationPath 'release\win-unpacked\DSH Codex Desktop.exe'
 
+      - name: 验证 Windows 1.0.51 Profile 离线升级
+        if: matrix.platform == 'windows-x64'
+        timeout-minutes: 15
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          $ErrorActionPreference = 'Stop'
+          $legacyRoot = Join-Path $env:RUNNER_TEMP 'dsh-upgrade-1.0.51'
+          New-Item -ItemType Directory -Path $legacyRoot | Out-Null
+          $assetName = 'dsh-codex-desktop-1.0.51-win-x64.zip'
+          gh release download v1.0.51 --repo MichengAI/dsh-codex-desktop --pattern $assetName --dir $legacyRoot
+          if ($LASTEXITCODE -ne 0) { throw '下载历史升级基线失败。' }
+          $archivePath = Join-Path $legacyRoot $assetName
+          $expectedHash = 'BF64DC80765FF606395907BC6372E295E2815D95C12EA2403C9BF5F0D65E9C6E'
+          if ((Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash -ne $expectedHash) { throw '历史升级基线校验失败。' }
+          $unpacked = Join-Path $legacyRoot 'unpacked'
+          Expand-Archive -LiteralPath $archivePath -DestinationPath $unpacked
+          $oldApplications = @(Get-ChildItem -LiteralPath $unpacked -Recurse -File -Filter 'DSH Codex Desktop.exe')
+          if ($oldApplications.Count -ne 1) { throw '历史基线可执行文件不唯一或缺失。' }
+          pnpm smoke:upgrade $oldApplications[0].FullName (Join-Path $env:GITHUB_WORKSPACE 'release\win-unpacked\DSH Codex Desktop.exe')
+          if ($LASTEXITCODE -ne 0) { throw '历史 Profile 离线升级失败。' }
+
       - name: 冒烟检查 macOS 打包应用
         if: startsWith(matrix.platform, 'macos-')
         shell: pwsh

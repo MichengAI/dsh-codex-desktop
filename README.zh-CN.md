@@ -56,7 +56,7 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 ## 产品预览
 
-以下展示桌面工作区、浅色设置及插件管理页面。首页及 11 张设置、插件截图来自本次提供的实机截图；会话、上下文、侧边栏和 Git 图谱沿用此前截图。各图中的插件版本、数量和状态以拍摄时为准，点击图片可查看原始分辨率大图。
+以下展示桌面工作区、浅色设置及插件管理页面。首页及 11 张设置、插件截图来自本次提供的实机截图；会话、上下文和侧边栏沿用此前截图。各图中的插件版本、数量和状态以拍摄时为准，点击图片可查看原始分辨率大图。
 
 <p align="center"><em>首页：项目导航、任务入口与输入区。</em></p>
 
@@ -109,7 +109,7 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 </details>
 
 <details>
-<summary>社区插件页面（6 张）</summary>
+<summary>社区插件页面（5 张）</summary>
 
 <p align="center"><em>上下文设置</em></p>
 
@@ -199,6 +199,8 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 - 你配置的模型供应商和 DSH 工具可能自行发起网络请求；使用前请核对其设置和隐私政策。
 
 ## 开发
+
+Windows 打包任务在上传制品前执行 `pnpm smoke:upgrade <旧版 exe> <新版 exe>`。这项回归固定使用 Desktop 1.0.51（归档插件 0.1.34）和当前构建的 Windows x64 可执行文件，两者均须保留完整 resources 目录。脚本在隔离 Profile 中依次离线启动两个版本，检查插件版本、原仓库与用户配置保留情况。因为需要两份应用产物，它不属于默认 `pnpm test`。
 
 ### 内置宠物集成
 

@@ -56,7 +56,7 @@ The application keeps DSH data in your existing user profile (`%USERPROFILE%\.ds
 
 ## Product preview
 
-Explore the desktop workspace, light-theme settings, and plugin management pages. The home screen and 11 settings and plugin screenshots come from the newly supplied desktop captures; the conversation, context, sidebar, and Git graph previews are retained from earlier captures. Plugin versions, counts, and states reflect each capture. Click any image to view it at its original resolution.
+Explore the desktop workspace, light-theme settings, and plugin management pages. The home screen and 11 settings and plugin screenshots come from the newly supplied desktop captures; the conversation, context, and sidebar previews are retained from earlier captures. Plugin versions, counts, and states reflect each capture. Click any image to view it at its original resolution.
 
 <p align="center"><em>Home: project navigation, task entry points, and composer.</em></p>
 
@@ -109,7 +109,7 @@ Explore the desktop workspace, light-theme settings, and plugin management pages
 </details>
 
 <details>
-<summary>Community plugin pages (6 screenshots)</summary>
+<summary>Community plugin pages (5 screenshots)</summary>
 
 <p align="center"><em>Context settings</em></p>
 
@@ -199,6 +199,8 @@ The desktop app also integrates [DSH Context](https://github.com/bowenliang123/d
 - Your configured model providers and DSH tools may make their own network requests. Review their settings and privacy policies before use.
 
 ## Development
+
+The Windows packaging job also runs `pnpm smoke:upgrade <old-exe> <new-exe>` before uploading artifacts. This regression check requires the Windows x64 executable from Desktop 1.0.51 (archive plugin 0.1.34) and the current build executable, each with its complete resources directory. It launches both versions offline in an isolated profile and checks plugin versions, the original store, and preserved user configuration. It is separate from `pnpm test` because it requires both packaged applications.
 
 ### Bundled pet integration
 

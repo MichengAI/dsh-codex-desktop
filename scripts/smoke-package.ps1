@@ -41,11 +41,21 @@ $bootstrapProcessId = $null
 $startupTimeoutSeconds = 180
 $unresponsiveSince = $null
 
+function Assert-NoStartupErrors {
+  foreach ($name in @('startup-error.log', 'plugin-seed.log', 'plugin-update.log')) {
+    $logPath = Join-Path $userDataDir $name
+    if (Test-Path -LiteralPath $logPath) {
+      throw "${name}: $((Get-Content -LiteralPath $logPath -Raw -Encoding UTF8).Trim())"
+    }
+  }
+}
+
 try {
   $application = Start-Process -FilePath $resolvedApplication -ArgumentList "--user-data-dir=$userDataDir" -WindowStyle Hidden -PassThru
   $deadline = (Get-Date).AddSeconds($startupTimeoutSeconds)
   $port = $null
   while ((Get-Date) -lt $deadline -and $null -eq $port) {
+    Assert-NoStartupErrors
     $application.Refresh()
     if ($application.HasExited) { throw '打包应用在初始化期间意外退出。' }
     if ($application.MainWindowHandle -ne 0 -and -not $application.Responding) {
@@ -99,6 +109,7 @@ try {
 
   $startupError = Join-Path $userDataDir 'startup-error.log'
   while ((Get-Date) -lt $deadline -and -not (Test-Path -LiteralPath $smokeReadyFile)) {
+    Assert-NoStartupErrors
     if (Test-Path -LiteralPath $startupError) {
       throw "桌面应用启动失败：$((Get-Content -LiteralPath $startupError -Raw).Trim())"
     }
@@ -106,6 +117,7 @@ try {
     if ($application.HasExited) { throw '桌面应用在报告启动完成前意外退出。' }
     Start-Sleep -Milliseconds 250
   }
+  Assert-NoStartupErrors
   if (-not (Test-Path -LiteralPath $smokeReadyFile)) { throw "桌面应用未在 $startupTimeoutSeconds 秒内报告启动完成。" }
 
   $verifierPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'dist\scripts\smoke-packaged-plugins.mjs'

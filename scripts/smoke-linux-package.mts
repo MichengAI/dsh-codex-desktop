@@ -2,8 +2,10 @@ import { execFile, spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
+
+import { assertNoStartupErrors } from './smoke-startup-errors.mjs'
 
 import { verifyBundledPluginsInstalled } from './smoke-packaged-plugins.mjs'
 
@@ -78,6 +80,7 @@ function readArgument(name: string): string {
 
 async function waitForHealthyServer(application: ChildProcess, getApplicationOutput: () => string, deadline: number, startupErrorFile: string): Promise<string> {
   while (Date.now() < deadline) {
+    assertNoStartupErrors(dirname(startupErrorFile))
     if (application.exitCode !== null) {
       throw new Error(`打包应用提前退出（退出码 ${application.exitCode}）。${getApplicationOutput()}`)
     }
@@ -104,12 +107,14 @@ async function waitForApplicationReady(
   deadline: number,
   getApplicationOutput: () => string,
 ): Promise<void> {
+  assertNoStartupErrors(dirname(startupErrorFile))
   const initialStartupError = readStartupError(startupErrorFile)
   if (initialStartupError !== undefined) throw new Error(`桌面应用启动失败：${initialStartupError}`)
   if (application.exitCode !== null) {
     throw new Error(`桌面应用在报告启动完成前退出（退出码 ${application.exitCode}）。${getApplicationOutput()}`)
   }
   while (Date.now() < deadline && !existsSync(smokeReadyFile)) {
+    assertNoStartupErrors(dirname(startupErrorFile))
     const startupError = readStartupError(startupErrorFile)
     if (startupError !== undefined) throw new Error(`桌面应用启动失败：${startupError}`)
     if (application.exitCode !== null) {
@@ -117,6 +122,7 @@ async function waitForApplicationReady(
     }
     await delay(250)
   }
+  assertNoStartupErrors(dirname(startupErrorFile))
   if (!existsSync(smokeReadyFile)) throw new Error('桌面应用未在 60 秒内报告启动完成。')
   if (application.exitCode !== null) throw new Error(`桌面应用在启动标记后退出（退出码 ${application.exitCode}）。${getApplicationOutput()}`)
 }
