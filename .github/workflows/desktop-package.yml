@@ -7,6 +7,10 @@ on:
       - main
     tags:
       - 'v*'
+    # 纯文档与截图提交不触发五平台打包；GitHub 不对手推 tag 应用 paths 过滤。
+    paths-ignore:
+      - '**.md'
+      - 'assets/screenshots/**'
   workflow_dispatch:
 
 permissions:
