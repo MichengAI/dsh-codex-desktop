@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { chmodSync, existsSync, readFileSync } from 'node:fs'
-import { cp, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -175,7 +175,31 @@ export async function stageBundledPlugins(destinationRoot: string, nodeRoot: str
     }
   }
   await pruneStoreForPackaging(storeDir)
+  await verifyBundledPluginStore(destinationRoot, nodeRoot)
+  await pruneStoreForPackaging(storeDir)
   await removePreparedPath(stagingDir)
+}
+
+/** 打包前用空 Profile 和随包元数据离线安装，缺少任何依赖即阻止生成安装包。 */
+export async function verifyBundledPluginStore(destinationRoot: string, nodeRoot: string): Promise<void> {
+  const profile = await mkdtemp(join(destinationRoot, 'verify-offline-'))
+  const store = join(destinationRoot, 'store')
+  try {
+    await writeFile(join(profile, 'package.json'), JSON.stringify({ private: true }), 'utf8')
+    await writeFile(join(profile, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml(false), 'utf8')
+    runStagedPnpm(nodeRoot, [
+      'add', ...STORE_PACKAGES.map(plugin => `${plugin.packageName}@${plugin.version}`),
+      '--dir', profile, '--store-dir', store, '--cache-dir', join(store, 'cache'), '--offline',
+      '--config.node-linker=hoisted', '--config.auto-install-peers=false', '--config.minimumReleaseAge=0',
+      '--registry=https://registry.npmjs.org/',
+    ])
+    for (const plugin of STORE_PACKAGES) {
+      const manifest = JSON.parse(await readFile(join(profile, 'node_modules', plugin.packageName, 'package.json'), 'utf8'))
+      if (manifest.version !== plugin.version) throw new Error(`随包离线校验版本不匹配：${plugin.packageName}`)
+    }
+  } finally {
+    await rm(profile, { recursive: true, force: true })
+  }
 }
 
 

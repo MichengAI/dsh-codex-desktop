@@ -1,14 +1,16 @@
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 
 import { writeTextFileAtomic, writeTextFileAtomicSync } from './atomic-file.js'
 import { restrictProfileBundlesForRecovery } from './recovery-mode.js'
 import {
   BUNDLED_PLUGINS,
+  compareReleaseVersions,
   OFFICIAL_DSH_VERSION,
   OFFICIAL_LAUNCH_PEERS,
   OFFICIAL_PROFILE_BUNDLES,
@@ -25,7 +27,7 @@ import { terminateProcessTree } from './process-control.js'
 import { mergeProfileUpdates, officialRuntimeUpdateVersion, parsePendingUpdates, partitionPackageUpdates, resolvePendingUpdatesPath, type ProfilePackageUpdate } from './profile-updates.js'
 import { copyPrebuiltOfficialRuntime } from './runtime-prebuilt.js'
 
-export type SeedSkipReason = 'already-installed' | 'missing-store'
+export type SeedSkipReason = 'already-installed'
 
 export type SeedPlan =
   | { action: 'skip'; reason: SeedSkipReason }
@@ -36,11 +38,12 @@ interface SeedPlanInput {
   catalog: readonly BundledPlugin[]
   declaredPackages: readonly string[]
   installedPackages: readonly string[]
-  storeExists: boolean
+  installedVersions?: readonly { packageName: string; version?: string }[]
 }
 
 interface SeedPnpmOptions {
   storeDir?: string
+  cacheDir?: string
   offline?: boolean
   autoInstallPeers?: boolean
 }
@@ -77,12 +80,18 @@ export function communitySeedCatalog(catalog: readonly BundledPlugin[]): Bundled
   return catalog.filter((plugin) => !isOfficialProfileDependency(plugin.packageName))
 }
 
-/** 社区插件必须写进 profile dependencies 才能单独更新；套件改为拆成子插件。官方包不进 Web profile。 */
+/** 以发布目录为最低版本补齐内置插件，保留更高版本；官方包不进 Web profile。 */
 export function planBundledPluginSeed(input: SeedPlanInput): SeedPlan {
-  if (!input.storeExists) return { action: 'skip', reason: 'missing-store' }
   const declared = new Set(input.declaredPackages)
   const community = communitySeedCatalog(input.catalog)
-  const missing = community.filter((plugin) => !declared.has(plugin.packageName))
+  const versions = input.installedVersions === undefined ? undefined
+    : new Map(input.installedVersions.map(plugin => [plugin.packageName, plugin.version]))
+  const missing = community.filter((plugin) => {
+    if (!declared.has(plugin.packageName)) return true
+    if (versions === undefined) return false
+    const installed = versions.get(plugin.packageName)
+    return installed === undefined || compareReleaseVersions(installed, plugin.version) < 0
+  })
   const suitePresent = declared.has(SUITE_PACKAGE) || input.installedPackages.includes(SUITE_PACKAGE)
   if (suitePresent) return { action: 'replace-suite', packages: missing }
   if (missing.length === 0) return { action: 'skip', reason: 'already-installed' }
@@ -118,6 +127,8 @@ export function buildSeedRemoveArgs(packageNames: readonly string[], targetDir: 
     ...packageNames,
     `--dir=${targetDir}`,
     ...(options.storeDir === undefined ? [] : [`--store-dir=${options.storeDir}`]),
+    ...(options.offline === true ? ['--offline'] : []),
+    ...(options.cacheDir === undefined ? [] : [`--cache-dir=${options.cacheDir}`]),
     '--config.node-linker=hoisted',
     '--config.minimumReleaseAge=0',
     '--registry=https://registry.npmjs.org/',
@@ -131,7 +142,7 @@ export function buildSeedPluginArgs(packages: readonly BundledPlugin[], targetDi
     `--dir=${targetDir}`,
     ...(options.storeDir === undefined ? [] : [`--store-dir=${options.storeDir}`]),
     // pnpm 11 把版本元数据放在 cache-dir；纯离线首启不能依赖当前用户的缓存。
-    ...(options.offline === true && options.storeDir !== undefined ? [`--cache-dir=${join(options.storeDir, 'cache')}`] : []),
+    ...(options.offline === true && options.storeDir !== undefined ? [`--cache-dir=${options.cacheDir ?? join(options.storeDir, 'cache')}`] : []),
     ...(options.offline === true ? ['--offline'] : []),
     '--config.node-linker=hoisted',
     '--config.auto-install-peers=' + (options.autoInstallPeers === true ? 'true' : 'false'),
@@ -307,12 +318,19 @@ export async function applyPendingProfileUpdates(options: SeedOptions): Promise<
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
   const { community } = partitionPackageUpdates(pending)
+  // 旧客户端留下的更新清单不能把新版桌面刚补齐的插件降回不兼容版本。
+  const baseline = new Map((options.catalog ?? BUNDLED_PLUGINS).map(plugin => [plugin.packageName, plugin.version]))
+  const compatiblePending = community.map(plugin => {
+    const version = baseline.get(plugin.packageName)
+    return version !== undefined && compareReleaseVersions(plugin.version, version) < 0
+      ? { ...plugin, version } : plugin
+  })
   const declared = await readDeclaredPackageVersions(options.profileDir)
   const installed = await readInstalledPackageVersions(options.profileDir, [...new Set([
     ...declared.map((item) => item.packageName),
     ...community.map((item) => item.packageName),
   ])])
-  const updates = mergeProfileUpdates({ pending: community, declared, installed })
+  const updates = mergeProfileUpdates({ pending: compatiblePending, declared, installed })
   const applied: string[] = []
   const runner = options.runner ?? ((args) => runPnpm(options, args))
   if (updates.length > 0) {
@@ -431,35 +449,32 @@ async function ensureOfficialLaunchPeers(options: SeedOptions, targetDir: string
 async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
   await ensureProfileScaffold(options.profileDir)
   const { declared, installed } = await readProfilePluginNames(options.profileDir)
+  const catalog = options.catalog ?? BUNDLED_PLUGINS
+  const installedVersions = await readInstalledPackageVersions(options.profileDir, catalog.map(plugin => plugin.packageName))
   const plan = planBundledPluginSeed({
-    catalog: options.catalog ?? BUNDLED_PLUGINS,
+    catalog,
     declaredPackages: declared,
     installedPackages: installed,
-    storeExists: existsSync(options.pluginStoreDir),
+    installedVersions,
   })
   if (plan.action === 'skip') return { seeded: [], skipped: plan.reason }
-  const storeDir = resolvePnpmStoreDir(options.profileDir, existsSync(options.pluginStoreDir) ? options.pluginStoreDir : undefined)
-  const useStore = storeDir !== undefined
-  const storeOptions = useStore ? { storeDir, offline: true } : {}
+  const storeOptions = await prepareBundledPluginStore(options.profileDir, options.pluginStoreDir)
   const runner = options.runner ?? ((pluginArgs) => runPnpm(options, pluginArgs))
   if (plan.packages.length > 0) {
     const args = buildSeedPluginArgs(plan.packages, options.profileDir, storeOptions)
     try {
       await runner(args)
     } catch (error) {
-      if (useStore) {
-        console.warn('内置插件离线补种失败，尝试在线安装。', error)
-        await runner(buildSeedPluginArgs(plan.packages, options.profileDir, { storeDir }))
-      }
-      else throw error
+      console.warn('随包插件离线安装失败，尝试在线安装。', error)
+      await runner(buildSeedPluginArgs(plan.packages, options.profileDir, { ...storeOptions, offline: false }))
     }
   }
   if (plan.action === 'replace-suite') {
     try {
       await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, storeOptions))
     } catch (error) {
-      if (useStore) await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, { storeDir }))
-      else throw error
+      console.warn('离线拆分旧套件失败，尝试在线安装。', error)
+      await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, { ...storeOptions, offline: false }))
     }
   }
   await reconcileProfileBundles(options.profileDir)
@@ -569,6 +584,55 @@ export async function finalizeProfileBundlesAfterInstall(profileDir: string, ext
     dsh?: { profile?: { bundles?: string[] } }
   }
   return { removed, bundles: manifest.dsh?.profile?.bundles ?? [] }
+}
+
+/** 将随包内容寻址仓库合入原 store，避免改 store-dir 破坏已有 pnpm 安装。 */
+export async function prepareBundledPluginStore(profileDir: string, bundledStore: string): Promise<SeedPnpmOptions> {
+  for (const part of ['v11', 'cache', 'v11/files', 'v11/index.db']) {
+    const path = join(bundledStore, part)
+    if (!existsSync(path) || (part.endsWith('.db') ? !statSync(path).isFile() : !statSync(path).isDirectory())) {
+      throw new Error(`随包插件资源不完整：缺少 ${part}，请重新安装完整桌面安装包。`)
+    }
+  }
+  const existing = resolvePnpmStoreDir(profileDir)
+  if (existing === undefined && existsSync(join(profileDir, 'node_modules', '.modules.yaml'))) {
+    throw new Error('无法读取已有 pnpm 仓库位置，已停止离线升级。')
+  }
+  const storeDir = existing ?? bundledStore
+  if (existing !== undefined) {
+    if (/^v\d+$/.test(basename(existing)) && basename(existing) !== 'v11') {
+      throw new Error('已有 pnpm 仓库格式与随包 v11 不兼容，已停止离线升级。')
+    }
+    const destination = basename(existing) === 'v11' ? existing : join(existing, 'v11')
+    const source = join(bundledStore, 'v11')
+    if (resolve(source) !== resolve(destination)) {
+      await mkdir(destination, { recursive: true })
+      await cp(join(source, 'files'), join(destination, 'files'), { recursive: true, force: true })
+      // v11 的 SQLite 索引必须合并，不能覆盖原索引或复制 projects 中的临时链接。
+      const sourceDb = new DatabaseSync(join(source, 'index.db'), { readOnly: true })
+      try {
+        const targetDb = new DatabaseSync(join(destination, 'index.db'))
+        try {
+          targetDb.exec('PRAGMA busy_timeout = 10000; CREATE TABLE IF NOT EXISTS package_index (key TEXT PRIMARY KEY, data BLOB NOT NULL) WITHOUT ROWID; BEGIN IMMEDIATE')
+          try {
+            const insert = targetDb.prepare('INSERT OR IGNORE INTO package_index (key, data) VALUES (?, ?)')
+            for (const row of sourceDb.prepare('SELECT key, data FROM package_index').iterate()) {
+              insert.run(row.key!, row.data!)
+            }
+            targetDb.exec('COMMIT')
+          } catch (error) {
+            targetDb.exec('ROLLBACK')
+            throw error
+          }
+        } finally {
+          targetDb.close()
+        }
+      } finally {
+        sourceDb.close()
+      }
+    }
+  }
+  return { storeDir, cacheDir: join(bundledStore, 'cache'), offline: true }
 }
 
 export function isResolvableProfileBundle(profileDir: string, packageName: string, extraDirs: readonly string[] = []): boolean {

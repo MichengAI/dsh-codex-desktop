@@ -3,10 +3,20 @@ import { existsSync } from 'node:fs'
 import { readFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 import test from 'node:test'
 
 import { OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, SUITE_PACKAGE, officialDshVersionOverrides } from '../src/bundled-plugins.js'
 import { applyPendingProfileUpdates, buildSeedPluginArgs, ensureAutoInstallPeersEnabled, isOfficialRuntimeLaunchable, missingOfficialLaunchPeers, officialRuntimeInstallArgs, planBundledPluginSeed, finalizeProfileBundlesAfterInstall, pruneMissingProfileBundles, resolvePnpmStoreDir, seedBundledPlugins, shouldUsePackagedStore, stripOfficialProfileDependencies, writeOfficialRuntimeManifest } from '../src/plugin-seed.js'
+
+async function createBundledStore(store: string): Promise<void> {
+  await mkdir(join(store, 'v11', 'files'), { recursive: true })
+  await mkdir(join(store, 'cache'), { recursive: true })
+  const db = new DatabaseSync(join(store, 'v11', 'index.db'))
+  db.exec('CREATE TABLE package_index (key TEXT PRIMARY KEY, data BLOB NOT NULL) WITHOUT ROWID')
+  db.prepare('INSERT INTO package_index VALUES (?, ?)').run('bundled', Buffer.from('bundled'))
+  db.close()
+}
 
 const catalog = [
   { packageName: '@michengai/dsh-codex-ui', version: '0.2.58' },
@@ -18,7 +28,6 @@ test('已安装套件时拆成单独插件，便于各自更新', () => {
     catalog,
     declaredPackages: [SUITE_PACKAGE],
     installedPackages: [SUITE_PACKAGE],
-    storeExists: true,
   })
   assert.deepEqual(plan, { action: 'replace-suite', packages: [...catalog] })
 })
@@ -28,7 +37,6 @@ test('官方运行时不会写进 Web profile 补种计划', () => {
     catalog: [OFFICIAL_RUNTIME, ...catalog],
     declaredPackages: [],
     installedPackages: [],
-    storeExists: true,
   })
   assert.deepEqual(plan, { action: 'add', packages: [...catalog] })
 })
@@ -38,19 +46,17 @@ test('目录插件都已在 profile 中时跳过补种', () => {
     catalog,
     declaredPackages: catalog.map(item => item.packageName),
     installedPackages: catalog.map(item => item.packageName),
-    storeExists: true,
   })
   assert.deepEqual(plan, { action: 'skip', reason: 'already-installed' })
 })
 
-test('缺少离线仓库时跳过，不阻断桌面启动', () => {
+test('安装计划不依赖离线仓库，允许在线安装配套依赖', () => {
   const plan = planBundledPluginSeed({
     catalog,
     declaredPackages: [],
     installedPackages: [],
-    storeExists: false,
   })
-  assert.deepEqual(plan, { action: 'skip', reason: 'missing-store' })
+  assert.deepEqual(plan, { action: 'add', packages: [...catalog] })
 })
 
 test('只补种缺失插件，并走 profile 内的 pnpm add', () => {
@@ -58,7 +64,6 @@ test('只补种缺失插件，并走 profile 内的 pnpm add', () => {
     catalog,
     declaredPackages: ['@michengai/dsh-codex-ui'],
     installedPackages: ['@michengai/dsh-codex-ui'],
-    storeExists: true,
   })
   assert.deepEqual(plan, {
     action: 'add',
@@ -84,7 +89,29 @@ test('node_modules 已有插件但未写入 dependencies 时仍要补进 depende
     catalog,
     declaredPackages: [],
     installedPackages: ['@michengai/dsh-codex-ui', '@michengai/dsh-im-connect'],
-    storeExists: true,
+  })
+  assert.deepEqual(plan, { action: 'add', packages: [...catalog] })
+})
+
+test('桌面升级将已安装的旧内置插件提升到发布基线，保留更高版本', () => {
+  const plan = planBundledPluginSeed({
+    catalog,
+    declaredPackages: catalog.map(item => item.packageName),
+    installedPackages: catalog.map(item => item.packageName),
+    installedVersions: [
+      { packageName: catalog[0].packageName, version: '0.2.57' },
+      { packageName: catalog[1].packageName, version: '0.1.11' },
+    ],
+  })
+  assert.deepEqual(plan, { action: 'add', packages: [catalog[0]] })
+})
+
+test('安装声明存在但插件文件缺失时仍按发布基线修复', () => {
+  const plan = planBundledPluginSeed({
+    catalog,
+    declaredPackages: catalog.map(item => item.packageName),
+    installedPackages: [],
+    installedVersions: [],
   })
   assert.deepEqual(plan, { action: 'add', packages: [...catalog] })
 })
@@ -94,7 +121,7 @@ test('旧 profile 仅在 bundles 登记的内置插件不能被跳过后清理�
   try {
     const profile = join(root, 'profile')
     const store = join(root, 'store')
-    await mkdir(store)
+    await createBundledStore(store)
     await mkdir(profile)
     const manifest = { dependencies: {}, dsh: { profile: { bundles: catalog.map(plugin => plugin.packageName) } } }
     await writeFile(join(profile, 'package.json'), JSON.stringify(manifest), 'utf8')
@@ -127,7 +154,7 @@ test('seedBundledPlugins 只调用一次 pnpm add，且写入用户 profile', as
   try {
     const store = join(root, 'store')
     const profile = join(root, 'profile')
-    await mkdir(store)
+    await createBundledStore(store)
     await mkdir(profile)
     const calls: string[][] = []
     const result = await seedBundledPlugins({
@@ -176,7 +203,7 @@ test('替换旧套件时先安装子插件，安装失败不会先卸载套件',
   try {
     const store = join(root, 'store')
     const profile = join(root, 'profile')
-    await mkdir(store)
+    await createBundledStore(store)
     await mkdir(profile)
     await writeFile(join(profile, 'package.json'), JSON.stringify({ dependencies: { [SUITE_PACKAGE]: '1.0.0' } }), 'utf8')
     const calls: string[][] = []
@@ -215,7 +242,7 @@ test('官方运行时已装但缺少启动 peer 时会补齐', async () => {
     const store = join(root, 'store')
     const profile = join(root, 'profile')
     const runtime = join(root, 'runtime')
-    await mkdir(store)
+    await createBundledStore(store)
     await mkdir(profile)
     await mkdir(join(runtime, 'node_modules', '@deepseek-ai', 'dsh', 'lib'), { recursive: true })
     await writeFile(join(runtime, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'), '', 'utf8')
@@ -321,6 +348,7 @@ test('启动前会按 pending 清单升级社区插件，不碰官方包', async
       nodeExecutable: 'node',
       profileDir: profile,
       pluginStoreDir: join(root, 'store'),
+      catalog,
       runner: async args => { calls.push([...args]) },
     })
     assert.deepEqual(updated, ['@michengai/dsh-codex-ui'])
@@ -338,7 +366,7 @@ test('复制预装官方运行时成功后不再现场 pnpm add', async () => {
     const profile = join(root, 'profile')
     const runtime = join(root, 'runtime')
     const prebuilt = join(root, 'prebuilt')
-    await mkdir(store)
+    await createBundledStore(store)
     await mkdir(profile)
     await mkdir(join(prebuilt, 'node_modules', '@deepseek-ai', 'dsh', 'lib'), { recursive: true })
     await writeFile(join(prebuilt, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'), '', 'utf8')
@@ -388,6 +416,49 @@ test('启动前会摘掉磁盘上已经不存在的社区 bundle', async () => {
   }
 })
 
+test('旧用户升级按配套版本安装，重复启动不重装且旧 pending 不降级', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-upgrade-baseline-'))
+  try {
+    const plugin = { packageName: '@michengai/dsh-automation', version: '0.1.38' }
+    const profile = join(root, 'profile')
+    const packageDir = join(profile, 'node_modules', plugin.packageName)
+    await mkdir(packageDir, { recursive: true })
+    const manifest = {
+      dependencies: { [plugin.packageName]: '0.1.35' },
+      dsh: { profile: { bundles: [plugin.packageName] } },
+    }
+    await writeFile(join(profile, 'package.json'), JSON.stringify(manifest), 'utf8')
+    const patch = '# 用户自定义配置\n[]\n'
+    await writeFile(join(profile, 'cordis.patch.yml'), patch, 'utf8')
+    const installed = { name: plugin.packageName, version: '0.1.35', dsh: { bundle: { patch: './cordis.patch.yml' } } }
+    await writeFile(join(packageDir, 'package.json'), JSON.stringify(installed), 'utf8')
+    await writeFile(join(packageDir, 'cordis.patch.yml'), '[]\n', 'utf8')
+    await writeFile(join(profile, '.dsh-pending-updates.json'), JSON.stringify({ packages: [{ ...plugin, version: '0.1.36' }] }), 'utf8')
+    const calls: string[][] = []
+    const options = {
+      nodeExecutable: 'node', profileDir: profile, pluginStoreDir: join(root, 'store'), catalog: [plugin],
+      runner: async (args: readonly string[]) => {
+        calls.push([...args])
+        assert.ok(args.includes(`${plugin.packageName}@0.1.38`))
+        assert.ok(args.includes('--offline'), '已有用户升级必须使用随包资源离线安装')
+        manifest.dependencies[plugin.packageName] = plugin.version
+        installed.version = plugin.version
+        await writeFile(join(profile, 'package.json'), JSON.stringify(manifest), 'utf8')
+        await writeFile(join(packageDir, 'package.json'), JSON.stringify(installed), 'utf8')
+      },
+    }
+    await createBundledStore(options.pluginStoreDir)
+    assert.deepEqual((await seedBundledPlugins(options)).seeded, [plugin.packageName])
+    assert.deepEqual(await applyPendingProfileUpdates(options), [])
+    assert.deepEqual((await seedBundledPlugins(options)).seeded, [])
+    assert.equal(calls.length, 1)
+    assert.equal(await readFile(join(profile, 'cordis.patch.yml'), 'utf8'), patch)
+    assert.deepEqual(JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')).dsh, manifest.dsh)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('pnpm 11 的 JSON 格式 modules 状态仍沿用原有 store', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-store-json-'))
   try {
@@ -400,26 +471,59 @@ test('pnpm 11 的 JSON 格式 modules 状态仍沿用原有 store', async () => 
   }
 })
 
-test('旧 profile 离线补装缺缓存时在线重试也必须沿用原 store', async () => {
+test('旧 profile 优先使用随包资源，失败时联网兜底仍沿用原 store', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-seed-store-retry-'))
   try {
     const profile = join(root, 'profile')
     const originalStore = join(root, 'original-store', 'v11')
     const bundledStore = join(root, 'bundled-store')
     await mkdir(join(profile, 'node_modules'), { recursive: true })
-    await mkdir(bundledStore)
+    await createBundledStore(bundledStore)
+    await writeFile(join(bundledStore, 'v11', 'files', 'packaged-content'), '随包依赖', 'utf8')
+    await mkdir(originalStore, { recursive: true })
+    await writeFile(join(originalStore, 'user-content'), '用户已有依赖', 'utf8')
+    const db = new DatabaseSync(join(originalStore, 'index.db'))
+    db.exec('CREATE TABLE package_index (key TEXT PRIMARY KEY, data BLOB NOT NULL) WITHOUT ROWID')
+    db.prepare('INSERT INTO package_index VALUES (?, ?)').run('user', Buffer.from('user'))
+    db.close()
     await writeFile(join(profile, 'node_modules', '.modules.yaml'), JSON.stringify({ storeDir: originalStore }), 'utf8')
     let attempts = 0
     await seedBundledPlugins({
       nodeExecutable: 'node', profileDir: profile, pluginStoreDir: bundledStore, catalog,
       runner: async args => {
         attempts++
-        if (args.includes('--offline')) throw new Error('ERR_PNPM_NO_OFFLINE_META')
-        assert.ok(args.includes(`--store-dir=${originalStore}`), '在线重试丢弃原 store 会导致 ERR_PNPM_UNEXPECTED_STORE')
-        assert.equal(args.some(arg => arg.startsWith('--cache-dir=')), false)
+        assert.ok(args.includes(`--store-dir=${originalStore}`))
+        assert.equal(await readFile(join(originalStore, 'files', 'packaged-content'), 'utf8'), '随包依赖')
+        assert.equal(await readFile(join(originalStore, 'user-content'), 'utf8'), '用户已有依赖')
+        if (attempts === 1) {
+          assert.ok(args.includes('--offline'))
+          assert.ok(args.includes(`--cache-dir=${join(bundledStore, 'cache')}`))
+          throw new Error('ERR_PNPM_NO_OFFLINE_META')
+        }
+        assert.ok(!args.includes('--offline'))
       },
     })
     assert.equal(attempts, 2)
+    const merged = new DatabaseSync(join(originalStore, 'index.db'), { readOnly: true })
+    assert.deepEqual(merged.prepare('SELECT key FROM package_index ORDER BY key').all().map(row => row.key), ['bundled', 'user'])
+    merged.close()
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('随包仓库缺失或缺少版本元数据时不运行安装命令', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-incomplete-store-'))
+  try {
+    let calls = 0
+    const options = {
+      nodeExecutable: 'node', profileDir: join(root, 'profile'), pluginStoreDir: join(root, 'store'), catalog,
+      runner: async () => { calls++ },
+    }
+    await assert.rejects(seedBundledPlugins(options), /随包插件资源不完整/)
+    await mkdir(join(options.pluginStoreDir, 'v11'), { recursive: true })
+    await assert.rejects(seedBundledPlugins(options), /缺少 cache/)
+    assert.equal(calls, 0)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -536,7 +640,7 @@ test('启动补种 pnpm 超时后会终止并返回明确错误', async () => {
     const store = join(root, 'store')
     const profile = join(root, 'profile')
     const pnpmEntry = join(root, 'hanging-pnpm.cjs')
-    await mkdir(store)
+    await createBundledStore(store)
     await mkdir(profile)
     await writeFile(pnpmEntry, 'setInterval(() => undefined, 1000)\n', 'utf8')
     await assert.rejects(seedBundledPlugins({
