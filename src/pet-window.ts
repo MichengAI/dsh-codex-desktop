@@ -115,9 +115,11 @@ export function installPetWindow(options: { source(): WebContents | undefined; r
       void contents.executeJavaScript(`(${installPetSourceAdapter.toString()})()`).catch(error => { if (!disposed && contents === options.source()) { close(); release(); console.warn('[dsh-pet] 注入适配器失败', error) } })
     }
     const reset = () => { if (contents === sourceOwner || contents === options.source()) { sourceOwner = undefined; state = null; close() } }
-    const cleanup = () => { contents.removeListener('did-finish-load', inject); contents.removeListener('did-start-loading', reset); contents.removeListener('render-process-gone', reset); contents.removeListener('destroyed', destroyed); watchers.delete(contents) }
+    // 页内路由与子框架加载不会卸载插件，保留原生窗口及展示接管。
+    const navigation = (event: Electron.Event<Electron.WebContentsDidStartNavigationEventParams>) => { if (event.isMainFrame && !event.isSameDocument) reset() }
+    const cleanup = () => { contents.removeListener('did-finish-load', inject); contents.removeListener('did-start-navigation', navigation); contents.removeListener('render-process-gone', reset); contents.removeListener('destroyed', destroyed); watchers.delete(contents) }
     const destroyed = () => { reset(); cleanup() }
-    contents.on('did-finish-load', inject); contents.on('did-start-loading', reset); contents.on('render-process-gone', reset); contents.on('destroyed', destroyed)
+    contents.on('did-finish-load', inject); contents.on('did-start-navigation', navigation); contents.on('render-process-gone', reset); contents.on('destroyed', destroyed)
     watchers.set(contents, cleanup)
     if (!contents.isLoading()) inject()
   }

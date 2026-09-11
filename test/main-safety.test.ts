@@ -237,7 +237,7 @@ test('DSH 主题变化同步到桌面外壳、原生菜单和辅助窗口', asyn
   const shortcuts = await readFile(new URL('../../assets/shortcuts.html', import.meta.url), 'utf8')
   const about = await readFile(new URL('../../assets/about.html', import.meta.url), 'utf8')
   const startup = await readFile(new URL('../../assets/startup.html', import.meta.url), 'utf8')
-  assert.doesNotMatch(bridge, /inject = \[[^\]]*'theme'/)
+  assert.match(bridge, /inject = \[[^\]]*'theme'/)
   assert.match(dshPreload, /reportDocumentTheme/)
   assert.match(dshPreload, /attributeFilter: \['style'\]/)
   assert.match(main, /nativeTheme\.themeSource = preference/)

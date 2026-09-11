@@ -23,6 +23,8 @@ interface ClientContext {
     await(): Promise<void>
     entries(): Iterable<{ options: { name: string }, fiber?: { state: number } }>
   }
+  on(event: 'theme/change', listener: () => void): () => void
+  theme: { getTheme(): { active: { colorScheme: 'light' | 'dark' }; preference: string } }
   layout: { toggleSidebar(): void }
   locale: {
     getSnapshot(): { active: string }
@@ -72,7 +74,7 @@ interface DesktopShellBridge {
 }
 
 export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void; inject: string[] } {
-    const inject = ['sessions', 'workspaces', 'layout', 'locale']
+    const inject = ['sessions', 'workspaces', 'layout', 'locale', 'theme']
 
     const visibleSessionRows = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>('.dcu-wb-session[role="treeitem"][aria-selected]')]
       .filter(element => element.offsetParent !== null)
@@ -324,6 +326,13 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         const stopList = ctx.sessions.list.subscribe(trackCurrent)
         const reportLocale = (): void => { bridge.reportLocale(ctx.locale.getSnapshot().active) }
         const stopLocale = ctx.locale.subscribe(reportLocale)
+        // 同色偏好变化也必须上报，否则从固定主题切回 system 时原生材质会锁在旧主题。
+        const reportTheme = (): void => {
+          const { active, preference } = ctx.theme.getTheme()
+          bridge.reportTheme({ colorScheme: active.colorScheme,
+            preference: preference === 'system' ? 'system' : active.colorScheme })
+        }
+        const stopTheme = ctx.on('theme/change', reportTheme)
         const bootTimer = setTimeout(() => {
           void reportBoot().catch(error => { console.error('上报插件启动状态失败。', error) })
         }, 0)
@@ -343,7 +352,8 @@ export function desktopBridgeClientFactory(): { apply(ctx: ClientContext): void;
         observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected', 'class'] })
         trackCurrent()
         reportLocale()
-        return () => { clearTimeout(bootTimer); clearInterval(unreadTimer); stopAction(); stopOpenSession(); stopNotificationReply(); stopList(); stopLocale(); window.removeEventListener('storage', onUnreadStorage); window.removeEventListener('focus', onWindowFocus); observer.disconnect() }
+        reportTheme()
+        return () => { clearTimeout(bootTimer); clearInterval(unreadTimer); stopAction(); stopOpenSession(); stopNotificationReply(); stopList(); stopLocale(); stopTheme(); window.removeEventListener('storage', onUnreadStorage); window.removeEventListener('focus', onWindowFocus); observer.disconnect() }
       }, 'desktop-shell bridge')
     }
 

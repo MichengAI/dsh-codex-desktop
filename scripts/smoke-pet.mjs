@@ -29,6 +29,15 @@ try {
   const read=code=>source.webContents.executeJavaScript(code)
   const pet=()=>BrowserWindow.getAllWindows().find(value=>value!==source)
   await until(()=>read('leases===1'),'原生窗口接管')
+  const initialPet = pet()
+  const routed = new Promise(resolve => source.webContents.once('did-navigate-in-page', resolve))
+  await read(`location.hash='/sessions/initial';void 0`); await routed
+  assert.equal(initialPet.isDestroyed(), false, '首次页内路由不能销毁宠物窗口')
+  assert.equal(pet(), initialPet, '页内导航应保留原生宠物窗口')
+  assert.equal(await read('leases'), 1, '页内导航应保留展示接管')
+  assert.equal(initialPet.isVisible(), true, '首次启动的宠物窗口应可见')
+  await read(`new Promise(resolve=>{const frame=document.createElement('iframe');frame.onload=()=>resolve();frame.src='/embedded';document.body.append(frame)})`)
+  assert.equal(initialPet.isDestroyed(), false, '子框架加载不能销毁宠物窗口')
   await until(()=>pet().isAlwaysOnTop(),'原生置顶');assert.equal(pet().webContents.getURL().startsWith('data:text/html'),true)
   assert.equal(await pet().webContents.executeJavaScript('document.querySelector(".link strong").textContent'),'主会话')
   assert.equal(await pet().webContents.executeJavaScript('document.querySelector(".link span").textContent'),'Working')
@@ -51,7 +60,8 @@ try {
   await read('publish()');await until(()=>read('leases===1'),'崩溃后重新接管')
   await read('delete window.dshPet;dispatchEvent(new Event("dsh-pet-disposed"))')
   await until(async()=>await read('leases===0')&&!pet(),'卸载关闭原生窗口')
-  await source.loadURL(source.webContents.getURL());await until(()=>read('leases===1'),'重载接管')
+  const reloaded = new Promise(resolve => source.webContents.once('did-finish-load', resolve))
+  source.webContents.reload(); await reloaded; await until(()=>read('leases===1'),'重载接管')
   await read(`window.originalUpdateConfig=dshPet.updateConfig;dshPet.updateConfig=async()=>{throw Error('expected hide failure')};void 0`)
   await pet().webContents.executeJavaScript(`petWindow.action('hide')`)
   await until(async()=>await read('snapshot.config.visible&&leases===0')&&!pet(),'隐藏写入失败也恢复页内')
@@ -60,7 +70,7 @@ try {
   await pet().webContents.executeJavaScript(`petWindow.action('hide')`)
   await until(async()=>await read('!snapshot.config.visible&&leases===0')&&!pet(),'隐藏同步')
   dispose();dispose=undefined
-  console.log('Desktop pet smoke passed: native rendering, image CSP, notifications, commands, rejection, unload, reload, hide and lease recovery')
+  console.log('Desktop pet smoke passed: initial visibility, in-page and subframe navigation, native rendering, image CSP, notifications, commands, rejection, unload, reload, hide and lease recovery')
 } catch(error){console.error(error);process.exitCode=1}
 finally {dispose?.();for(const window of BrowserWindow.getAllWindows())window.destroy();server.close();app.exit(process.exitCode??0)}
 }

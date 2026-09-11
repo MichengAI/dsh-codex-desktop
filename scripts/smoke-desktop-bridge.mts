@@ -145,16 +145,16 @@ export function apply(ctx) {
             const page = await browser.newPage({ viewport })
             const errors: string[] = []
             page.on('pageerror', (error: Error) => { errors.push(error.message) })
-            await page.addInitScript(`window.bridgeReports = { boot: [], badges: [], locales: [] };
+            await page.addInitScript(`window.bridgeReports = { boot: [], badges: [], locales: [], themes: [] };
               window.dshDesktopShell = {
                 onAction: () => () => {}, onOpenSession: () => () => {}, onNotificationReply: () => () => {},
                 reportBoot: report => window.bridgeReports.boot.push(report),
                 reportNotification: report => window.bridgeReports.badges.push(report),
                 reportLocale: locale => window.bridgeReports.locales.push(locale),
-                reportState() {}, reportTheme() {},
+                reportState() {}, reportTheme: value => window.bridgeReports.themes.push(value),
               };`)
             await page.goto(server.url)
-            await page.waitForFunction('window.bridgeReports.boot.length > 0 && window.bridgeReports.locales.length > 0 && window.bridgeReports.badges.some(event => event.type === "badge")', undefined, { timeout: 20_000 })
+            await page.waitForFunction('window.bridgeReports.themes.length > 0 && window.bridgeReports.boot.length > 0 && window.bridgeReports.locales.length > 0 && window.bridgeReports.badges.some(event => event.type === "badge")', undefined, { timeout: 20_000 })
             const reports = await page.evaluate('window.bridgeReports')
             assert.equal(reports.boot.at(-1).status, 'healthy', JSON.stringify(reports.boot))
             if (allBundled) {
@@ -167,13 +167,20 @@ export function apply(ctx) {
               await page.getByTestId('billing-trigger').click()
               await page.getByTestId('billing-dashboard').waitFor({ state: 'visible' })
             }
+            for (const colorScheme of ['dark', 'light'] as const) {
+              await page.emulateMedia({ colorScheme })
+              await page.waitForFunction((scheme: string) => {
+                const report = (window as any).bridgeReports.themes.at(-1)
+                return report?.preference === 'system' && report.colorScheme === scheme
+              }, colorScheme)
+            }
             assert.deepEqual(errors, [])
             if (process.env.DSH_BRIDGE_SMOKE_OUTPUT) {
               await mkdir(process.env.DSH_BRIDGE_SMOKE_OUTPUT, { recursive: true })
               await page.screenshot({ path: join(process.env.DSH_BRIDGE_SMOKE_OUTPUT, `desktop-bridge-${viewport.width}.png`), animations: 'disabled' })
             }
             await page.close()
-            console.log(`browser ${viewport.width}x${viewport.height}: 真实前端加载、启动报告、语言和角标 IPC 通过`)
+            console.log(`browser ${viewport.width}x${viewport.height}: 真实前端加载、启动报告、语言、主题跟随系统和角标 IPC 通过`)
           }
         }
       } else {

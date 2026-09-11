@@ -4,6 +4,12 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.53 — 2026-09-11
+
+- Fix dark title bar and sidebar backgrounds in Windows light mode; Mica now follows light, dark, and system appearance preferences correctly.
+- Fix the desktop pet disappearing when first entering a session or navigating within the page, while retaining notification handling and reload recovery.
+- Retain the DSH `0.1.5-rc.2` and bundled plugin upgrades. This version uses the Session V3 format. Back up important sessions before upgrading; sessions written by the new version cannot be read directly by older versions.
+
 ## 1.0.52 — 2026-09-11
 
 - Upgrade bundled DSH to `0.1.5-rc.2` and update 14 bundled plugins; the plugin market remains on the latest `1.45.1`.
@@ -39,15 +45,3 @@ Release tag: [`v1.0.50`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.
 - Use the pnpm 11 offline environment setting in smoke tests and verify plugin files, dependency declarations, and bundle activation together.
 
 Release tag: [`v1.0.49`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.49).
-
-## 1.0.48 — 2026-09-07
-
-- Inject the desktop bridge from the application's private directory when Desktop starts DSH. Standalone `dsh web` now uses Web plugin management, and legacy bridge configuration is migrated out of the shared profile with a backup.
-- Validate Desktop environment and pnpm availability before exposing bridge services, and keep read-only pnpm queries from modifying the profile.
-- Synchronize the Windows taskbar badge with Codex UI's unread records so reading a task clears the same state shown in the task list.
-- Respect the updater's availability decision so older or currently ineligible releases are not offered as new updates or downloaded automatically.
-- Include pnpm package metadata in the offline bundle so first launch works with an empty user cache. Preserve the initial offline installation error and timeout output for diagnosis.
-- Bundle Usage Billing 1.0.31, BTW 0.1.3, and Simplify 0.1.2, bringing the bundled plugin catalog to 13 entries.
-- Update Codex UI to 0.2.106, Automation to 0.1.32, `dsh-context` to 0.44.0, and MCP Connector to 0.2.37. Other bundled plugin versions remain unchanged.
-
-Release tag: [`v1.0.48`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.48).

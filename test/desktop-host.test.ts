@@ -332,6 +332,7 @@ test('桌面桥接清单同时声明 host 与 client 入口', async () => {
     assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml')
     assert.equal(manifest.dsh?.client?.platform, 'web')
     assert.equal(manifest.dsh?.client?.inject?.includes('@deepseek-ai/dsh-client-locale'), true)
+    assert.equal(manifest.dsh?.client?.inject?.includes('@deepseek-ai/dsh-client-ui-theme'), true)
     assert.match(await readFile(join(profile, 'desktop-bridge-client.js'), 'utf8'), /window\.__ModuleLoader__\.load/)
     assert.equal(await readFile(join(profile, 'cordis.patch.yml'), 'utf8'), '[]\n')
     const profileManifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }

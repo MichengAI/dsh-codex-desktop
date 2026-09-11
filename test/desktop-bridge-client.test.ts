@@ -100,6 +100,8 @@ test('通知回复不把会话级 conversation 声明为根上下文注入', () 
 function clientContext(workspaces: Record<string, unknown>): Record<string, unknown> {
   return {
     effect(callback: () => void): void { callback() },
+    on(): () => void { return () => {} },
+    theme: { getTheme: () => ({ active: { colorScheme: 'light' }, preference: 'system' }) },
     loader: { await: async () => undefined, entries: () => [] },
     layout: { toggleSidebar(): void {} },
     locale: { getSnapshot: () => ({ active: 'zh' }), subscribe: () => () => {} },
@@ -131,12 +133,39 @@ test('桌面外壳跟随 DSH locale 快照和后续切换', () => {
   assert.deepEqual(client.locales, ['zh', 'en'])
 })
 
-test('桌面桥不注入 theme；外壳主题由 DSH preload 的 document 样式上报', () => {
+test('主题桥同步偏好，覆盖同色切换到 system 及后续系统变化', () => {
   const client = loadClient()
-  client.apply(clientContext({ pickDirectory: async () => null, create: async () => ({}), startSession(): void {} }))
-  assert.equal(client.inject.includes('theme'), false)
-  assert.deepEqual(client.locales, ['zh'])
-  assert.deepEqual(client.themes, [])
+  let snapshot = { active: { colorScheme: 'light' }, preference: 'light' }
+  let listener: (() => void) | undefined
+  let stopped = false
+  const disposers: Array<() => void> = []
+  client.apply({
+    ...clientContext({}),
+    effect(callback: () => void | (() => void)): void { const dispose = callback(); if (dispose) disposers.push(dispose) },
+    theme: { getTheme: () => snapshot },
+    on(event: string, callback: () => void): () => void {
+      assert.equal(event, 'theme/change')
+      listener = callback
+      return () => { stopped = true }
+    },
+  })
+  assert.equal(client.inject.includes('theme'), true)
+  assert.equal(JSON.stringify(client.themes), JSON.stringify([{ colorScheme: 'light', preference: 'light' }]))
+  assert.ok(listener)
+  snapshot = { active: { colorScheme: 'light' }, preference: 'system' }
+  listener()
+  snapshot = { active: { colorScheme: 'dark' }, preference: 'system' }
+  listener()
+  snapshot = { active: { colorScheme: 'dark' }, preference: 'dark' }
+  listener()
+  assert.equal(JSON.stringify(client.themes), JSON.stringify([
+    { colorScheme: 'light', preference: 'light' },
+    { colorScheme: 'light', preference: 'system' },
+    { colorScheme: 'dark', preference: 'system' },
+    { colorScheme: 'dark', preference: 'dark' },
+  ]))
+  for (const dispose of disposers) dispose()
+  assert.equal(stopped, true)
 })
 
 test('客户端 Loader 未激活的插件会以结构化启动报告上报', async () => {

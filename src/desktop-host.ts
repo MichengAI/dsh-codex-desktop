@@ -300,6 +300,7 @@ export function prepareDesktopBridge(destDir: string, sourceDir: string): string
           '@deepseek-ai/dsh-client-runtime',
           '@deepseek-ai/dsh-client-ui-conversation',
           '@deepseek-ai/dsh-client-ui-layout',
+          '@deepseek-ai/dsh-client-ui-theme',
           '@deepseek-ai/dsh-client-ui-workspace',
         ],
         platform: 'web',
