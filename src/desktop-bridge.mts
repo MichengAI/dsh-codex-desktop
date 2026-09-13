@@ -1,4 +1,5 @@
 import { homedir } from 'node:os'
+import { setTimeout as delay } from 'node:timers/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -12,9 +13,16 @@ interface PuaSettings {
 }
 
 /** 仅初始化缺少用户选择的全局开关；由官方设置服务处理路径、锁和持久化。 */
-export async function initializePuaDefault(settings: PuaSettings): Promise<void> {
-  const descriptor = settings.describe().find(item => item.ns === 'michengai-pua')
-  if (!descriptor || Object.hasOwn(descriptor.user ?? {}, 'alwaysOn')) return
+export async function initializePuaDefault(settings: PuaSettings, registrationTimeoutMs = 5_000): Promise<void> {
+  // PUA 服务可先于其 settings 注册 effect 就绪，不能将此短暂状态视为已完成。
+  const deadline = Date.now() + registrationTimeoutMs
+  let descriptor = settings.describe().find(item => item.ns === 'michengai-pua')
+  while (!descriptor) {
+    if (Date.now() >= deadline) throw new Error('PUA 全局默认设置初始化失败：等待设置项注册超时。')
+    await delay(20)
+    descriptor = settings.describe().find(item => item.ns === 'michengai-pua')
+  }
+  if (Object.hasOwn(descriptor.user ?? {}, 'alwaysOn')) return
   await settings.update('michengai-pua', { alwaysOn: false }, descriptor.revision)
 }
 

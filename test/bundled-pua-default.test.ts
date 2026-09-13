@@ -11,14 +11,14 @@ test('首次配置 PUA 时通过设置服务关闭全局开关并携带修订号
   assert.deepEqual(writes, [['michengai-pua', { alwaysOn: false }, 3]])
 })
 
-test('保留用户已保存的 PUA 开关，不修改未加载的 PUA', async () => {
+test('保留用户已保存的 PUA 开关', async () => {
   for (const user of [{ alwaysOn: true }, { alwaysOn: false }]) {
     await initializePuaDefault({
       describe: () => [{ ns: 'michengai-pua', revision: 1, user }],
       update: async () => { assert.fail('不应覆盖用户选择') },
     })
   }
-  await initializePuaDefault({ describe: () => [], update: async () => { assert.fail('未加载时不写入') } })
+  await assert.rejects(initializePuaDefault({ describe: () => [], update: async () => { assert.fail('未注册时不写入') } }, 0), /注册超时/)
 })
 
 test('设置冲突或持久化失败向上传递，不绕过设置服务改写用户文件', async () => {
@@ -26,4 +26,17 @@ test('设置冲突或持久化失败向上传递，不绕过设置服务改写�
     describe: () => [{ ns: 'michengai-pua', revision: 2 }],
     update: async () => { throw new Error('conflict') },
   }), /conflict/)
+})
+
+test('等待 PUA 设置延迟注册后仍初始化为全局关闭', async () => {
+  let registered = false
+  const writes: unknown[][] = []
+  const timer = setTimeout(() => { registered = true }, 30)
+  try {
+    await initializePuaDefault({
+      describe: () => registered ? [{ ns: 'michengai-pua', revision: 0 }] : [],
+      update: async (...args) => { writes.push(args) },
+    })
+    assert.deepEqual(writes, [['michengai-pua', { alwaysOn: false }, 0]])
+  } finally { clearTimeout(timer) }
 })

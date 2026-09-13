@@ -4,7 +4,7 @@
 
 The five most recent published versions are listed below.
 
-## 1.0.57 — 2026-09-14
+## 1.0.58 — 2026-09-14
 
 - Bundle Code Review and PUA for offline installation. PUA starts with its global switch off when no saved choice exists; enable it in Settings → Plugins → PUA Configuration. Existing saved choices are preserved.
 
