@@ -205,6 +205,10 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 Windows 打包任务在上传制品前执行 `pnpm smoke:upgrade <旧版 exe> <新版 exe>`。这项回归固定使用 Desktop 1.0.51（归档插件 0.1.34）和当前构建的 Windows x64 可执行文件，两者均须保留完整 resources 目录。脚本在隔离 Profile 中依次离线启动两个版本，检查插件版本、原仓库与用户配置保留情况。因为需要两份应用产物，它不属于默认 `pnpm test`。
 
+### 内置 Code Review 与 PUA
+
+Code Review 和 PUA 已加入内置插件清单。PUA 在未保存过开关选择时默认全局关闭，可在“设置 → 插件 → PUA 配置”中开启；后续启动保留已保存的选择。插件本身仍加载，以便访问设置。
+
 ### 内置宠物集成
 
 内置 `@michengai/dsh-codex-pet` 0.1.2，随离线资源分发并在首次启动时自动安装；在宠物设置中选择宠物并开启显示，即可启用原生桌面宠物。插件提供 `window.dshPet` v1 接口。Desktop 订阅状态、通过接口转发会话操作，并负责渲染、拖拽、位置存储、鼠标穿透及窗口恢复。宠物插件仍可在浏览器独立使用，不依赖 Desktop；本适配器不支持仅提供旧 `dshDesktopPet` 桥接的版本。

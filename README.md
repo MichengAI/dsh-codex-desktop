@@ -205,6 +205,10 @@ The desktop app also integrates [DSH Context](https://github.com/bowenliang123/d
 
 The Windows packaging job also runs `pnpm smoke:upgrade <old-exe> <new-exe>` before uploading artifacts. This regression check requires the Windows x64 executable from Desktop 1.0.51 (archive plugin 0.1.34) and the current build executable, each with its complete resources directory. It launches both versions offline in an isolated profile and checks plugin versions, the original store, and preserved user configuration. It is separate from `pnpm test` because it requires both packaged applications.
 
+### Bundled Code Review and PUA
+
+Code Review and PUA are included in the bundled plugin catalog. PUA defaults to globally off when no saved choice exists. Enable it in Settings → Plugins → PUA Configuration; saved choices are preserved on later launches. The plugin remains loaded so its settings are available.
+
 ### Bundled pet integration
 
 The bundled `@michengai/dsh-codex-pet` 0.1.2 is distributed offline and installed automatically on first launch. Select a pet and enable visibility in pet settings to use the native companion. The plugin exposes `window.dshPet` API version 1. Desktop subscribes to snapshots and forwards conversation actions through that API; Desktop owns rendering, dragging, position storage, click-through and window recovery. The plugin remains usable in a web browser without Desktop. Older plugins exposing only `dshDesktopPet` are not supported by this adapter.

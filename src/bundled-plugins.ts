@@ -26,7 +26,7 @@ export const OFFICIAL_LAUNCH_PEERS: readonly BundledPlugin[] = [
 ]
 /** 随桌面端离线仓库分发的社区插件和插件市场组件。 */
 export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
-  { packageName: '@michengai/dsh-codex-ui', version: '1.1.4' },
+  { packageName: '@michengai/dsh-codex-ui', version: '1.1.5' },
   { packageName: '@michengai/dsh-im-connect', version: '0.1.47' },
   { packageName: '@michengai/dsh-automation', version: '0.1.40' },
   { packageName: '@michengai/dsh-skills-manager', version: '0.1.50' },
@@ -35,6 +35,8 @@ export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
   { packageName: '@michengai/dsh-codex-pet', version: '0.1.5' },
   { packageName: '@michengai/dsh-btw', version: '0.1.7' },
   { packageName: '@michengai/dsh-simplify', version: '0.1.4' },
+  { packageName: '@michengai/dsh-code-review', version: '0.1.0' },
+  { packageName: '@michengai/dsh-pua', version: '0.3.11' },
   { packageName: 'dsh-context', version: '0.51.1' },
   { packageName: 'dsh-better-sidebar', version: '0.19.1' },
   { packageName: 'dsh-mcp-connector', version: '0.2.46' },

@@ -4,6 +4,12 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.57 — 2026-09-14
+
+- Bundle Code Review and PUA for offline installation. PUA starts with its global switch off when no saved choice exists; enable it in Settings → Plugins → PUA Configuration. Existing saved choices are preserved.
+
+- Update bundled Codex UI to 1.1.5 and refresh its offline dependencies.
+
 ## 1.0.56 — 2026-09-14
 
 - Update 12 bundled plugins, including Codex UI, IM Connect, automation, skills, archive management, agents, desktop pet, BTW, context, MCP connector, usage billing, and the plugin market, together with their offline dependencies.
@@ -26,17 +32,3 @@ The five most recent published versions are listed below.
 - Upgrade bundled DSH to `0.1.5-rc.2` and update 14 bundled plugins; the plugin market remains on the latest `1.45.1`.
 - Adapt to the new DSH startup entry so the desktop app can launch the workspace correctly.
 - The new DSH uses the Session V3 format. Back up important conversations before upgrading; conversations written by the new version cannot be read directly by older versions.
-
-## 1.0.51 — 2026-09-09
-
-This update brings a desktop pet and a Git commit graph, along with improvements to window appearance and startup reliability.
-
-- **New desktop pet**: Choose a pet in pet settings and turn on visibility to bring it onto your desktop. Drag it into place, view notifications from multiple conversations, and respond to tool approvals and questions directly.
-- **New Git commit graph**: Git Graph is now included, so you can visually explore commit history and branch relationships without installing it separately.
-- **More reliable pet display**: Improve recovery after hiding, closing, or an unexpected exit to reduce cases where the pet disappears. Answers are checked against the current questions and options to help prevent actions on changed requests.
-- **Updated Windows appearance**: Windows 11 22H2 and later support Mica backgrounds that follow the light or dark theme. Older systems continue to use solid backgrounds.
-- **More reliable startup**: Fix page loading failures and HTTP 431 errors that could occur after repeated launches.
-- **Updated bundled plugins**: Update 11 plugins covering the workspace UI, experts, skills, archives, IM assistant, scheduled tasks, context, sidebar, MCP connections, usage statistics, and plugin market. The desktop pet and Git Graph are both included in the installer.
-- **New feature previews**: Add 14 screenshots to the project README showing the home page, conversations, and plugin settings.
-
-Release tag: [v1.0.51](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.51).

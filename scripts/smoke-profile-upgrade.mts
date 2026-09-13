@@ -72,6 +72,8 @@ try {
   await writeFile(patchPath, patch, 'utf8')
   await writeFile(join(profile, 'user-preserved.txt'), 'preserved', 'utf8')
   await boot(newApplication, 'new')
+  const settings = parse(await readFile(join(home, 'settings.yaml'), 'utf8'))
+  assert.equal(settings['michengai-pua']?.alwaysOn, false, '新增内置 PUA 应默认全局关闭')
   for (const plugin of BUNDLED_PLUGINS) {
     const installed = JSON.parse(await readFile(join(profile, 'node_modules', plugin.packageName, 'package.json'), 'utf8'))
     assert.equal(installed.version, plugin.version, plugin.packageName)

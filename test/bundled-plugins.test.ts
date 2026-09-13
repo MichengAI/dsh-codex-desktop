@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { BUNDLED_PLUGINS, OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, compareReleaseVersions, isDeepSeekOfficialPackage, isOfficialDshPackage, officialDshVersionOverrides, officialRuntimeDependencies, officialRuntimePnpmConfig, planOfficialRuntimeTarget, pnpmAllowBuildsManifest, pnpmWorkspaceYaml, SUITE_PACKAGE, bundledPluginNames, seededPackageNames } from '../src/bundled-plugins.js'
 
-test('内置目录包含十四个社区插件和市场组件', () => {
+test('内置目录包含十六个社区插件和市场组件', () => {
   assert.deepEqual(bundledPluginNames(), [
     '@michengai/dsh-codex-ui',
     '@michengai/dsh-im-connect',
@@ -14,13 +14,15 @@ test('内置目录包含十四个社区插件和市场组件', () => {
     '@michengai/dsh-codex-pet',
     '@michengai/dsh-btw',
     '@michengai/dsh-simplify',
+    '@michengai/dsh-code-review',
+    '@michengai/dsh-pua',
     'dsh-context',
     'dsh-better-sidebar',
     'dsh-mcp-connector',
     '@kenz1117/dsh-ui-usage-billing',
     'dshmarket',
   ])
-  assert.equal(BUNDLED_PLUGINS.length, 14)
+  assert.equal(BUNDLED_PLUGINS.length, 16)
   assert.equal(SUITE_PACKAGE, '@michengai/dsh-codex-suite')
 })
 
@@ -42,7 +44,7 @@ test('每个内置插件都钉死精确版本', () => {
   }
   assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.46.1')
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
-    '@michengai/dsh-codex-ui': '1.1.4',
+    '@michengai/dsh-codex-ui': '1.1.5',
     '@michengai/dsh-im-connect': '0.1.47',
     '@michengai/dsh-automation': '0.1.40',
     '@michengai/dsh-skills-manager': '0.1.50',
@@ -51,6 +53,8 @@ test('每个内置插件都钉死精确版本', () => {
     '@michengai/dsh-codex-pet': '0.1.5',
     '@michengai/dsh-btw': '0.1.7',
     '@michengai/dsh-simplify': '0.1.4',
+    '@michengai/dsh-code-review': '0.1.0',
+    '@michengai/dsh-pua': '0.3.11',
     'dsh-context': '0.51.1',
     'dsh-better-sidebar': '0.19.1',
     'dsh-mcp-connector': '0.2.46',
