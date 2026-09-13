@@ -4,6 +4,10 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.56 — 2026-09-14
+
+- 更新 Codex UI、IM Connect、自动化、技能管理、归档管理、智能体、桌面宠物、BTW、上下文、MCP 连接器、用量统计及插件市场，共 12 项内置插件及其离线依赖。
+
 ## 1.0.55 — 2026-09-12
 
 - 桌面升级后自动将旧版内置插件和依赖更新到随包配套版本，保留更高版本、原依赖仓库和用户配置；优先离线安装，失败时联网重试，并明确提示未完成的更新。旧版内置插件不再停留于低于随包基线的版本。
@@ -36,10 +40,3 @@
 - **更新功能预览**：项目首页新增 14 张界面截图，方便了解首页、会话和各插件设置。
 
 发布标签：[v1.0.51](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.51)。
-
-## 1.0.50 — 2026-09-08
-
-- 内置插件更新到 Codex UI 0.2.112、IM Connect 0.1.38、Automation 0.1.34、Skills Manager 0.1.43、Archive Manager 0.1.32、Agency Agents 0.1.34、BTW 0.1.4、`dsh-context` 0.46.0、MCP Connector 0.2.39、Usage Billing 1.0.42 和 `dshmarket` 1.45.0；DSH Better Sidebar 与 Simplify 维持当前最新版本。
-- 任务栏未读数量不再计入子代理会话，同时覆盖 Codex UI 未读记录和备用完成统计；已有未读记录及后续补齐子代理标识的会话也会正确过滤。
-
-发布标签：[`v1.0.50`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.50)。

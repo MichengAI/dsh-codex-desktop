@@ -4,6 +4,10 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.56 — 2026-09-14
+
+- Update 12 bundled plugins, including Codex UI, IM Connect, automation, skills, archive management, agents, desktop pet, BTW, context, MCP connector, usage billing, and the plugin market, together with their offline dependencies.
+
 ## 1.0.55 — 2026-09-12
 
 - Desktop upgrades now bring older bundled plugins and dependencies up to the packaged baseline while preserving newer versions, the original dependency store, and user configuration. Offline installation is preferred, with online retries and clear notices for incomplete updates. Bundled plugins can no longer remain below that baseline.
@@ -36,10 +40,3 @@ This update brings a desktop pet and a Git commit graph, along with improvements
 - **New feature previews**: Add 14 screenshots to the project README showing the home page, conversations, and plugin settings.
 
 Release tag: [v1.0.51](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.51).
-
-## 1.0.50 — 2026-09-08
-
-- Update bundled plugins to Codex UI 0.2.112, IM Connect 0.1.38, Automation 0.1.34, Skills Manager 0.1.43, Archive Manager 0.1.32, Agency Agents 0.1.34, BTW 0.1.4, `dsh-context` 0.46.0, MCP Connector 0.2.39, Usage Billing 1.0.42, and `dshmarket` 1.45.0. DSH Better Sidebar and Simplify remain at their current latest versions.
-- Exclude subagent sessions from taskbar unread counts in both Codex UI unread records and fallback completion tracking, including existing unread entries and sessions whose origin becomes available later.
-
-Release tag: [`v1.0.50`](https://github.com/MichengAI/dsh-codex-desktop/tree/v1.0.50).
