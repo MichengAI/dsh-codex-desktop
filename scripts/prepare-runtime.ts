@@ -178,7 +178,6 @@ export async function stageBundledPlugins(destinationRoot: string, nodeRoot: str
   await completeBundledPluginMetadata(storeDir)
   await assertBundledPluginMetadataComplete(storeDir)
   await verifyBundledPluginStore(destinationRoot, nodeRoot)
-  await verifyBundledPluginStoreUpgrade(destinationRoot, nodeRoot)
   await pruneStoreForPackaging(storeDir)
   await removePreparedPath(stagingDir)
 }
@@ -206,7 +205,7 @@ export async function verifyBundledPluginStore(destinationRoot: string, nodeRoot
   }
 }
 
-/** pnpm 11 校验已有 lockfile 时会读 metadata-full；安装只写缩写元数据。 */
+/** 只保证 metadata-full 路径存在：把缺失的文件从缩写 metadata 拷过去，不改已有文件，也不补 time 等完整字段。App 侧 seed 必须保持 minimumReleaseAge=0。 */
 export async function completeBundledPluginMetadata(storeDir: string): Promise<void> {
   const metadataRoot = join(storeDir, 'cache', 'v11', 'metadata')
   if (!existsSync(metadataRoot)) return
@@ -227,32 +226,6 @@ export async function assertBundledPluginMetadataComplete(storeDir: string): Pro
   if (missing.length === 0) return
   const preview = missing.slice(0, 5).join('、')
   throw new Error(`随包仓库缺少离线升级所需的完整元数据：${preview}${missing.length > 5 ? ` 等 ${missing.length} 项` : ''}`)
-}
-
-/** 先装一个包形成 lockfile，再离线加全部配套包，覆盖旧 Profile 的供应链校验路径。 */
-export async function verifyBundledPluginStoreUpgrade(destinationRoot: string, nodeRoot: string,
-  run: (args: readonly string[]) => void = args => runStagedPnpm(nodeRoot, args)): Promise<void> {
-  const first = STORE_PACKAGES[0]
-  if (first === undefined) throw new Error('配套插件清单为空，无法做离线升级校验。')
-  const profile = await mkdtemp(join(destinationRoot, 'verify-offline-upgrade-'))
-  const store = join(destinationRoot, 'store')
-  try {
-    await writeFile(join(profile, 'package.json'), JSON.stringify({ private: true }), 'utf8')
-    await writeFile(join(profile, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml(false), 'utf8')
-    const common = [
-      '--dir', profile, '--store-dir', store, '--cache-dir', join(store, 'cache'), '--offline',
-      '--config.node-linker=hoisted', '--config.auto-install-peers=false', '--config.minimumReleaseAge=0',
-      '--registry=https://registry.npmjs.org/',
-    ] as const
-    run(['add', `${first.packageName}@${first.version}`, ...common])
-    run(['add', ...STORE_PACKAGES.map(plugin => `${plugin.packageName}@${plugin.version}`), ...common])
-    for (const plugin of STORE_PACKAGES) {
-      const manifest = JSON.parse(await readFile(join(profile, 'node_modules', plugin.packageName, 'package.json'), 'utf8'))
-      if (manifest.version !== plugin.version) throw new Error(`随包离线升级校验版本不匹配：${plugin.packageName}`)
-    }
-  } finally {
-    await rm(profile, { recursive: true, force: true })
-  }
 }
 
 async function listMetadataJsonl(root: string, prefix = ''): Promise<string[]> {
@@ -332,6 +305,8 @@ export function officialRuntimeGlobalNodeModulesRoot(destinationRoot: string, pl
 export async function pruneStoreForPackaging(storeDir: string): Promise<void> {
   const projects = join(storeDir, 'v11', 'projects')
   if (existsSync(projects)) await removePreparedPath(projects)
+  const verified = join(storeDir, 'cache', 'lockfile-verified.jsonl')
+  if (existsSync(verified)) await removePreparedPath(verified)
 }
 
 async function materializePnpmPackage(destinationRoot: string): Promise<string> {

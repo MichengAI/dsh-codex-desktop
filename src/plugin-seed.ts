@@ -452,7 +452,7 @@ async function ensureOfficialLaunchPeers(options: SeedOptions, targetDir: string
   return missing.map((plugin) => plugin.packageName)
 }
 
-export function combinePluginSeedErrors(previous: unknown, current: unknown): Error {
+function combinePluginSeedErrors(previous: unknown, current: unknown): Error {
   const last = current instanceof Error ? current : new Error(String(current))
   if (previous === undefined || previous === null) return last
   const first = previous instanceof Error ? previous.message : String(previous)
@@ -507,6 +507,7 @@ async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
     const args = buildSeedPluginArgs(plan.packages, options.profileDir, storeOptions)
     try {
       await runner(args)
+      previousError = undefined
     } catch (error) {
       if (storeOptions.offline !== true) throw combinePluginSeedErrors(previousError, error)
       console.warn('随包插件离线安装失败，尝试在线安装。', error)
@@ -514,6 +515,7 @@ async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
       storeOptions = onlineOptions
       try {
         await runner(buildSeedPluginArgs(plan.packages, options.profileDir, onlineOptions))
+        previousError = undefined
       } catch (onlineError) {
         throw combinePluginSeedErrors(previousError, onlineError)
       }
@@ -522,13 +524,16 @@ async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
   if (plan.action === 'replace-suite') {
     try {
       await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, storeOptions))
+      previousError = undefined
     } catch (error) {
       if (storeOptions.offline !== true) throw combinePluginSeedErrors(previousError, error)
       console.warn('离线拆分旧套件失败，尝试在线安装。', error)
+      previousError = error
       try {
         await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, onlineOptions))
+        previousError = undefined
       } catch (onlineError) {
-        throw combinePluginSeedErrors(error, onlineError)
+        throw combinePluginSeedErrors(previousError, onlineError)
       }
     }
   }

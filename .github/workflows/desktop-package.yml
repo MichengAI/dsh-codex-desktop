@@ -199,6 +199,7 @@ jobs:
           pnpm smoke:upgrade $oldApplications[0].FullName (Join-Path $env:GITHUB_WORKSPACE 'release\win-unpacked\DSH Codex Desktop.exe')
           if ($LASTEXITCODE -ne 0) { throw '历史 Profile 离线升级失败。' }
 
+      # 1.0.41 随包 store 没有 cache，旧版首启必须联网才能种出旧 lockfile；新版启动仍强制离线。
       - name: 验证 Windows 1.0.41 Profile 离线升级
         if: matrix.platform == 'windows-x64'
         timeout-minutes: 20

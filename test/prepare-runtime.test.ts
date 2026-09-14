@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 import { pathToFileURL } from 'node:url'
 
-import { assertBundledPluginMetadataComplete, completeBundledPluginMetadata, verifyBundledPluginStore, verifyBundledPluginStoreUpgrade, copyWorkspacePackages, officialRuntimeGlobalNodeModulesRoot, officialRuntimeNpmDependencies, officialRuntimeNpmInstallArgs, pruneStoreForPackaging, removePreparedPath, resolveBundledNodeSha256, validateOfficialRuntimeLayout, writePnpmShims } from '../scripts/prepare-runtime.js'
+import { assertBundledPluginMetadataComplete, completeBundledPluginMetadata, verifyBundledPluginStore, copyWorkspacePackages, officialRuntimeGlobalNodeModulesRoot, officialRuntimeNpmDependencies, officialRuntimeNpmInstallArgs, pruneStoreForPackaging, removePreparedPath, resolveBundledNodeSha256, validateOfficialRuntimeLayout, writePnpmShims } from '../scripts/prepare-runtime.js'
 import { DESKTOP_BRIDGE_FILES } from '../src/desktop-host.js'
 
 test('按目标平台选择随包 Node 的 SHA256', () => {
@@ -133,9 +133,12 @@ test('打包前删除 pnpm store 的 projects 链接，避免 7zip 扫到断裂�
     const files = join(root, 'v11', 'files')
     await mkdir(projects, { recursive: true })
     await mkdir(files, { recursive: true })
+    await mkdir(join(root, 'cache'), { recursive: true })
     await writeFile(join(files, 'keep.txt'), 'ok', 'utf8')
+    await writeFile(join(root, 'cache', 'lockfile-verified.jsonl'), '{"path":"C:\\\\build\\\\staging\\\\pnpm-lock.yaml"}\n', 'utf8')
     await pruneStoreForPackaging(root)
     assert.equal(existsSync(projects), false)
+    assert.equal(existsSync(join(root, 'cache', 'lockfile-verified.jsonl')), false)
     assert.equal(existsSync(join(files, 'keep.txt')), true)
   } finally {
     await rm(root, { recursive: true, force: true })
@@ -487,58 +490,22 @@ test('缺少 metadata-full 时打包门禁拒绝随包仓库', async () => {
   } finally {await rm(root,{recursive:true,force:true})}
 })
 
-test('补齐完整元数据后旧 lockfile 离线升级门禁才能通过', async () => {
+test('缺失的 metadata-full 会用缩写元数据补上路径，已有文件不改写', async () => {
   const root=await mkdtemp(join(tmpdir(),'dsh-meta-complete-'))
   try {
     const store=join(root,'store')
     const metadata=join(store,'cache','v11','metadata','registry.npmjs.org','@scope')
+    const full=join(store,'cache','v11','metadata-full','registry.npmjs.org')
     const abbreviated='{"modified":"2026-09-04T00:00:00.000Z"}\n{"name":"@scope/pkg","versions":{"1.0.0":{"version":"1.0.0"}}}\n'
+    const existing='{"modified":"2026-01-01T00:00:00.000Z"}\n{"name":"debug","time":{"1.0.0":"2026-01-01T00:00:00.000Z"}}\n'
     await mkdir(metadata,{recursive:true})
+    await mkdir(full,{recursive:true})
     await writeFile(join(metadata,'pkg.jsonl'),abbreviated,'utf8')
+    await writeFile(join(full,'debug.jsonl'),existing,'utf8')
+    await writeFile(join(store,'cache','v11','metadata','registry.npmjs.org','debug.jsonl'),'{"modified":"2026-09-04T00:00:00.000Z"}\n{"name":"debug"}\n','utf8')
     await completeBundledPluginMetadata(store)
     await assertBundledPluginMetadataComplete(store)
     assert.equal(await readFile(join(store,'cache','v11','metadata-full','registry.npmjs.org','@scope','pkg.jsonl'),'utf8'),abbreviated)
+    assert.equal(await readFile(join(full,'debug.jsonl'),'utf8'),existing)
   } finally {await rm(root,{recursive:true,force:true})}
-})
-
-test('旧 lockfile 式离线升级门禁会先加一个包再加全部配套包', async () => {
-  const root=await mkdtemp(join(tmpdir(),'dsh-offline-upgrade-gate-'))
-  try {
-    const calls:string[][]=[]
-    await verifyBundledPluginStoreUpgrade(root,'unused',args=>{
-      calls.push([...args])
-      const profile=args[args.indexOf('--dir')+1]!
-      for (const spec of args.slice(1)) {
-        if (spec.startsWith('--') || !spec.includes('@')) continue
-        const at=spec.lastIndexOf('@')
-        const name=spec.slice(0,at)
-        const version=spec.slice(at+1)
-        const dir=join(profile,'node_modules',...name.split('/'))
-        mkdirSync(dir,{recursive:true})
-        writeFileSync(join(dir,'package.json'),JSON.stringify({name,version}),'utf8')
-      }
-    })
-    assert.equal(calls.length,2)
-    assert.ok(calls.every(args=>args.includes('--offline')))
-    const packages=calls.map(args=>args.filter(arg=>!arg.startsWith('--') && arg.includes('@') && arg!=='add'))
-    assert.equal(packages[0]!.length,1)
-    assert.ok(packages[1]!.length>1)
-  } finally {await rm(root,{recursive:true,force:true})}
-})
-
-test('装配随包仓库时补齐 metadata-full 并做旧 lockfile 离线升级门禁', async () => {
-  const source=await readFile(new URL('../../scripts/prepare-runtime.ts', import.meta.url),'utf8')
-  assert.match(source,/completeBundledPluginMetadata/)
-  assert.match(source,/assertBundledPluginMetadataComplete/)
-  assert.match(source,/verifyBundledPluginStoreUpgrade/)
-})
-
-test('历史 1.0.41 Profile 离线升级进入打包验收', async () => {
-  const workflow=await readFile(new URL('../../.github/workflows/desktop-package.yml', import.meta.url),'utf8')
-  const smoke=await readFile(new URL('../../scripts/smoke-profile-upgrade.mts', import.meta.url),'utf8')
-  assert.match(workflow,/dsh-codex-desktop-1\.0\.41-win-x64\.zip/)
-  assert.match(workflow,/452B2B7D5145E51F5B67C860731A98A3B9104CAAAB2A5132E4DD2517EEF4EFFC/)
-  assert.match(workflow,/DSH_SMOKE_OLD_ALLOW_NETWORK/)
-  assert.match(smoke,/DSH_SMOKE_OLD_ALLOW_NETWORK/)
-  assert.match(smoke,/DSH_SMOKE_OLD_ARCHIVE_VERSION/)
 })

@@ -979,6 +979,29 @@ test('离线和在线都失败时保留第一次离线错误', async () => {
   } finally {await rm(root,{recursive:true,force:true})}
 })
 
+test('离线失败后在线成功，后续失败不再带上已恢复的离线错误', async () => {
+  const root=await mkdtemp(join(tmpdir(),'dsh-seed-clear-offline-'))
+  try {
+    const store=join(root,'store')
+    const profile=join(root,'profile')
+    await createBundledStore(store)
+    await mkdir(profile)
+    await writeFile(join(profile,'package.json'),JSON.stringify({dependencies:{[SUITE_PACKAGE]:'1.0.0'}}),'utf8')
+    await assert.rejects(seedBundledPlugins({
+      nodeExecutable:'node',profileDir:profile,pluginStoreDir:store,catalog,
+      runner:async args=>{
+        if (args[0]==='add' && args.includes('--offline')) throw new Error('ERR_PNPM_NO_OFFLINE_META: @larksuiteoapi/node-sdk')
+        if (args[0]==='remove') throw new Error('ERR_PNPM_REMOVE_FAILED')
+      },
+    }), error => {
+      assert.match(String(error), /ERR_PNPM_REMOVE_FAILED/)
+      assert.doesNotMatch(String(error), /ERR_PNPM_NO_OFFLINE_META/)
+      assert.doesNotMatch(String(error), /在线重试仍失败/)
+      return true
+    })
+  } finally {await rm(root,{recursive:true,force:true})}
+})
+
 test('随包仓库准备失败后再在线失败时保留准备错误', async () => {
   const root=await mkdtemp(join(tmpdir(),'dsh-seed-keep-prepare-'))
   try {
