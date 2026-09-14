@@ -215,7 +215,7 @@ The bundled `@michengai/dsh-codex-pet` 0.1.2 is distributed offline and installe
 
 Run `npm run smoke:pet` to build and verify real Electron windows, preload/IPC, multi-session approval and answers, stale-command rejection, reload, hide and display handoff. The test uses a protocol fixture and a tiny image fixture, requires only this repository's development dependencies, and cleans its temporary user directory. It does not replace an installed-plugin or packaged-release acceptance test.
 
-Development requires Windows, Node.js `24.20.0`, and pnpm `11.24.0`.
+Development requires Windows, Node.js `24.21.0`, and pnpm `11.26.0`.
 
 ```powershell
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8

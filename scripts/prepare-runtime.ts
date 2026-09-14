@@ -12,7 +12,7 @@ const projectRoot = resolve(import.meta.dirname, '..', '..')
 const nodeRoot = join(projectRoot, 'runtime-node')
 const pluginRoot = join(projectRoot, 'runtime-plugins')
 const officialRuntimeRoot = join(projectRoot, 'runtime-dsh')
-const bundledPnpmVersion = '11.24.0'
+const bundledPnpmVersion = '11.26.0'
 
 export async function removePreparedPath(target: string): Promise<void> {
   if (!existsSync(target)) return

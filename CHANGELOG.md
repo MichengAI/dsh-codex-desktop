@@ -4,6 +4,11 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.60 — 2026-09-14
+
+- Update bundled Codex UI, IM Connect, automation, archive manager, Context, and MCP Connector plugins and their offline dependencies.
+- Update the desktop runtime to Electron 44.3.0 and Node.js 24.21.0, and the bundled package manager to pnpm 11.26.0. DSH remains on 0.1.5-rc.2.
+
 ## 1.0.59 — 2026-09-14
 
 - Fix plugin installation and updates failing when older profiles lack build permissions for `node-pty` or `protobufjs`. Startup after upgrading adds the required permissions and completes previously blocked builds for bundled dependencies, without deleting user configuration.
@@ -24,9 +29,3 @@ The five most recent published versions are listed below.
 - Startup now shows measured resource verification, extraction, and dependency sync steps, counts, and elapsed time, with faster file copying. The first dependency import may require about 450 MB of additional disk space; duration depends on disk performance.
 - Added Developer Tools to the View menu. Use F12 on Windows/Linux or Cmd+Alt+I on macOS to inspect the workspace and recovery pages.
 - Updated the automation, archive manager, context, sidebar, MCP connector, and usage billing plugins and their offline dependencies. The Git commit graph plugin is no longer preinstalled; it remains available for separate installation, and existing installations are preserved.
-
-## 1.0.53 — 2026-09-11
-
-- Fix dark title bar and sidebar backgrounds in Windows light mode; Mica now follows light, dark, and system appearance preferences correctly.
-- Fix the desktop pet disappearing when first entering a session or navigating within the page, while retaining notification handling and reload recovery.
-- Retain the DSH `0.1.5-rc.2` and bundled plugin upgrades. This version uses the Session V3 format. Back up important sessions before upgrading; sessions written by the new version cannot be read directly by older versions.

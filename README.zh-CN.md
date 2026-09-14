@@ -215,7 +215,7 @@ Code Review 和 PUA 已加入内置插件清单。PUA 在未保存过开关选�
 
 运行 `npm run smoke:pet` 构建并验证真实 Electron 窗口、preload/IPC、多会话审批和问答、过期操作拦截、重载、隐藏及展示接管。测试使用协议与微型图片夹具，只依赖本仓库开发依赖，退出后清理临时用户目录；不能替代已安装插件联调或正式安装包验收。
 
-开发环境需要 Windows、Node.js `24.20.0` 和 pnpm `11.24.0`。
+开发环境需要 Windows、Node.js `24.21.0` 和 pnpm `11.26.0`。
 
 ```powershell
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8

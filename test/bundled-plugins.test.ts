@@ -44,20 +44,20 @@ test('每个内置插件都钉死精确版本', () => {
   }
   assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.46.1')
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
-    '@michengai/dsh-codex-ui': '1.1.5',
-    '@michengai/dsh-im-connect': '0.1.47',
-    '@michengai/dsh-automation': '0.1.40',
+    '@michengai/dsh-codex-ui': '1.1.7',
+    '@michengai/dsh-im-connect': '0.1.49',
+    '@michengai/dsh-automation': '0.1.42',
     '@michengai/dsh-skills-manager': '0.1.50',
-    '@michengai/dsh-archive-manager': '0.1.40',
+    '@michengai/dsh-archive-manager': '0.1.42',
     '@michengai/dsh-agency-agents': '0.1.42',
     '@michengai/dsh-codex-pet': '0.1.5',
     '@michengai/dsh-btw': '0.1.7',
     '@michengai/dsh-simplify': '0.1.4',
     '@michengai/dsh-code-review': '0.1.0',
     '@michengai/dsh-pua': '0.3.11',
-    'dsh-context': '0.51.1',
+    'dsh-context': '0.52.1',
     'dsh-better-sidebar': '0.19.1',
-    'dsh-mcp-connector': '0.2.46',
+    'dsh-mcp-connector': '0.2.47',
     '@kenz1117/dsh-ui-usage-billing': '1.3.0',
     dshmarket: '1.46.1',
   })

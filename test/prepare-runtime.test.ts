@@ -29,11 +29,11 @@ test('项目配置包含 Linux x64 与 ARM64 的随包 Node SHA256', async () =>
   }
   assert.equal(
     resolveBundledNodeSha256(manifest.config?.bundledNodeSha256, 'linux', 'x64'),
-    '89AF8424DD53E560B1933F87BA650D8BF57C83CA5A04600EEFB31F416AABBAE7',
+    '7FDE7B8AFA198DA66257F42EE2001D874C7355631E6D1579A5FB5EF1F246DF4C',
   )
   assert.equal(
     resolveBundledNodeSha256(manifest.config?.bundledNodeSha256, 'linux', 'arm64'),
-    '23A5637C2470FDE09FCC1ACC77C1B92E04E3D7E3E6E80FF7DF6F5831958D1477',
+    '0F8949D1028F6D61506B2D5BC57E7E6FE893D7B1997509B7847294FC9C616584',
   )
 })
 
@@ -322,7 +322,7 @@ test('Windows 冒烟兼容 alpha.2+ 启动 token 鉴权', async () => {
 
 test('正式标签缺少签名凭据时仍允许生成带 ad-hoc 签名的多平台测试版', async () => {
   const workflow = await readFile(new URL('../../.github/workflows/desktop-package.yml', import.meta.url), 'utf8')
-  assert.match(workflow, /version: 11\.24\.0/)
+  assert.match(workflow, /version: 11\.26\.0/)
   assert.match(workflow, /actions\/checkout@v7/)
   assert.match(workflow, /actions\/setup-node@v7/)
   assert.match(workflow, /actions\/upload-artifact@v7/)
