@@ -10,6 +10,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { writeTextFileAtomic, writeTextFileAtomicSync } from './atomic-file.js'
 import { restrictProfileBundlesForRecovery } from './recovery-mode.js'
 import {
+  ALLOWED_BUILD_PACKAGES,
   BUNDLED_PLUGINS,
   compareReleaseVersions,
   OFFICIAL_DSH_VERSION,
@@ -150,6 +151,8 @@ export function buildSeedPluginArgs(packages: readonly BundledPlugin[], targetDi
     '--config.node-linker=hoisted',
     '--config.auto-install-peers=' + (options.autoInstallPeers === true ? 'true' : 'false'),
     '--config.minimumReleaseAge=0',
+    // 由 pnpm 合并并持久化旧 Profile 缺失的构建许可，保留用户的其他策略。
+    ...ALLOWED_BUILD_PACKAGES.map(name => `--allow-build=${name}`),
     '--registry=https://registry.npmjs.org/',
   ]
 }
@@ -460,8 +463,27 @@ async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
     installedPackages: installed,
     installedVersions,
   })
-  if (plan.action === 'skip') return { seeded: [], skipped: plan.reason }
   const runner = options.runner ?? ((pluginArgs) => runPnpm(options, pluginArgs))
+  if (plan.action === 'skip') {
+    // pnpm 失败前已写入包版本；版本齐全不代表被阻止的构建已经完成。
+    const statePath = join(options.profileDir, 'node_modules', '.modules.yaml')
+    if (catalog.length > 0 && existsSync(statePath)) {
+      const content = await readFile(statePath, 'utf8')
+      // 随包 pnpm 11 将这个状态文件写为 JSON；旧版 YAML 不属于本次错误状态。
+      const state: unknown = content.trimStart().startsWith('{') ? JSON.parse(content) : undefined
+      if (state !== null && typeof state === 'object' && 'ignoredBuilds' in state
+        && Array.isArray(state.ignoredBuilds) && state.ignoredBuilds.some((entry: unknown) =>
+          typeof entry === 'string' && ALLOWED_BUILD_PACKAGES.some(name => entry.startsWith(`${name}@`)))) {
+        const storeDir = resolvePnpmStoreDir(options.profileDir)
+        const repairPackages = catalog.map(plugin => ({
+          ...plugin,
+          version: installedVersions.find(item => item.packageName === plugin.packageName)?.version ?? plugin.version,
+        }))
+        await runner(buildSeedPluginArgs(repairPackages, options.profileDir, storeDir === undefined ? {} : { storeDir }))
+      }
+    }
+    return { seeded: [], skipped: plan.reason }
+  }
   // 只沿用 Profile 明确记录的仓库；未知位置时让 pnpm 选择默认仓库。
   const originalStore = resolvePnpmStoreDir(options.profileDir)
   const onlineOptions = originalStore === undefined ? {} : { storeDir: originalStore }

@@ -5,6 +5,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import test from 'node:test'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { parse } from 'yaml'
+import { createServer } from 'node:http'
 
 import { OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, SUITE_PACKAGE, officialDshVersionOverrides } from '../src/bundled-plugins.js'
 import { prepareBundledPluginStore, buildSeedRemoveArgs, applyPendingProfileUpdates, buildSeedPluginArgs, ensureAutoInstallPeersEnabled, isOfficialRuntimeLaunchable, missingOfficialLaunchPeers, officialRuntimeInstallArgs, planBundledPluginSeed, finalizeProfileBundlesAfterInstall, pruneMissingProfileBundles, resolvePnpmStoreDir, seedBundledPlugins, shouldUsePackagedStore, stripOfficialProfileDependencies, writeOfficialRuntimeManifest } from '../src/plugin-seed.js'
@@ -80,6 +84,11 @@ test('只补种缺失插件，并走 profile 内的 pnpm add', () => {
     '--config.node-linker=hoisted',
     '--config.auto-install-peers=false',
     '--config.minimumReleaseAge=0',
+    '--allow-build=@deepseek-ai/dsh-subprocess-local',
+    '--allow-build=@google/genai',
+    '--allow-build=koffi',
+    '--allow-build=node-pty',
+    '--allow-build=protobufjs',
     '--registry=https://registry.npmjs.org/',
   ])
 })
@@ -353,7 +362,7 @@ test('启动前会按 pending 清单升级社区插件，不碰官方包', async
     })
     assert.deepEqual(updated, ['@michengai/dsh-codex-ui'])
     assert.equal(calls[0]?.includes('@michengai/dsh-codex-ui@0.2.60'), true)
-    assert.equal(calls[0]?.some(item => item.includes('@deepseek-ai/dsh')), false)
+    assert.equal(calls[0]?.some(item => item.startsWith('@deepseek-ai/dsh@')), false)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -699,6 +708,95 @@ test('官方 pending 会改运行时目录，不写进 Web profile', async () =>
 test('官方运行时更新会同步锁文件，避免 CI 冻结锁文件阻断启动', () => {
   const args = officialRuntimeInstallArgs('D:\\runtime')
   assert.equal(args.includes('--no-frozen-lockfile'), true)
+})
+
+const pnpmTestEntry = process.env.DSH_TEST_PNPM_ENTRY
+  ?? (process.env.npm_execpath?.match(/pnpm\.[cm]?js$/) ? process.env.npm_execpath : undefined)
+
+for (const legacyPolicy of [
+  'allowBuilds:\n  custom-safe: true\n  custom-denied: false\n',
+  'onlyBuiltDependencies:\n  - custom-safe\nignoredBuiltDependencies:\n  - custom-denied\n',
+]) test(`真实 pnpm 为旧 Profile 补齐构建许可并执行曾被阻止的脚本（${legacyPolicy.split(':')[0]}）`, {
+  skip: !pnpmTestEntry,
+  timeout: 60_000,
+}, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-build-policy-'))
+  const run = promisify(execFile)
+  const registry = createServer()
+  try {
+    const fixture = join(root, 'fixture')
+    const profile = join(root, 'profile')
+    await mkdir(fixture)
+    await mkdir(profile)
+    await writeFile(join(fixture, 'package.json'), JSON.stringify({ name: 'node-pty', version: '1.0.0', scripts: { postinstall: 'node build.cjs' } }))
+    await writeFile(join(fixture, 'build.cjs'), "require('node:fs').writeFileSync('built.txt', 'built')")
+    await run(process.execPath, [pnpmTestEntry!, 'pack', '--pack-destination', root], { cwd: fixture })
+    const tarball = await readFile(join(root, 'node-pty-1.0.0.tgz'))
+    await new Promise<void>(resolve => registry.listen(0, '127.0.0.1', resolve))
+    const address = registry.address() as { port: number }
+    const registryUrl = `http://127.0.0.1:${address.port}/`
+    registry.on('request', (request, response) => {
+      if (request.url === '/node-pty.tgz') {
+        response.end(tarball)
+      } else if (request.url === '/node-pty') {
+        response.setHeader('content-type', 'application/json')
+        response.end(JSON.stringify({ name: 'node-pty', 'dist-tags': { latest: '1.0.0' }, versions: { '1.0.0': { name: 'node-pty', version: '1.0.0', dist: { tarball: `${registryUrl}node-pty.tgz` } } } }))
+      } else {
+        response.writeHead(404).end()
+      }
+    })
+    await writeFile(join(profile, 'package.json'), '{"name":"legacy-profile","private":true}')
+    await writeFile(join(profile, 'pnpm-workspace.yaml'), '# 用户配置\npackages:\n  - .\nnodeLinker: hoisted\n' + legacyPolicy)
+    const args = buildSeedPluginArgs([{ packageName: 'node-pty', version: '1.0.0' }], profile, { storeDir: join(root, 'store') })
+      .map(arg => arg.startsWith('--registry=') ? `--registry=${registryUrl}` : arg)
+    // 先模拟旧命令，确认 pnpm 确实在依赖落盘后报告构建被阻止。
+    await assert.rejects(run(process.execPath, [pnpmTestEntry!, ...args.filter(arg => !arg.startsWith('--allow-build='))], { cwd: root }), (error: unknown) => {
+      const failure = error as { stdout: string; stderr: string }
+      assert.match(failure.stdout + failure.stderr, /ERR_PNPM_IGNORED_BUILDS/)
+      return true
+    })
+    assert.equal(existsSync(join(profile, 'node_modules', 'node-pty', 'built.txt')), false)
+    let repairs = 0
+    const seedOptions = {
+      nodeExecutable: process.execPath,
+      profileDir: profile,
+      pluginStoreDir: join(root, 'store'),
+      catalog: [{ packageName: 'node-pty', version: '0.9.0' }],
+      runner: async (installArgs: readonly string[]) => {
+        repairs++
+        await run(process.execPath, [pnpmTestEntry!, ...installArgs.map(arg => arg.startsWith('--registry=') ? `--registry=${registryUrl}` : arg)], { cwd: root })
+      },
+    }
+    await seedBundledPlugins(seedOptions)
+    assert.equal(repairs, 1)
+    assert.equal(await readFile(join(profile, 'node_modules', 'node-pty', 'built.txt'), 'utf8'), 'built')
+    await seedBundledPlugins(seedOptions)
+    assert.equal(repairs, 1, '修复后再次启动不应重复安装')
+    const workspace = parse(await readFile(join(profile, 'pnpm-workspace.yaml'), 'utf8'))
+    if (legacyPolicy.startsWith('allowBuilds:')) {
+      assert.equal(workspace.allowBuilds['custom-safe'], true)
+      assert.equal(workspace.allowBuilds['custom-denied'], false)
+    } else {
+      assert.deepEqual(workspace.onlyBuiltDependencies, ['custom-safe'])
+      assert.deepEqual(workspace.ignoredBuiltDependencies, ['custom-denied'])
+    }
+    assert.equal(workspace.allowBuilds['node-pty'], true)
+    // 下次安装无需命令行许可，证明构建策略已经持久化。
+    await run(process.execPath, [pnpmTestEntry!, ...args.filter(arg => !arg.startsWith('--allow-build='))], { cwd: root })
+    // 用户明确禁用可信名单中的包时仍应报冲突，不能偷偷覆盖禁止策略。
+    const blocked = (await readFile(join(profile, 'pnpm-workspace.yaml'), 'utf8')).replace('node-pty: true', 'node-pty: false')
+    await writeFile(join(profile, 'pnpm-workspace.yaml'), blocked)
+    await assert.rejects(run(process.execPath, [pnpmTestEntry!, ...args], { cwd: root }), (error: unknown) => {
+      const failure = error as { stdout: string; stderr: string }
+      assert.match(failure.stdout + failure.stderr, /ERR_PNPM_OVERRIDING_IGNORED_BUILT_DEPENDENCIES/)
+      return true
+    })
+    assert.equal(await readFile(join(profile, 'pnpm-workspace.yaml'), 'utf8'), blocked)
+  } finally {
+    registry.closeAllConnections()
+    await new Promise<void>(resolve => registry.close(() => resolve()))
+    await rm(root, { recursive: true, force: true })
+  }
 })
 
 test('旧 Profile 缺少或无法解析仓库位置时在线兜底不指定 store', async () => {
