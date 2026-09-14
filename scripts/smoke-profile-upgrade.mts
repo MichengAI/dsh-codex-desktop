@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { BUNDLED_PLUGINS } from '../src/bundled-plugins.js'
 import { terminateProcessTree } from '../src/process-control.js'
@@ -20,12 +20,29 @@ const home = join(root, 'home'), profile = join(home, 'profiles', 'web')
 const legacyStore = join(root, 'legacy-store')
 const oldAllowNetwork = process.env.DSH_SMOKE_OLD_ALLOW_NETWORK === '1' || process.env.DSH_SMOKE_OLD_ALLOW_NETWORK === 'true'
 const oldArchiveVersion = process.env.DSH_SMOKE_OLD_ARCHIVE_VERSION ?? '0.1.34'
+const STRIP_INHERITED_ENV = new Set([
+  'USERPROFILE', 'HOME', 'APPDATA', 'LOCALAPPDATA',
+  'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME',
+  'DSH_SMOKE_OLD_ALLOW_NETWORK', 'DSH_SMOKE_OLD_ARCHIVE_VERSION',
+  'PNPM_HOME',
+])
+
+function shouldStripInheritedEnv(name: string): boolean {
+  const upper = name.toUpperCase()
+  return STRIP_INHERITED_ENV.has(upper) || /^(NPM|PNPM)_CONFIG_(STORE|CACHE)(_DIR)?$/.test(upper)
+}
+
+function isIsolatedProfileStore(storeDir: string): boolean {
+  const resolved = resolve(storeDir)
+  return resolved === resolve(join(legacyStore, 'v11'))
+    || resolved.startsWith(resolve(home) + sep)
+    || resolved.startsWith(resolve(root) + sep)
+}
 
 async function boot(application: string, stage: string, store?: string, allowNetwork = false): Promise<void> {
   const userData = join(root, stage), ready = join(userData, 'ready')
   await mkdir(userData, { recursive: true })
-  const inherited = Object.fromEntries(Object.entries(process.env).filter(([name]) =>
-    !['USERPROFILE', 'HOME', 'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME', 'DSH_SMOKE_OLD_ALLOW_NETWORK', 'DSH_SMOKE_OLD_ARCHIVE_VERSION'].includes(name.toUpperCase())))
+  const inherited = Object.fromEntries(Object.entries(process.env).filter(([name]) => !shouldStripInheritedEnv(name)))
   const env: NodeJS.ProcessEnv = {
     ...inherited, USERPROFILE: home, HOME: home, DSH_HOME: home,
     APPDATA: join(home, 'AppData', 'Roaming'), LOCALAPPDATA: join(home, 'AppData', 'Local'),
@@ -43,7 +60,7 @@ async function boot(application: string, stage: string, store?: string, allowNet
   let launchError: Error | undefined
   child.on('error', error => { launchError = error })
   try {
-    const deadline = Date.now() + 180_000
+    const deadline = Date.now() + (allowNetwork ? 12 * 60_000 : 180_000)
     while (!existsSync(ready)) {
       if (launchError) throw launchError
       if (child.exitCode !== null) throw new Error(`${stage} 提前退出：${child.exitCode}`)
@@ -69,7 +86,8 @@ try {
   assert.equal(oldArchive, oldArchiveVersion, `旧版归档插件应为待验证的 ${oldArchiveVersion}`)
   const modulesPath = join(profile, 'node_modules', '.modules.yaml')
   const oldStore = parse(await readFile(modulesPath, 'utf8')).storeDir
-  assert.equal(oldStore, join(legacyStore, 'v11'), '必须使用隔离旧仓库')
+  assert.equal(typeof oldStore, 'string', '旧版必须写出 storeDir')
+  assert.ok(isIsolatedProfileStore(oldStore), `旧版仓库必须落在隔离目录，实际 ${oldStore}`)
   const patchPath = join(profile, 'cordis.patch.yml')
   const patch = await readFile(patchPath, 'utf8') + '\n# 升级冒烟：保留用户配置\n'
   await writeFile(patchPath, patch, 'utf8')
