@@ -4,6 +4,10 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.61 — 2026-09-14
+
+- Fix offline upgrades from older install folders (for example 1.0.41) failing when the bundled plugin store lacks full package metadata. Startup no longer reports an incomplete built-in plugin update and then contacts the npm registry. The new build can finish bundled plugin updates without a network.
+
 ## 1.0.60 — 2026-09-14
 
 - Update bundled Codex UI, IM Connect, automation, archive manager, Context, and MCP Connector plugins and their offline dependencies.
@@ -22,10 +26,3 @@ The five most recent published versions are listed below.
 ## 1.0.56 — 2026-09-14
 
 - Update 12 bundled plugins, including Codex UI, IM Connect, automation, skills, archive management, agents, desktop pet, BTW, context, MCP connector, usage billing, and the plugin market, together with their offline dependencies.
-
-## 1.0.55 — 2026-09-12
-
-- Desktop upgrades now bring older bundled plugins and dependencies up to the packaged baseline while preserving newer versions, the original dependency store, and user configuration. Offline installation is preferred, with online retries and clear notices for incomplete updates. Bundled plugins can no longer remain below that baseline.
-- Startup now shows measured resource verification, extraction, and dependency sync steps, counts, and elapsed time, with faster file copying. The first dependency import may require about 450 MB of additional disk space; duration depends on disk performance.
-- Added Developer Tools to the View menu. Use F12 on Windows/Linux or Cmd+Alt+I on macOS to inspect the workspace and recovery pages.
-- Updated the automation, archive manager, context, sidebar, MCP connector, and usage billing plugins and their offline dependencies. The Git commit graph plugin is no longer preinstalled; it remains available for separate installation, and existing installations are preserved.
