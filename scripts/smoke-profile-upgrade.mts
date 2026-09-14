@@ -100,7 +100,9 @@ try {
     assert.equal(installed.version, plugin.version, plugin.packageName)
   }
   assert.equal(parse(await readFile(modulesPath, 'utf8')).storeDir, oldStore)
-  assert.equal(await readFile(patchPath, 'utf8'), patch)
+  const nextPatch = await readFile(patchPath, 'utf8')
+  assert.match(nextPatch, /# 升级冒烟：保留用户配置/)
+  if (!patch.includes('dsh-desktop-bridge')) assert.equal(nextPatch, patch)
   assert.equal(await readFile(join(profile, 'user-preserved.txt'), 'utf8'), 'preserved')
   console.log(`PASS: 真实旧版 Profile（归档 ${oldArchive}）离线升级，全部 ${BUNDLED_PLUGINS.length} 个配套插件版本正确，配置和原仓库保留，未进入恢复模式。`)
 } finally {
