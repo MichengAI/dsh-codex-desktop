@@ -18,17 +18,20 @@ const oldApplication = resolve(oldArgument), newApplication = resolve(newArgumen
 const root = await mkdtemp(join(tmpdir(), 'dsh-real-profile-upgrade-'))
 const home = join(root, 'home'), profile = join(home, 'profiles', 'web')
 const legacyStore = join(root, 'legacy-store')
+const oldAllowNetwork = process.env.DSH_SMOKE_OLD_ALLOW_NETWORK === '1' || process.env.DSH_SMOKE_OLD_ALLOW_NETWORK === 'true'
+const oldArchiveVersion = process.env.DSH_SMOKE_OLD_ARCHIVE_VERSION ?? '0.1.34'
 
-async function boot(application: string, stage: string, store?: string): Promise<void> {
+async function boot(application: string, stage: string, store?: string, allowNetwork = false): Promise<void> {
   const userData = join(root, stage), ready = join(userData, 'ready')
   await mkdir(userData, { recursive: true })
   const inherited = Object.fromEntries(Object.entries(process.env).filter(([name]) =>
-    !['USERPROFILE', 'HOME', 'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME'].includes(name.toUpperCase())))
+    !['USERPROFILE', 'HOME', 'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME', 'DSH_SMOKE_OLD_ALLOW_NETWORK', 'DSH_SMOKE_OLD_ARCHIVE_VERSION'].includes(name.toUpperCase())))
   const env: NodeJS.ProcessEnv = {
     ...inherited, USERPROFILE: home, HOME: home, DSH_HOME: home,
     APPDATA: join(home, 'AppData', 'Roaming'), LOCALAPPDATA: join(home, 'AppData', 'Local'),
     XDG_CONFIG_HOME: join(home, '.config'), XDG_CACHE_HOME: join(home, '.cache'), XDG_DATA_HOME: join(home, '.local', 'share'),
-    DSH_DESKTOP_SMOKE_READY_FILE: ready, pnpm_config_offline: 'true', npm_config_offline: 'true',
+    DSH_DESKTOP_SMOKE_READY_FILE: ready,
+    ...(allowNetwork ? {} : { pnpm_config_offline: 'true', npm_config_offline: 'true' }),
   }
   delete env.ELECTRON_RUN_AS_NODE
   await mkdir(env.APPDATA!, { recursive: true })
@@ -60,10 +63,10 @@ async function boot(application: string, stage: string, store?: string): Promise
 try {
   await mkdir(home, { recursive: true })
   extractTarGz(join(dirname(oldApplication), 'resources', 'plugins-store.tgz'), legacyStore)
-  await boot(oldApplication, 'old', legacyStore)
+  await boot(oldApplication, 'old', legacyStore, oldAllowNetwork)
   const archiveManifest = join(profile, 'node_modules', '@michengai', 'dsh-archive-manager', 'package.json')
   const oldArchive = JSON.parse(await readFile(archiveManifest, 'utf8')).version
-  assert.equal(oldArchive, '0.1.34', '旧版归档插件应为待验证的 0.1.34')
+  assert.equal(oldArchive, oldArchiveVersion, `旧版归档插件应为待验证的 ${oldArchiveVersion}`)
   const modulesPath = join(profile, 'node_modules', '.modules.yaml')
   const oldStore = parse(await readFile(modulesPath, 'utf8')).storeDir
   assert.equal(oldStore, join(legacyStore, 'v11'), '必须使用隔离旧仓库')

@@ -452,6 +452,13 @@ async function ensureOfficialLaunchPeers(options: SeedOptions, targetDir: string
   return missing.map((plugin) => plugin.packageName)
 }
 
+export function combinePluginSeedErrors(previous: unknown, current: unknown): Error {
+  const last = current instanceof Error ? current : new Error(String(current))
+  if (previous === undefined || previous === null) return last
+  const first = previous instanceof Error ? previous.message : String(previous)
+  return new Error(`${first}\n在线重试仍失败：${last.message}`)
+}
+
 async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
   await ensureProfileScaffold(options.profileDir)
   const { declared, installed } = await readProfilePluginNames(options.profileDir)
@@ -488,30 +495,41 @@ async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
   const originalStore = resolvePnpmStoreDir(options.profileDir)
   const onlineOptions = originalStore === undefined ? {} : { storeDir: originalStore }
   let storeOptions: SeedPnpmOptions
+  let previousError: unknown
   try {
     storeOptions = await prepareBundledPluginStore(options.profileDir, options.pluginStoreDir, options.onProgress)
   } catch (error) {
     console.warn('随包依赖准备失败，使用原仓库在线更新。', error)
     storeOptions = onlineOptions
+    previousError = error
   }
   if (plan.packages.length > 0) {
     const args = buildSeedPluginArgs(plan.packages, options.profileDir, storeOptions)
     try {
       await runner(args)
     } catch (error) {
-      if (storeOptions.offline !== true) throw error
+      if (storeOptions.offline !== true) throw combinePluginSeedErrors(previousError, error)
       console.warn('随包插件离线安装失败，尝试在线安装。', error)
+      previousError = error
       storeOptions = onlineOptions
-      await runner(buildSeedPluginArgs(plan.packages, options.profileDir, onlineOptions))
+      try {
+        await runner(buildSeedPluginArgs(plan.packages, options.profileDir, onlineOptions))
+      } catch (onlineError) {
+        throw combinePluginSeedErrors(previousError, onlineError)
+      }
     }
   }
   if (plan.action === 'replace-suite') {
     try {
       await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, storeOptions))
     } catch (error) {
-      if (storeOptions.offline !== true) throw error
+      if (storeOptions.offline !== true) throw combinePluginSeedErrors(previousError, error)
       console.warn('离线拆分旧套件失败，尝试在线安装。', error)
-      await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, onlineOptions))
+      try {
+        await runner(buildSeedRemoveArgs([SUITE_PACKAGE], options.profileDir, onlineOptions))
+      } catch (onlineError) {
+        throw combinePluginSeedErrors(error, onlineError)
+      }
     }
   }
   await reconcileProfileBundles(options.profileDir)

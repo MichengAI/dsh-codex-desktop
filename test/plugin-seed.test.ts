@@ -959,3 +959,36 @@ test('首次安装的随包仓库失败后在线重试不复用随包 store', as
     assert.equal(calls,2)
   } finally {await rm(root,{recursive:true,force:true})}
 })
+
+test('离线和在线都失败时保留第一次离线错误', async () => {
+  const root=await mkdtemp(join(tmpdir(),'dsh-seed-keep-offline-'))
+  try {
+    const store=join(root,'store')
+    await createBundledStore(store)
+    await assert.rejects(seedBundledPlugins({
+      nodeExecutable:'node',profileDir:join(root,'profile'),pluginStoreDir:store,catalog,
+      runner:async args=>{
+        if (args.includes('--offline')) throw new Error('ERR_PNPM_NO_OFFLINE_META: @larksuiteoapi/node-sdk')
+        throw new Error('ERR_PNPM_FETCH_FAILED: registry.npmjs.org')
+      },
+    }), error => {
+      assert.match(String(error), /ERR_PNPM_NO_OFFLINE_META/)
+      assert.match(String(error), /ERR_PNPM_FETCH_FAILED/)
+      return true
+    })
+  } finally {await rm(root,{recursive:true,force:true})}
+})
+
+test('随包仓库准备失败后再在线失败时保留准备错误', async () => {
+  const root=await mkdtemp(join(tmpdir(),'dsh-seed-keep-prepare-'))
+  try {
+    await assert.rejects(seedBundledPlugins({
+      nodeExecutable:'node',profileDir:join(root,'profile'),pluginStoreDir:join(root,'missing-store'),catalog,
+      runner:async () => { throw new Error('ERR_PNPM_FETCH_FAILED: registry.npmjs.org') },
+    }), error => {
+      assert.match(String(error), /随包插件资源不完整|随包依赖准备失败/)
+      assert.match(String(error), /ERR_PNPM_FETCH_FAILED/)
+      return true
+    })
+  } finally {await rm(root,{recursive:true,force:true})}
+})
