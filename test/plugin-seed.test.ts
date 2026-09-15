@@ -11,7 +11,7 @@ import { parse } from 'yaml'
 import { createServer } from 'node:http'
 
 import { OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, SUITE_PACKAGE, officialDshVersionOverrides } from '../src/bundled-plugins.js'
-import { prepareBundledPluginStore, buildSeedRemoveArgs, applyPendingProfileUpdates, buildSeedPluginArgs, ensureAutoInstallPeersEnabled, isOfficialRuntimeLaunchable, missingOfficialLaunchPeers, officialRuntimeInstallArgs, planBundledPluginSeed, finalizeProfileBundlesAfterInstall, pruneMissingProfileBundles, resolvePnpmStoreDir, seedBundledPlugins, shouldUsePackagedStore, stripOfficialProfileDependencies, writeOfficialRuntimeManifest } from '../src/plugin-seed.js'
+import { prepareBundledPluginStore, buildSeedRemoveArgs, applyPendingProfileUpdates, buildSeedPluginArgs, ensureAutoInstallPeersEnabled, isOfficialRuntimeLaunchable, missingOfficialLaunchPeers, officialRuntimeInstallArgs, planBundledPluginSeed, finalizeProfileBundlesAfterInstall, pruneMissingProfileBundles, resolvePnpmStoreDir, seedBundledPlugins, stripOfficialProfileDependencies, writeOfficialRuntimeManifest } from '../src/plugin-seed.js'
 
 async function createBundledStore(store: string): Promise<void> {
   await mkdir(join(store, 'v11', 'files'), { recursive: true })
@@ -182,20 +182,6 @@ test('seedBundledPlugins 只调用一次 pnpm add，且写入用户 profile', as
   }
 })
 
-test('已有 node_modules 时不得改用安装包 store', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-store-check-'))
-  try {
-    assert.equal(shouldUsePackagedStore(root), true)
-    await mkdir(join(root, 'node_modules'))
-    assert.equal(shouldUsePackagedStore(root), false)
-    const args = buildSeedPluginArgs(catalog, root, {})
-    assert.equal(args.some(item => item.startsWith('--store-dir=')), false)
-    assert.equal(args.includes('--offline'), false)
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-})
-
 test('后续 pnpm 操作沿用 node_modules 记录的 store 目录', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-store-state-'))
   try {
@@ -289,7 +275,10 @@ test('官方运行时已装但缺少启动 peer 时会补齐', async () => {
         }
       },
     })
-    assert.equal(calls.some(item => item.some(arg => arg.includes('@deepseek-ai/cordis-plugin-group@1.0.2'))), true)
+    const peerCall = calls.find(item => item.some(arg => arg.includes('@deepseek-ai/cordis-plugin-group@1.0.2')))
+    assert.equal(peerCall !== undefined, true)
+    assert.equal(peerCall!.includes('--offline'), false)
+    assert.equal(peerCall!.some(arg => arg.startsWith('--store-dir=')), false)
     assert.equal(isOfficialRuntimeLaunchable(runtime), true)
   } finally {
     await rm(root, { recursive: true, force: true })
@@ -734,6 +723,7 @@ test('官方 pending 会改运行时目录，不写进 Web profile', async () =>
     assert.deepEqual(updated, [OFFICIAL_DSH_VERSION])
     assert.equal(calls[0]?.[0], 'install')
     assert.equal(calls[0]?.includes('--dir=' + runtime), true)
+    assert.equal(calls[0]?.some(arg => arg.startsWith('--store-dir=')), false)
     const manifest = JSON.parse(await readFile(join(runtime, 'package.json'), 'utf8')) as { pnpm?: { overrides?: Record<string, string> } }
     assert.deepEqual(manifest.pnpm?.overrides, officialDshVersionOverrides())
     const profileManifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as { dependencies?: Record<string, string> }

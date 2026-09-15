@@ -102,11 +102,6 @@ export function planBundledPluginSeed(input: SeedPlanInput): SeedPlan {
   return { action: 'add', packages: missing }
 }
 
-/** 目录里还没有 node_modules 时，才算可以首次指定随包 store。 */
-export function shouldUsePackagedStore(targetDir: string): boolean {
-  return !existsSync(join(targetDir, 'node_modules'))
-}
-
 export function resolvePnpmStoreDir(targetDir: string, fallback?: string): string | undefined {
   try {
     const modulesState = readFileSync(join(targetDir, 'node_modules', '.modules.yaml'), 'utf8')
@@ -122,8 +117,8 @@ export function resolvePnpmStoreDir(targetDir: string, fallback?: string): strin
   } catch {
     // 首次安装还没有 pnpm 状态文件。
   }
-  // 有 node_modules 但没有记录 storeDir（官方 DSH 空目录、npm 残留、坏掉的 .modules.yaml）
-  // 并没有绑过仓库；可以安全使用随包 store。只有已经写出 storeDir 时才禁止改绑。
+  // 没有记录 storeDir 时由调用方决定是否传入随包仓库。已写出的 storeDir 禁止改绑。
+  // 官方运行时不要传 fallback：它由 npm 管理，随包仓库不含 @deepseek-ai/*。
   return fallback
 }
 
@@ -276,7 +271,7 @@ export async function applyOfficialRuntimeVersion(options: SeedOptions, version:
   }
   ensureAutoInstallPeersEnabled(runtimeDir)
   const runner = options.runner ?? ((pluginArgs) => runPnpm(options, pluginArgs))
-  await runner(officialRuntimeInstallArgs(runtimeDir, resolvePnpmStoreDir(runtimeDir, options.pluginStoreDir)))
+  await runner(officialRuntimeInstallArgs(runtimeDir, resolvePnpmStoreDir(runtimeDir)))
   if (!isOfficialRuntimeLaunchable(runtimeDir)) {
     throw new Error('官方运行时升级到 ' + version + ' 后仍无法启动。')
   }
@@ -411,7 +406,7 @@ async function seedOfficialRuntime(options: SeedOptions): Promise<readonly strin
   }
   if (!existsSync(resolveProfileDshEntry(runtimeDir))) {
     await ensureRuntimeScaffold(runtimeDir)
-    const storeDir = resolvePnpmStoreDir(runtimeDir, existsSync(options.pluginStoreDir) ? options.pluginStoreDir : undefined)
+    const storeDir = resolvePnpmStoreDir(runtimeDir)
     const useStore = storeDir !== undefined
     const args = buildSeedPluginArgs([OFFICIAL_RUNTIME], runtimeDir, {
       autoInstallPeers: true,
@@ -438,7 +433,7 @@ async function ensureOfficialLaunchPeers(options: SeedOptions, targetDir: string
   ensureAutoInstallPeersEnabled(targetDir)
   const missing = missingOfficialLaunchPeers(targetDir)
   if (missing.length === 0) return []
-  const storeDir = resolvePnpmStoreDir(targetDir, existsSync(options.pluginStoreDir) ? options.pluginStoreDir : undefined)
+  const storeDir = resolvePnpmStoreDir(targetDir)
   const useStore = storeDir !== undefined
   const args = buildSeedPluginArgs([OFFICIAL_RUNTIME, ...missing], targetDir, {
     autoInstallPeers: true,
