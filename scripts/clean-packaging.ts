@@ -14,10 +14,6 @@ export const PACKAGING_CLEAN_RELATIVE_PATHS = [
   'runtime-dsh',
   'runtime-dsh.tgz',
   'runtime-dsh.tgz.sha256',
-  'output/zip-smoke-current',
-  'output/zip-smoke-current-complete',
-  'output/zip-smoke-official-1061',
-  'output/zip-smoke-baselines',
 ] as const
 
 export async function cleanPackagingArtifacts(root = projectRoot): Promise<string[]> {

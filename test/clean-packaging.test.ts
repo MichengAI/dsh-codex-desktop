@@ -13,6 +13,7 @@ test('打包清理覆盖运行时残留和 release，不含用户 Profile', asyn
   assert.ok(PACKAGING_CLEAN_RELATIVE_PATHS.includes('runtime-plugins'))
   assert.ok(PACKAGING_CLEAN_RELATIVE_PATHS.includes('runtime-node'))
   assert.ok(PACKAGING_CLEAN_RELATIVE_PATHS.includes('release'))
+  assert.equal(PACKAGING_CLEAN_RELATIVE_PATHS.some(path => path.startsWith('output/zip-smoke')), false)
   assert.doesNotMatch(source, /USERPROFILE|\.dsh[\\/]|src[\\/]/)
   assert.match(manifest, /"clean": "pnpm run build && node dist\/scripts\/clean-packaging\.js"/)
   assert.match(manifest, /"pack": "pnpm run clean && pnpm run prepare-runtime && electron-builder --dir"/)

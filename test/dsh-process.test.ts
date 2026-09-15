@@ -4,7 +4,7 @@ import test from 'node:test'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 
-import { APPLY_PLUGIN_UPDATES_IPC, DSH_STARTUP_TIMEOUT_MS, DSH_WEB_LAUNCH_ARGS, isApplyPluginUpdatesIpc, isAuthenticatedBootstrapRedirect, resolveDesktopWebPort, startDsh, type DshServer } from '../src/dsh-process.js'
+import { APPLY_PLUGIN_UPDATES_IPC, DSH_RENDERER_LOAD_TIMEOUT_MS, DSH_RENDERER_TIMEOUT_GRACE_MS, DSH_STARTUP_TIMEOUT_MS, DSH_WEB_LAUNCH_ARGS, isApplyPluginUpdatesIpc, isAuthenticatedBootstrapRedirect, resolveDesktopWebPort, startDsh, type DshServer } from '../src/dsh-process.js'
 
 const projectRoot = resolve(import.meta.dirname, '..', '..')
 const fixtureEntry = join(projectRoot, 'test', 'fixtures', 'dsh-fixture.mjs')
@@ -28,8 +28,12 @@ test('DSH 未输出就绪地址时超时', async () => {
   await assertFixtureStoppedAfterFailure('silent', /DSH 启动超时/)
 })
 
-test('进程就绪等待与首次 1–3 分钟提示对齐', () => {
-  assert.equal(DSH_STARTUP_TIMEOUT_MS, 120_000)
+test('进程就绪、页面覆盖与恢复页等待文案保持同一套超时', async () => {
+  const recovery = await readFile(new URL('../../assets/recovery.html', import.meta.url), 'utf8')
+  const waitSeconds = Number(/最长等待 (\d+) 秒/.exec(recovery)?.[1])
+  assert.equal(waitSeconds * 1000, DSH_STARTUP_TIMEOUT_MS)
+  assert.equal(DSH_RENDERER_TIMEOUT_GRACE_MS, DSH_RENDERER_LOAD_TIMEOUT_MS)
+  assert.ok(DSH_RENDERER_LOAD_TIMEOUT_MS < DSH_STARTUP_TIMEOUT_MS)
 })
 
 test('等待 alpha.2+ 分片输出完整 token 后再做健康检查', async () => {

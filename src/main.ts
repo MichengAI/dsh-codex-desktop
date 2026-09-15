@@ -13,7 +13,7 @@ import { resolveAppIconPath, resolveCompactIconCrop, resolveNotificationIconPath
 import { WINDOW_ICON_PIXEL_SIZES, isLoopbackFaviconRequest } from './window-icon.js'
 import { clearPreviousDshAuthCookies } from './desktop-auth-cookies.js'
 import { quitDesktopApp, shouldHideInsteadOfClose } from './app-lifecycle.js'
-import type { DshServer, StartDshOptions } from './dsh-process.js'
+import { DSH_RENDERER_LOAD_TIMEOUT_MS, DSH_RENDERER_TIMEOUT_GRACE_MS, type DshServer, type StartDshOptions } from './dsh-process.js'
 import { isExternalOpenUrl, isSameOrigin } from './navigation.js'
 import { applyPendingProfileUpdates, resolvePnpmStoreDir, seedBundledPlugins, resolveWebProfileDir } from './plugin-seed.js'
 import { parseUnresolvedBundleError, removeProfileBundle, startAfterPluginUpdates, startWithProfileSelfRepair } from './profile-repair.js'
@@ -91,6 +91,7 @@ let recoveryFailurePlugin: string | undefined
 let recoveryFailurePlugins: string[] = []
 let startupDiagnosticStage: Exclude<StartupDiagnosticStage, 'healthy'> = 'server-starting'
 let rendererHealthTimer: NodeJS.Timeout | undefined
+let rendererTimeoutGraceTimer: NodeJS.Timeout | undefined
 let handlingRendererBootFailure = false
 let startupFailurePresented = false
 const shellActionIds = new Set<string>(SHELL_ACTIONS.map(action => action.id))
@@ -462,17 +463,39 @@ async function advanceDshStartupDiagnostic(profileDir: string, stage: Exclude<St
   })
 }
 
+function rendererLoadTimeoutMessage(): string {
+  return `DSH 页面未能在 ${DSH_RENDERER_LOAD_TIMEOUT_MS / 1000} 秒内完成插件加载。`
+}
+
+function stopRendererTimeoutGraceTimer(): void {
+  if (rendererTimeoutGraceTimer !== undefined) clearTimeout(rendererTimeoutGraceTimer)
+  rendererTimeoutGraceTimer = undefined
+}
+
 function stopRendererHealthTimer(): void {
   if (rendererHealthTimer !== undefined) clearTimeout(rendererHealthTimer)
   rendererHealthTimer = undefined
+  stopRendererTimeoutGraceTimer()
+}
+
+function startRendererTimeoutGraceTimer(profileDir: string, message: string): void {
+  stopRendererTimeoutGraceTimer()
+  rendererTimeoutGraceTimer = setTimeout(() => {
+    rendererTimeoutGraceTimer = undefined
+    if (isQuitting || isRecycling || startupFailurePresented) return
+    void presentDshLoadFailure(profileDir, message, []).catch(error => {
+      console.error('无法显示 DSH 页面加载失败提示。', error)
+    })
+  }, DSH_RENDERER_TIMEOUT_GRACE_MS)
+  rendererTimeoutGraceTimer.unref()
 }
 
 function startRendererHealthTimer(profileDir: string): void {
   stopRendererHealthTimer()
   rendererHealthTimer = setTimeout(() => {
     rendererHealthTimer = undefined
-    void handleRendererBootReport({ status: 'failed', plugins: [], error: 'DSH 页面未能在 90 秒内完成插件加载。' }, profileDir, 'renderer-timeout')
-  }, 90_000)
+    void handleRendererBootReport({ status: 'failed', plugins: [], error: rendererLoadTimeoutMessage() }, profileDir, 'renderer-timeout')
+  }, DSH_RENDERER_LOAD_TIMEOUT_MS)
   rendererHealthTimer.unref()
 }
 
@@ -518,7 +541,10 @@ async function handleRendererBootReport(value: unknown, profileDir = lastSeedOpt
     await writeTextFile(startupErrorLogPath(profileDir), `${message}\n`, 'utf8')
     // 非关键插件异常只保留诊断；不能把有异常的配置确认为完全健康。
     if (source === 'renderer' && report.workbenchReady === true) return
-    if (source === 'renderer-timeout' && candidates.length === 0) return
+    if (source === 'renderer-timeout' && candidates.length === 0) {
+      startRendererTimeoutGraceTimer(profileDir, message)
+      return
+    }
     await presentDshLoadFailure(profileDir, message, candidates)
   } catch (error) {
     console.error('无法处理 DSH 客户端启动失败。', error)
@@ -534,6 +560,7 @@ async function handleRendererBootReport(value: unknown, profileDir = lastSeedOpt
 async function returnToWorkbenchFromRecovery(options: { restartHealthTimer?: boolean } = {}): Promise<void> {
   const running = server
   if (running === undefined) throw new Error('DSH 尚未成功启动，无法进入工作台。')
+  startupFailurePresented = false
   const view = requireDshView()
   const profileDir = recoveryProfileDir
   if (profileDir !== undefined && options.restartHealthTimer !== false) {
@@ -1284,9 +1311,14 @@ function resolveDevToolsContents(): WebContents | undefined {
   return contents === undefined || contents.isDestroyed() ? undefined : contents
 }
 
+function resolveRecoveryProfileDir(): string | undefined {
+  return recoveryProfileDir ?? lastSeedOptions?.profileDir
+}
+
 function isActionEnabled(id: ShellActionId): boolean {
   if (id === 'toggle-devtools') return resolveDevToolsContents() !== undefined
   if (id === 'reload') return !isRecycling && lastStartOptions !== undefined && lastSeedOptions !== undefined
+  if (id === 'open-recovery') return resolveRecoveryProfileDir() !== undefined
   if (id === 'back') return dshNavigationState.canBack
   if (id === 'forward') return dshNavigationState.canForward
   if (id === 'previous-chat') return dshNavigationState.canPreviousChat
@@ -1413,6 +1445,11 @@ async function executeShellAction(id: ShellActionId): Promise<void> {
   if (id === 'close-window') { mainWindow?.hide(); return }
   if (id === 'desktop-settings') { showDesktopSettingsWindow(); return }
   if (id === 'quit') { await requestQuit(); return }
+  if (id === 'open-recovery') {
+    const profileDir = resolveRecoveryProfileDir()
+    if (profileDir !== undefined) await showRecoveryWindow(profileDir)
+    return
+  }
   if (contents === undefined) return
   if (id === 'undo') contents.undo()
   else if (id === 'redo') contents.redo()

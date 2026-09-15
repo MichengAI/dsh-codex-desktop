@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import test, { type TestContext } from 'node:test'
 import vm from 'node:vm'
 
+import { DSH_RENDERER_LOAD_TIMEOUT_MS, DSH_RENDERER_TIMEOUT_GRACE_MS } from '../src/dsh-process.js'
 import { startAfterPluginUpdates, startWithProfileSelfRepair } from '../src/profile-repair.js'
 import { findRecoveryCandidates } from '../src/recovery-diagnostics.js'
 import { captureProfileHealthCheckpoint, readProfileHealthCheckpoint } from '../src/profile-health-checkpoint.js'
@@ -14,6 +15,7 @@ import * as diagnostics from '../src/startup-diagnostics.js'
 // 执行当前构建产物中的真实函数，仅替换 Electron、安装器与 DSH 进程边界。
 const mainSource = await readFile(new URL('../src/main.js', import.meta.url), 'utf8')
 const functionNames = new Set([
+  'rendererLoadTimeoutMessage', 'stopRendererTimeoutGraceTimer', 'startRendererTimeoutGraceTimer',
   'startRendererHealthTimer', 'stopRendererHealthTimer', 'handleRendererBootReport',
   'startupDiagnosticPath', 'beginDshStartupDiagnostic', 'advanceDshStartupDiagnostic',
   'clearRecoverySessionHints', 'maybeLeaveRecoveryMode', 'openWorkbenchOrRecovery',
@@ -49,11 +51,12 @@ async function harness(t: TestContext, options: { installError?: Error; loadErro
   await captureProfileHealthCheckpoint(profile)
   const events: string[] = []
   const errors: unknown[][] = []
-  const timers: Array<{ callback(): void; delay: number }> = []
+  const timers: Array<{ callback(): void; cancelled: boolean; delay: number }> = []
   const server = { url: 'http://127.0.0.1:43210', stop: async () => { events.push('stop') } }
   const scope = vm.createContext({
     ...recovery, ...diagnostics, captureProfileHealthCheckpoint, readProfileHealthCheckpoint,
     startAfterPluginUpdates, startWithProfileSelfRepair, findRecoveryCandidates,
+    DSH_RENDERER_LOAD_TIMEOUT_MS, DSH_RENDERER_TIMEOUT_GRACE_MS,
     Error, URL, join, readFile, writeTextFile: writeFile,
     console: { error: (...args: unknown[]) => errors.push(args), log: () => {}, warn: () => {} },
     app: { getPath: () => logs }, desktopText: (zh: string) => zh,
@@ -61,7 +64,8 @@ async function harness(t: TestContext, options: { installError?: Error; loadErro
     profileDir: profile, server, startupDiagnosticStage: 'renderer-loading',
     lastStartOptions: {}, lastSeedOptions: { profileDir: profile },
     isQuitting: false, isRecycling: false, handlingRendererBootFailure: false,
-    rendererHealthTimer: undefined, recoveryFailureMessage: undefined,
+    rendererHealthTimer: undefined, rendererTimeoutGraceTimer: undefined,
+    recoveryFailureMessage: undefined,
     recoveryFailurePlugin: undefined, recoveryFailurePlugins: [],
     presentation: 'workbench', allowedOrigin: undefined, startupFailurePresented: false,
     profileWatcher: { sync: () => events.push('sync') }, broadcastShellState: () => {},
@@ -70,7 +74,10 @@ async function harness(t: TestContext, options: { installError?: Error; loadErro
     applyPendingProfileUpdates: async () => { events.push('install'); if (options.installError) throw options.installError; return [] },
     startDsh: async () => { events.push('start'); if (options.loadError) throw options.loadError; return server },
     createMainWindow: async () => { scope.presentation = 'workbench'; events.push('workbench') },
-    returnToWorkbenchFromRecovery: async () => { scope.presentation = 'workbench' },
+    returnToWorkbenchFromRecovery: async () => {
+      scope.startupFailurePresented = false
+      scope.presentation = 'workbench'
+    },
     showStartupWindow: async () => { scope.presentation = 'startup'; events.push('startup') },
     showRecoveryWindow: async (_profile: string, failure?: { failureMessage: string; failurePlugins: string[] }) => {
       scope.presentation = 'recovery'; events.push('recovery')
@@ -80,8 +87,14 @@ async function harness(t: TestContext, options: { installError?: Error; loadErro
         scope.recoveryFailurePlugin = failure.failurePlugins[0]
       }
     },
-    setTimeout: (callback: () => void, delay: number) => { timers.push({ callback, delay }); return { unref() {} } },
-    clearTimeout: () => {},
+    setTimeout: (callback: () => void, delay: number) => {
+      const timer = { callback, cancelled: false, delay }
+      timers.push(timer)
+      return { unref() {}, timer }
+    },
+    clearTimeout: (handle?: { timer?: { cancelled: boolean } }) => {
+      if (handle?.timer !== undefined) handle.timer.cancelled = true
+    },
   })
   vm.runInContext(executable, scope)
   return {
@@ -92,14 +105,26 @@ async function harness(t: TestContext, options: { installError?: Error; loadErro
       manifest.dependencies['broken-plugin'] = '2.0.0'
       await writeFile(join(profile, 'package.json'), JSON.stringify(manifest), 'utf8')
     },
+    async settleAsync(isBusy: () => boolean) {
+      const deadline = Date.now() + 5_000
+      while (isBusy() && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 5))
+      assert.equal(isBusy(), false)
+    },
     async fireRendererTimeout() {
       vm.runInContext('startRendererHealthTimer(profileDir)', scope)
-      assert.equal(timers.at(-1)?.delay, 90_000)
-      timers.at(-1)!.callback()
+      const timer = timers.at(-1)
+      assert.equal(timer?.delay, DSH_RENDERER_LOAD_TIMEOUT_MS)
+      timer!.cancelled = true
+      timer!.callback()
       // 虚拟推进页面加载超时定时器，只等待真实文件 I/O 完成。
-      const deadline = Date.now() + 5_000
-      while (scope.handlingRendererBootFailure && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 5))
-      assert.equal(scope.handlingRendererBootFailure, false)
+      await this.settleAsync(() => scope.handlingRendererBootFailure === true)
+    },
+    async fireRendererTimeoutGrace() {
+      const timer = timers.findLast(item => item.delay === DSH_RENDERER_TIMEOUT_GRACE_MS && !item.cancelled)
+      assert.ok(timer, '缺少二次宽限定时器')
+      timer.cancelled = true
+      timer.callback()
+      await this.settleAsync(() => scope.presentation === 'workbench')
     },
   }
 }
@@ -208,11 +233,13 @@ test('场景15：试恢复后再次前端加载失败，只重新隔离故障项
   assert.deepEqual(status.pendingRestore, ['healthy-plugin'])
 })
 
-test('场景16：页面加载超时但没有插件线索时，不盖掉工作台', async t => {
+test('场景16：页面加载超时但没有插件线索时，不盖掉工作台，并开始二次宽限', async t => {
   const h = await harness(t)
   await h.fireRendererTimeout()
   assert.equal(h.scope.presentation, 'workbench')
   assert.equal(recovery.isRecoveryModeActive(h.profile), false)
+  assert.equal(h.scope.startupFailurePresented, false)
+  assert.equal(h.timers.filter(timer => timer.delay === DSH_RENDERER_TIMEOUT_GRACE_MS && !timer.cancelled).length, 1)
   assert.match(await readFile(join(h.profile, '.dsh-desktop-startup-error.log'), 'utf8'), /未能在 90 秒内完成插件加载/)
 })
 
@@ -222,6 +249,25 @@ test('场景16b：失败页之后收到 healthy 报告会回到工作台', async
   h.scope.presentation = 'startup'
   await h.run('handleRendererBootReport({ status: "healthy" }, profileDir)')
   assert.equal(h.scope.presentation, 'workbench')
+  assert.equal(h.scope.startupFailurePresented, false)
+})
+
+test('场景16c：二次宽限到期仍未健康时，显示带日志路径的失败页', async t => {
+  const h = await harness(t)
+  await h.fireRendererTimeout()
+  await h.fireRendererTimeoutGrace()
+  assert.equal(h.scope.presentation, 'startup')
+  assert.equal(h.scope.startupFailurePresented, true)
+  assert.equal(recovery.isRecoveryModeActive(h.profile), false)
+})
+
+test('场景16d：二次宽限内收到 healthy 会取消失败页', async t => {
+  const h = await harness(t)
+  await h.fireRendererTimeout()
+  await h.run('handleRendererBootReport({ status: "healthy" }, profileDir)')
+  assert.equal(h.scope.presentation, 'workbench')
+  assert.equal(h.scope.startupFailurePresented, false)
+  assert.equal(h.timers.filter(timer => timer.delay === DSH_RENDERER_TIMEOUT_GRACE_MS && !timer.cancelled).length, 0)
 })
 
 test('场景17：工作台仍可用时，非关键插件失败不应强制切换到恢复页', async t => {

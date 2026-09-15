@@ -66,6 +66,7 @@ test('插件恢复页使用独立内容视图和受限 preload，不复用 DSH �
 test('恢复页返回工作台会先确认 DSH 页面可用再切换视图', async () => {
   const main = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
   assert.match(main, /async function returnToWorkbenchFromRecovery\(options: \{ restartHealthTimer\?: boolean \} = \{\}\): Promise<void>/)
+  assert.match(main, /if \(running === undefined\) throw new Error\('DSH 尚未成功启动，无法进入工作台。'\)\s+startupFailurePresented = false/)
   assert.match(main, /running: server !== undefined/)
   assert.match(main, /await windowNavigation\.navigate\(view, \(\) => view\.webContents\.loadURL\(running\.url\)\)/)
   assert.match(main, /options\.restartHealthTimer !== false/)
@@ -96,9 +97,10 @@ test('恢复模式中的健康启动不会覆盖最近正常配置检查点', as
   assert.match(healthyBranch, /await maybeLeaveRecoveryMode\(profileDir\)/)
   assert.match(healthyBranch, /if \(!isRecoveryModeActive\(profileDir\)\) \{\s+await captureProfileHealthCheckpoint\(profileDir\)/)
   assert.match(healthyBranch, /startupFailurePresented/)
-  assert.match(main, /90_000/)
-  assert.match(main, /未能在 90 秒内完成插件加载/)
+  assert.match(main, /DSH_RENDERER_LOAD_TIMEOUT_MS/)
+  assert.match(main, /startRendererTimeoutGraceTimer\(profileDir, message\)/)
   assert.match(main, /source === 'renderer-timeout' && candidates.length === 0/)
+  assert.match(main, /id === 'open-recovery'/)
   assert.match(main, /beginStartupDiagnostic\(startupDiagnosticPath\(profileDir\), startupDiagnosticStage, \{\s+mode: isRecoveryModeActive\(profileDir\) \? 'recovery' : 'normal',?\s+\}\)/)
 })
 

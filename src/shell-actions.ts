@@ -29,6 +29,7 @@ export type ShellActionId =
   | 'feedback'
   | 'show-shortcuts'
   | 'reload'
+  | 'open-recovery'
   | 'check-updates'
   | 'about'
 
@@ -100,6 +101,7 @@ export const SHELL_ACTIONS: readonly ShellActionDefinition[] = [
   { id: 'feedback', menu: 'help', group: 0, label: text('反馈', 'Feedback') },
   { id: 'show-shortcuts', menu: 'help', group: 1, label: text('显示键盘快捷键', 'Show Keyboard Shortcuts'), accelerator: 'CmdOrCtrl+/', globalShortcut: true, keywords: text('按键 命令', 'keys commands') },
   { id: 'reload', menu: 'help', group: 1, label: text('重新加载', 'Reload'), accelerator: 'CmdOrCtrl+R', globalShortcut: true, keywords: text('重载 插件 服务', 'reload plugins service') },
+  { id: 'open-recovery', menu: 'help', group: 1, label: text('打开恢复页', 'Open Recovery Page'), keywords: text('恢复 插件 隔离 故障', 'recovery plugins isolate failure') },
   { id: 'check-updates', menu: 'help', group: 2, label: text('检查更新…', 'Check for Updates…') },
   { id: 'about', menu: 'help', group: 2, label: text('关于 DSH Codex Desktop', 'About DSH Codex Desktop') },
 ]

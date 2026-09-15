@@ -4,6 +4,13 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.62 — 2026-09-15
+
+- Give cold starts more time: DSH now waits up to 120 seconds for the process to become ready (was 45) and up to 90 seconds for the workbench to finish loading plugins (was 30). A slow first launch no longer replaces the workbench with an error screen. If the page is still blank after another 90 seconds, the failure window returns with the log path. If the workbench becomes healthy during that wait, Desktop returns to it automatically. Help → Open Recovery Page is available once a profile exists.
+- `pack` and `dist` now delete leftover runtime folders first, so a stale bundled plugin store cannot be reused.
+- Skip empty pending-update, desktop-bridge, and bundle-reconcile scans on a normal launch.
+- Startup no longer auto-repairs community plugins that are listed in the profile but missing on disk. Those installs follow the client pending list. Bundled plugins are still seeded as before.
+
 ## 1.0.61 — 2026-09-14
 
 - Fix offline upgrades from older install folders (for example 1.0.41) failing when the bundled plugin store lacks full package metadata. Startup no longer reports an incomplete built-in plugin update and then contacts the npm registry. The new build can finish bundled plugin updates without a network.
@@ -23,6 +30,3 @@ The five most recent published versions are listed below.
 
 - Update bundled Codex UI to 1.1.5 and refresh its offline dependencies.
 
-## 1.0.56 — 2026-09-14
-
-- Update 12 bundled plugins, including Codex UI, IM Connect, automation, skills, archive management, agents, desktop pet, BTW, context, MCP connector, usage billing, and the plugin market, together with their offline dependencies.

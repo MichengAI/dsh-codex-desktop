@@ -9,6 +9,9 @@ import type { DshRuntime } from './runtime.js'
 export { APPLY_PLUGIN_UPDATES_IPC }
 
 export const DSH_STARTUP_TIMEOUT_MS = 120_000
+/** 工作台完成插件加载的首轮覆盖。超时且没有插件线索时不盖掉页面，再给一轮同样时长的宽限。 */
+export const DSH_RENDERER_LOAD_TIMEOUT_MS = 90_000
+export const DSH_RENDERER_TIMEOUT_GRACE_MS = DSH_RENDERER_LOAD_TIMEOUT_MS
 const startupTimeoutMs = DSH_STARTUP_TIMEOUT_MS
 const maxCapturedOutputLength = 12_000
 const shutdownTimeoutMs = 5_000
