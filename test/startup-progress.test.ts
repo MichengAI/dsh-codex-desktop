@@ -16,5 +16,7 @@ test('文件进度标明当前步骤，安装与启动不虚构百分比', () =>
   assert.match(files.message, /同步/)
   assert.match(files.detail, /3.*4/)
   assert.equal(formatStartupProgress({ phase: 'server' }, false).total, undefined)
+  assert.equal(formatStartupProgress({ phase: 'server' }, true).message, '正在启动 DSH 并加载插件')
+  assert.equal(formatStartupProgress({ phase: 'server' }, false).message, 'Starting DSH and loading plugins')
   assert.equal(formatStartupProgress({ phase: 'install', detail: { resolved: 15, reused: 12, downloaded: 3, added: 8 } }, true).total, undefined)
 })

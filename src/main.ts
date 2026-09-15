@@ -92,6 +92,7 @@ let recoveryFailurePlugins: string[] = []
 let startupDiagnosticStage: Exclude<StartupDiagnosticStage, 'healthy'> = 'server-starting'
 let rendererHealthTimer: NodeJS.Timeout | undefined
 let handlingRendererBootFailure = false
+let startupFailurePresented = false
 const shellActionIds = new Set<string>(SHELL_ACTIONS.map(action => action.id))
 
 function startupErrorLogPath(profileDir?: string): string {
@@ -240,11 +241,14 @@ async function startApplication(): Promise<void> {
       ...(prebuiltRuntimeDir === undefined ? {} : { prebuiltRuntimeDir }),
       ...(pathPrefix === undefined ? {} : { pathPrefix }),
     }
+    lastSeedOptions = seedOptions
+    let skipBundleReconcile = true
     try {
       await updateStartupMessage(desktopText('正在检查配套插件', 'Checking bundled plugins'))
       const seeded = await seedBundledPlugins(seedOptions)
       if (seeded.seeded.length > 0) console.log(`已补种官方运行时和社区插件：${seeded.seeded.join('、')}`)
     } catch (error) {
+      skipBundleReconcile = false
       const message = error instanceof Error ? error.message : '内置插件补种失败。'
       await writeTextFile(join(app.getPath('userData'), 'plugin-seed.log'), `${message}\n`, 'utf8').catch(() => undefined)
       await showStartupPluginWarning('seed', message)
@@ -252,13 +256,16 @@ async function startApplication(): Promise<void> {
     try {
       await updateStartupMessage(desktopText('正在检查待应用的插件更新', 'Checking pending plugin updates'))
       const updated = await applyPendingProfileUpdates(seedOptions)
-      if (updated.length > 0) console.log('已在启动前应用插件更新：' + updated.join('、'))
+      if (updated.length > 0) {
+        skipBundleReconcile = false
+        console.log('已在启动前应用插件更新：' + updated.join('、'))
+      }
     } catch (error) {
+      skipBundleReconcile = false
       const message = error instanceof Error ? error.message : '启动前应用插件更新失败。'
       await writeTextFile(join(app.getPath('userData'), 'plugin-update.log'), `${message}\n`, 'utf8').catch(() => undefined)
       await showStartupPluginWarning('pending', message)
     }
-    lastSeedOptions = seedOptions
     const runtime = resolveDshRuntime({ ...runtimeOptions, profileDir, desktopRuntimeDir })
     const startOptions = {
       bootstrapPath: resolveDshBootstrap(runtimeOptions),
@@ -283,6 +290,7 @@ async function startApplication(): Promise<void> {
       started = await startWithProfileSelfRepair({
         profileDir,
         extraDirs: [desktopRuntimeDir],
+        skipBundleReconcile,
         start: () => startDsh({
           ...startOptions,
           onUnexpectedExit: handleUnexpectedDshExit,
@@ -463,8 +471,8 @@ function startRendererHealthTimer(profileDir: string): void {
   stopRendererHealthTimer()
   rendererHealthTimer = setTimeout(() => {
     rendererHealthTimer = undefined
-    void handleRendererBootReport({ status: 'failed', plugins: [], error: 'DSH 页面未能在 30 秒内完成插件加载。' }, profileDir, 'renderer-timeout')
-  }, 30_000)
+    void handleRendererBootReport({ status: 'failed', plugins: [], error: 'DSH 页面未能在 90 秒内完成插件加载。' }, profileDir, 'renderer-timeout')
+  }, 90_000)
   rendererHealthTimer.unref()
 }
 
@@ -483,6 +491,12 @@ async function handleRendererBootReport(value: unknown, profileDir = lastSeedOpt
     if (!isRecoveryModeActive(profileDir)) {
       await captureProfileHealthCheckpoint(profileDir).catch(error => {
         console.error('无法保存 DSH 健康配置检查点。', error)
+      })
+    }
+    if (startupFailurePresented && server !== undefined) {
+      startupFailurePresented = false
+      await returnToWorkbenchFromRecovery({ restartHealthTimer: false }).catch(error => {
+        console.error('无法在插件加载完成后回到工作台。', error)
       })
     }
     return
@@ -504,6 +518,7 @@ async function handleRendererBootReport(value: unknown, profileDir = lastSeedOpt
     await writeTextFile(startupErrorLogPath(profileDir), `${message}\n`, 'utf8')
     // 非关键插件异常只保留诊断；不能把有异常的配置确认为完全健康。
     if (source === 'renderer' && report.workbenchReady === true) return
+    if (source === 'renderer-timeout' && candidates.length === 0) return
     await presentDshLoadFailure(profileDir, message, candidates)
   } catch (error) {
     console.error('无法处理 DSH 客户端启动失败。', error)
@@ -516,12 +531,12 @@ async function handleRendererBootReport(value: unknown, profileDir = lastSeedOpt
  * 恢复页与工作台使用不同的内容视图。先在后台完成工作台导航，
  * 再切换可见视图，避免用户看到按钮点击后页面停留在原处。
  */
-async function returnToWorkbenchFromRecovery(): Promise<void> {
+async function returnToWorkbenchFromRecovery(options: { restartHealthTimer?: boolean } = {}): Promise<void> {
   const running = server
   if (running === undefined) throw new Error('DSH 尚未成功启动，无法进入工作台。')
   const view = requireDshView()
   const profileDir = recoveryProfileDir
-  if (profileDir !== undefined) {
+  if (profileDir !== undefined && options.restartHealthTimer !== false) {
     await advanceDshStartupDiagnostic(profileDir, 'renderer-loading')
     startRendererHealthTimer(profileDir)
   }
@@ -589,6 +604,7 @@ async function startupRecoveryCandidates(profileDir: string, message: string, pl
 }
 
 async function presentDshLoadFailure(profileDir: string, message: string, candidates: string[]): Promise<void> {
+  startupFailurePresented = true
   if (isRecoveryModeActive(profileDir)) {
     await enterRecoveryMode(profileDir, { force: true, suspectedPlugins: candidates, failureMessage: message })
   }

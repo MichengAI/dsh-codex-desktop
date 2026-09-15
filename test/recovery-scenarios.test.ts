@@ -63,7 +63,7 @@ async function harness(t: TestContext, options: { installError?: Error; loadErro
     isQuitting: false, isRecycling: false, handlingRendererBootFailure: false,
     rendererHealthTimer: undefined, recoveryFailureMessage: undefined,
     recoveryFailurePlugin: undefined, recoveryFailurePlugins: [],
-    presentation: 'workbench', allowedOrigin: undefined,
+    presentation: 'workbench', allowedOrigin: undefined, startupFailurePresented: false,
     profileWatcher: { sync: () => events.push('sync') }, broadcastShellState: () => {},
     handleUnexpectedDshExit: () => {}, handleDshIpc: () => {},
     reportStartupProgress: () => {},
@@ -94,9 +94,9 @@ async function harness(t: TestContext, options: { installError?: Error; loadErro
     },
     async fireRendererTimeout() {
       vm.runInContext('startRendererHealthTimer(profileDir)', scope)
-      assert.equal(timers.at(-1)?.delay, 30_000)
+      assert.equal(timers.at(-1)?.delay, 90_000)
       timers.at(-1)!.callback()
-      // 虚拟推进 30 秒定时器，只等待真实文件 I/O 完成。
+      // 虚拟推进页面加载超时定时器，只等待真实文件 I/O 完成。
       const deadline = Date.now() + 5_000
       while (scope.handlingRendererBootFailure && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 5))
       assert.equal(scope.handlingRendererBootFailure, false)
@@ -208,11 +208,20 @@ test('场景15：试恢复后再次前端加载失败，只重新隔离故障项
   assert.deepEqual(status.pendingRestore, ['healthy-plugin'])
 })
 
-test('场景16：30 秒超时但没有插件变更或错误线索，不进入插件恢复', async t => {
+test('场景16：页面加载超时但没有插件线索时，不盖掉工作台', async t => {
   const h = await harness(t)
   await h.fireRendererTimeout()
-  assert.equal(h.scope.presentation, 'startup')
+  assert.equal(h.scope.presentation, 'workbench')
   assert.equal(recovery.isRecoveryModeActive(h.profile), false)
+  assert.match(await readFile(join(h.profile, '.dsh-desktop-startup-error.log'), 'utf8'), /未能在 90 秒内完成插件加载/)
+})
+
+test('场景16b：失败页之后收到 healthy 报告会回到工作台', async t => {
+  const h = await harness(t)
+  h.scope.startupFailurePresented = true
+  h.scope.presentation = 'startup'
+  await h.run('handleRendererBootReport({ status: "healthy" }, profileDir)')
+  assert.equal(h.scope.presentation, 'workbench')
 })
 
 test('场景17：工作台仍可用时，非关键插件失败不应强制切换到恢复页', async t => {
@@ -227,7 +236,7 @@ test('场景17：工作台仍可用时，非关键插件失败不应强制切换
   assert.match(await readFile(join(h.profile, '.dsh-desktop-startup-error.log'), 'utf8'), /broken-plugin/)
 })
 
-test('场景18：30 秒加载超时且近期有插件变更，进入恢复并列出变更项', async t => {
+test('场景18：页面加载超时且近期有插件变更，进入恢复并列出变更项', async t => {
   const h = await harness(t)
   await h.changePlugin()
   await h.fireRendererTimeout()

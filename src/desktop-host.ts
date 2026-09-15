@@ -274,16 +274,8 @@ export function resolveDesktopBridgeDir(options: { isPackaged: boolean; appPath:
     : join(options.appPath, 'dist', 'src')
 }
 
-/** 在 Desktop 私有目录准备完整桥接包，返回仅供本次启动使用的 overlay 路径。 */
-export function prepareDesktopBridge(destDir: string, sourceDir: string): string {
-  mkdirSync(destDir, { recursive: true })
-  for (const file of DESKTOP_BRIDGE_FILES) {
-    const from = join(sourceDir, file)
-    if (!existsSync(from)) throw new Error(`桌面桥接文件缺失：${from}`)
-    copyFileSync(from, join(destDir, file))
-  }
-  writeFileSync(join(destDir, 'desktop-bridge-client.js'), desktopBridgeClientBundle(), 'utf8')
-  writeFileSync(join(destDir, 'package.json'), `${JSON.stringify({
+function desktopBridgeManifest(): string {
+  return `${JSON.stringify({
     name: DESKTOP_BRIDGE_PACKAGE,
     version: '0.0.0-desktop',
     type: 'module',
@@ -307,13 +299,57 @@ export function prepareDesktopBridge(destDir: string, sourceDir: string): string
         platform: 'web',
       },
     },
-  }, undefined, 2)}\n`, 'utf8')
-  writeFileSync(join(destDir, 'cordis.patch.yml'), '[]\n', 'utf8')
-  const patchPath = join(destDir, 'desktop.patch.yml')
-  // JSON 是合法 YAML；file URL 同时兼容 Windows 路径、空格及中文目录。
-  writeFileSync(patchPath, `${JSON.stringify([{ insert: [{
+  }, undefined, 2)}\n`
+}
+
+function desktopBridgePatchContents(destDir: string): string {
+  return `${JSON.stringify([{ insert: [{
     id: DESKTOP_BRIDGE_PACKAGE,
     name: pathToFileURL(join(destDir, 'desktop-bridge.mjs')).href,
-  }] }], undefined, 2)}\n`, 'utf8')
+  }] }], undefined, 2)}\n`
+}
+
+function sameTextFile(path: string, expected: string): boolean {
+  try {
+    return readFileSync(path, 'utf8') === expected
+  } catch {
+    return false
+  }
+}
+
+function sameCopiedFile(from: string, to: string): boolean {
+  try {
+    return readFileSync(from).equals(readFileSync(to))
+  } catch {
+    return false
+  }
+}
+
+/** 源文件和生成清单都未变时，不必把桥接再写进用户目录。 */
+export function isDesktopBridgeCurrent(destDir: string, sourceDir: string): boolean {
+  return DESKTOP_BRIDGE_FILES.every(file => sameCopiedFile(join(sourceDir, file), join(destDir, file)))
+    && sameTextFile(join(destDir, 'desktop-bridge-client.js'), desktopBridgeClientBundle())
+    && sameTextFile(join(destDir, 'package.json'), desktopBridgeManifest())
+    && sameTextFile(join(destDir, 'cordis.patch.yml'), '[]\n')
+    && sameTextFile(join(destDir, 'desktop.patch.yml'), desktopBridgePatchContents(destDir))
+}
+
+/** 在 Desktop 私有目录准备完整桥接包，返回仅供本次启动使用的 overlay 路径。 */
+export function prepareDesktopBridge(destDir: string, sourceDir: string): string {
+  mkdirSync(destDir, { recursive: true })
+  for (const file of DESKTOP_BRIDGE_FILES) {
+    const from = join(sourceDir, file)
+    if (!existsSync(from)) throw new Error(`桌面桥接文件缺失：${from}`)
+  }
+  const patchPath = join(destDir, 'desktop.patch.yml')
+  if (isDesktopBridgeCurrent(destDir, sourceDir)) return patchPath
+  for (const file of DESKTOP_BRIDGE_FILES) {
+    copyFileSync(join(sourceDir, file), join(destDir, file))
+  }
+  writeFileSync(join(destDir, 'desktop-bridge-client.js'), desktopBridgeClientBundle(), 'utf8')
+  writeFileSync(join(destDir, 'package.json'), desktopBridgeManifest(), 'utf8')
+  writeFileSync(join(destDir, 'cordis.patch.yml'), '[]\n', 'utf8')
+  // JSON 是合法 YAML；file URL 同时兼容 Windows 路径、空格及中文目录。
+  writeFileSync(patchPath, desktopBridgePatchContents(destDir), 'utf8')
   return patchPath
 }

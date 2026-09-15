@@ -31,9 +31,10 @@
     "smoke:upgrade": "pnpm run build && node dist/scripts/smoke-profile-upgrade.mjs",
     "test": "pnpm run build && node --test dist/test/*.test.js",
     "start": "pnpm run build && electron .",
+    "clean": "pnpm run build && node dist/scripts/clean-packaging.js",
     "prepare-runtime": "pnpm run build && node dist/scripts/prepare-runtime.js",
-    "pack": "pnpm run prepare-runtime && electron-builder --dir",
-    "dist": "pnpm run prepare-runtime && electron-builder --publish never",
+    "pack": "pnpm run clean && pnpm run prepare-runtime && electron-builder --dir",
+    "dist": "pnpm run clean && pnpm run prepare-runtime && electron-builder --publish never",
     "smoke:mac": "pnpm run build && node dist/scripts/smoke-macos-package.mjs",
     "smoke:linux": "pnpm run build && node dist/scripts/smoke-linux-package.mjs"
   },

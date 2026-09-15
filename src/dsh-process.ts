@@ -8,7 +8,8 @@ import type { DshRuntime } from './runtime.js'
 
 export { APPLY_PLUGIN_UPDATES_IPC }
 
-const startupTimeoutMs = 45_000
+export const DSH_STARTUP_TIMEOUT_MS = 120_000
+const startupTimeoutMs = DSH_STARTUP_TIMEOUT_MS
 const maxCapturedOutputLength = 12_000
 const shutdownTimeoutMs = 5_000
 const forcedShutdownDeadlineMs = 2_000

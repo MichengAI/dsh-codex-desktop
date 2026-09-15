@@ -25,7 +25,7 @@ export function formatStartupProgress(progress: StartupProgress, zh: boolean): {
     sync: ['正在同步配套依赖文件', 'Syncing bundled dependency files'],
     index: ['正在更新依赖索引', 'Updating the dependency index'],
     install: ['正在安装插件及依赖', 'Installing plugins and dependencies'],
-    server: ['正在启动 DSH 服务', 'Starting the DSH service'],
+    server: ['正在启动 DSH 并加载插件', 'Starting DSH and loading plugins'],
     renderer: ['正在加载工作界面', 'Loading the workspace'],
   }
   let detail = ''

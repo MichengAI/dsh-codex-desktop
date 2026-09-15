@@ -11,6 +11,22 @@ test('能从 DSH 缺 bundle 报错里取出包名', () => {
   assert.equal(parseUnresolvedBundleError(message), 'dsh-file-upload')
 })
 
+test('可跳过 bundle 对账，避免启动时重复扫描', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-repair-skip-'))
+  try {
+    await writeFile(join(root, 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-file-upload': '1.0.0' },
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', 'dsh-file-upload'] } },
+    }), 'utf8')
+    const removed = await repairBrokenProfile(root, [], { reconcileBundles: false })
+    assert.deepEqual(removed, [])
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }
+    assert.deepEqual(manifest.dsh?.profile?.bundles, ['@deepseek-ai/dsh-base', 'dsh-file-upload'])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('自我修复会摘掉清单有、磁盘没有的社区插件', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-repair-'))
   try {

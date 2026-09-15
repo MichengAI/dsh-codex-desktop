@@ -323,6 +323,10 @@ export async function applyPendingProfileUpdates(options: SeedOptions): Promise<
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
+  if (pending.length === 0) {
+    if (existsSync(pendingPath)) await rm(pendingPath, { force: true })
+    return []
+  }
   const { community } = partitionPackageUpdates(pending)
   // 旧客户端留下的更新清单不能把新版桌面刚补齐的插件降回不兼容版本。
   const baseline = new Map((options.catalog ?? BUNDLED_PLUGINS).map(plugin => [plugin.packageName, plugin.version]))

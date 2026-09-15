@@ -338,6 +338,29 @@ test('会清掉 Web profile 里的官方 node_modules，避免盖掉运行时', 
   }
 })
 
+test('没有待更新清单时不扫描已装插件版本', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-pending-skip-'))
+  try {
+    const profile = join(root, 'profile')
+    const packageDir = join(profile, 'node_modules', 'broken-plugin')
+    await mkdir(packageDir, { recursive: true })
+    await writeFile(join(profile, 'package.json'), JSON.stringify({
+      dependencies: { 'broken-plugin': '1.0.0' },
+    }), 'utf8')
+    await writeFile(join(packageDir, 'package.json'), '{', 'utf8')
+    const calls: string[][] = []
+    assert.deepEqual(await applyPendingProfileUpdates({
+      nodeExecutable: 'node',
+      profileDir: profile,
+      pluginStoreDir: join(root, 'store'),
+      runner: async (args) => { calls.push([...args]) },
+    }), [])
+    assert.deepEqual(calls, [])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('启动前会按 pending 清单升级社区插件，不碰官方包', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-pending-'))
   try {

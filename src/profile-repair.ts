@@ -41,12 +41,21 @@ export async function removeProfileBundle(profileDir: string, packageName: strin
   return true
 }
 
+export interface RepairBrokenProfileOptions {
+  reconcileBundles?: boolean
+}
+
 /** 启动前把已知损坏修掉：官方包串进 profile、空 bundle、坏的 bridge patch。 */
-export async function repairBrokenProfile(profileDir: string, extraDirs: readonly string[] = []): Promise<string[]> {
+export async function repairBrokenProfile(
+  profileDir: string,
+  extraDirs: readonly string[] = [],
+  options: RepairBrokenProfileOptions = {},
+): Promise<string[]> {
   if (!existsSync(join(profileDir, 'package.json'))) return []
   await stripOfficialProfileDependencies(profileDir)
   ensureAutoInstallPeersDisabled(profileDir)
   migrateDesktopBridgeProfile(profileDir)
+  if (options.reconcileBundles === false) return []
   const finalized = await finalizeProfileBundlesAfterInstall(profileDir, extraDirs)
   return finalized.removed
 }
@@ -70,9 +79,12 @@ export async function startWithProfileSelfRepair<T>(options: {
   extraDirs?: readonly string[]
   start: () => Promise<T>
   maxAttempts?: number
+  skipBundleReconcile?: boolean
 }): Promise<{ result: T; repaired: string[] }> {
   const extraDirs = options.extraDirs ?? []
-  const repaired = [...await repairBrokenProfile(options.profileDir, extraDirs)]
+  const repaired = [...await repairBrokenProfile(options.profileDir, extraDirs, {
+    ...(options.skipBundleReconcile === true ? { reconcileBundles: false } : {}),
+  })]
   assertOfficialProfileBundlesAvailable(options.profileDir, extraDirs)
   const maxAttempts = options.maxAttempts ?? 5
   let lastError: unknown

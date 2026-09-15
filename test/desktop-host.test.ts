@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import { APPLY_PLUGIN_UPDATES_IPC, OFFICIAL_DSH_VERSION } from '../src/bundled-plugins.js'
-import { createDesktopHostServices, DESKTOP_BRIDGE_FILES, prepareDesktopBridge, officialPluginUpdateVersion, runBundledPnpm, shouldRecycleAfterPluginArgs, shouldRecycleAfterPluginResult } from '../src/desktop-host.js'
+import { createDesktopHostServices, DESKTOP_BRIDGE_FILES, isDesktopBridgeCurrent, prepareDesktopBridge, officialPluginUpdateVersion, runBundledPnpm, shouldRecycleAfterPluginArgs, shouldRecycleAfterPluginResult } from '../src/desktop-host.js'
 import { removeDesktopBridgePatch } from '../src/desktop-bridge-migration.js'
 import { pathToFileURL } from 'node:url'
 
@@ -341,6 +341,15 @@ test('桌面桥接清单同时声明 host 与 client 入口', async () => {
     assert.deepEqual(JSON.parse(await readFile(patch, 'utf8')), expected)
     assert.equal(prepareDesktopBridge(profile, source), patch)
     assert.deepEqual(JSON.parse(await readFile(patch, 'utf8')), expected)
+    const copied = join(profile, 'desktop-bridge.mjs')
+    assert.equal(isDesktopBridgeCurrent(profile, source), true)
+    assert.equal(prepareDesktopBridge(profile, source), patch)
+    assert.equal(isDesktopBridgeCurrent(profile, source), true)
+    await writeFile(copied, 'mutated-bridge', 'utf8')
+    assert.equal(isDesktopBridgeCurrent(profile, source), false)
+    assert.equal(prepareDesktopBridge(profile, source), patch)
+    assert.equal(await readFile(copied, 'utf8'), '')
+    assert.equal(isDesktopBridgeCurrent(profile, source), true)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

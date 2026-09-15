@@ -175,7 +175,7 @@
           await api.returnToWorkbench();
           return;
         }
-        setNotice('正在重新启动 DSH，最长等待 45 秒。');
+        setNotice('正在重新启动 DSH，最长等待 120 秒。');
         await api.activate();
         await refresh();
         setNotice(currentState?.running ? 'DSH 已启动。' : 'DSH 尚未完成启动。');
