@@ -1,6 +1,7 @@
 # 安装包、运行时和构建输出只保留在本地或 GitHub Release，不提交源码仓库。
 dist/
 release/
+release-*/
 runtime/
 runtime-node/
 runtime-plugins/

@@ -257,3 +257,17 @@ test('DSH 主题变化同步到桌面外壳、原生菜单和辅助窗口', asyn
   for (const source of [shell, settings, shortcuts, about]) assert.match(source, /dataset\.colorScheme=value\.colorScheme/)
   assert.match(main, /loadFile\(html, \{ query: \{ theme: activeDshColorScheme[, }]/)
 })
+
+test('仓库根 package.json 仍是开发清单，不是 asar 抽出的打包副本', async () => {
+  const manifest = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as {
+    main?: unknown
+    scripts?: { build?: unknown }
+    devDependencies?: unknown
+    build?: { appId?: unknown }
+  }
+  assert.equal(manifest.main, 'dist/src/main.js')
+  assert.equal(typeof manifest.scripts?.build, 'string')
+  assert.equal(typeof manifest.devDependencies, 'object')
+  assert.notEqual(manifest.devDependencies, null)
+  assert.equal(manifest.build?.appId, 'ai.micheng.deepseekHarnessDesktop')
+})

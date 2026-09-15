@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -16,9 +16,15 @@ export const PACKAGING_CLEAN_RELATIVE_PATHS = [
   'runtime-dsh.tgz.sha256',
 ] as const
 
+function extraReleaseDirectories(root: string): string[] {
+  return readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith('release-'))
+    .map((entry) => entry.name)
+}
+
 export async function cleanPackagingArtifacts(root = projectRoot): Promise<string[]> {
   const cleaned: string[] = []
-  for (const relative of PACKAGING_CLEAN_RELATIVE_PATHS) {
+  for (const relative of [...PACKAGING_CLEAN_RELATIVE_PATHS, ...extraReleaseDirectories(root)]) {
     const target = resolve(root, relative)
     if (target !== root && !target.startsWith(root + sep)) {
       throw new Error(`拒绝清理项目外路径：${relative}`)
