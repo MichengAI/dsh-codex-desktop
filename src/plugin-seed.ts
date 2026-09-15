@@ -102,7 +102,7 @@ export function planBundledPluginSeed(input: SeedPlanInput): SeedPlan {
   return { action: 'add', packages: missing }
 }
 
-/** 已有 node_modules 的目录禁止改 store-dir，否则 pnpm 报 UNEXPECTED_STORE。 */
+/** 目录里还没有 node_modules 时，才算可以首次指定随包 store。 */
 export function shouldUsePackagedStore(targetDir: string): boolean {
   return !existsSync(join(targetDir, 'node_modules'))
 }
@@ -122,7 +122,9 @@ export function resolvePnpmStoreDir(targetDir: string, fallback?: string): strin
   } catch {
     // 首次安装还没有 pnpm 状态文件。
   }
-  return shouldUsePackagedStore(targetDir) && fallback ? fallback : undefined
+  // 有 node_modules 但没有记录 storeDir（官方 DSH 空目录、npm 残留、坏掉的 .modules.yaml）
+  // 并没有绑过仓库；可以安全使用随包 store。只有已经写出 storeDir 时才禁止改绑。
+  return fallback
 }
 
 export function buildSeedRemoveArgs(packageNames: readonly string[], targetDir: string, options: SeedPnpmOptions = {}): string[] {
@@ -495,7 +497,7 @@ async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
     }
     return { seeded: [], skipped: plan.reason }
   }
-  // 只沿用 Profile 明确记录的仓库；未知位置时让 pnpm 选择默认仓库。
+  // 在线兜底只沿用 Profile 明确记录的仓库；没有记录时不指定 --store-dir。
   const originalStore = resolvePnpmStoreDir(options.profileDir)
   const onlineOptions = originalStore === undefined ? {} : { storeDir: originalStore }
   let storeOptions: SeedPnpmOptions
@@ -659,9 +661,6 @@ export async function prepareBundledPluginStore(profileDir: string, bundledStore
     }
   }
   const existing = resolvePnpmStoreDir(profileDir)
-  if (existing === undefined && existsSync(join(profileDir, 'node_modules'))) {
-    throw new Error('无法读取已有 pnpm 仓库位置，已停止离线升级。')
-  }
   const storeDir = existing ?? bundledStore
   if (existing !== undefined) {
     if (/^v\d+$/.test(basename(existing)) && basename(existing) !== 'v11') {

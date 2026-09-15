@@ -6,6 +6,7 @@ The five most recent published versions are listed below.
 
 ## 1.0.62 — 2026-09-15
 
+- Fix first launch on an intranet when the shared Web profile already has a `node_modules` folder but no recorded pnpm store. Desktop now uses the bundled offline plugin store instead of contacting the npm registry, so experts, plugins, and skills can install without a network.
 - Give cold starts more time: DSH now waits up to 120 seconds for the process to become ready (was 45) and up to 90 seconds for the workbench to finish loading plugins (was 30). A slow first launch no longer replaces the workbench with an error screen. If the page is still blank after another 90 seconds, the failure window returns with the log path. If the workbench becomes healthy during that wait, Desktop returns to it automatically. Help → Open Recovery Page is available once a profile exists.
 - `pack` and `dist` now delete leftover runtime folders first, so a stale bundled plugin store cannot be reused.
 - Skip empty pending-update, desktop-bridge, and bundle-reconcile scans on a normal launch.

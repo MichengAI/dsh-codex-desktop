@@ -207,6 +207,21 @@ test('后续 pnpm 操作沿用 node_modules 记录的 store 目录', async () =>
   }
 })
 
+test('node_modules 没有记录 storeDir 时可以使用随包仓库', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-unbound-store-'))
+  try {
+    const fallback = 'D:\\bundled-store'
+    await mkdir(join(root, 'node_modules'))
+    assert.equal(resolvePnpmStoreDir(root, fallback), fallback)
+    await writeFile(join(root, 'node_modules', '.modules.yaml'), '{}\n', 'utf8')
+    assert.equal(resolvePnpmStoreDir(root, fallback), fallback)
+    await writeFile(join(root, 'node_modules', '.modules.yaml'), 'invalid: [\n', 'utf8')
+    assert.equal(resolvePnpmStoreDir(root, fallback), fallback)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('替换旧套件时先安装子插件，安装失败不会先卸载套件', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-suite-rollback-'))
   try {
@@ -822,7 +837,7 @@ for (const legacyPolicy of [
   }
 })
 
-test('旧 Profile 缺少或无法解析仓库位置时在线兜底不指定 store', async () => {
+test('旧 Profile 缺少或无法解析仓库位置时仍用随包仓库离线补种', async () => {
   for (const state of [undefined, '{}', 'invalid: [']) {
     const root = await mkdtemp(join(tmpdir(), 'dsh-unknown-store-'))
     try {
@@ -834,10 +849,27 @@ test('旧 Profile 缺少或无法解析仓库位置时在线兜底不指定 stor
       const calls: string[][] = []
       await seedBundledPlugins({nodeExecutable:'node',profileDir:profile,pluginStoreDir:store,catalog,
         runner:async args=>{calls.push([...args])}})
-      assert.equal(calls.length,1)
-      assert.ok(!calls[0]!.includes('--offline'))
-      assert.ok(!calls[0]!.some(arg=>arg.startsWith('--store-dir=')||arg.startsWith('--cache-dir=')))
-    } finally { await rm(root,{recursive:true,force:true}) }
+      assert.equal(calls.length, 1)
+      assert.equal(calls[0]!.includes('--offline'), true)
+      assert.equal(calls[0]!.some(arg => arg === `--store-dir=${store}`), true)
+      assert.equal(calls[0]!.some(arg => arg.startsWith('--cache-dir=')), true)
+    } finally { await rm(root, { recursive: true, force: true }) }
+  }
+})
+
+test('没有记录 storeDir 的 node_modules 准备随包仓库时保持离线', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-prepare-unbound-'))
+  try {
+    const profile = join(root, 'profile')
+    const store = join(root, 'store')
+    await createBundledStore(store)
+    await mkdir(join(profile, 'node_modules'), { recursive: true })
+    const options = await prepareBundledPluginStore(profile, store)
+    assert.equal(options.offline, true)
+    assert.equal(options.storeDir, store)
+    assert.equal(options.cacheDir, join(store, 'cache'))
+  } finally {
+    await rm(root, { recursive: true, force: true })
   }
 })
 
