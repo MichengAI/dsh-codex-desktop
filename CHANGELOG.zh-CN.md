@@ -7,7 +7,7 @@
 ## 1.0.63 — 2026-09-16
 
 - 内置官方 DSH 运行时由 0.1.5-rc.2 升级至 0.1.6-alpha.1，并同步 scope、timeout、invariants 启动 peer。
-- 14 项内置插件升级到当前 npm latest：Codex UI 1.1.11、IM Connect 0.1.50、Automation 0.1.44、Skills Manager 0.1.52、Archive Manager 0.1.43、Agency Agents 0.1.43、Codex Pet 0.1.6、BTW 0.1.8、Simplify 0.1.5、Code Review 0.1.2、PUA 0.3.13、Context 0.53.0、MCP Connector 0.2.49、dshmarket 1.47.0。Better Sidebar 与 Usage Billing 已是 latest。
+- 15 项内置插件升级到当前 npm latest：Codex UI 1.1.11、IM Connect 0.1.50、Automation 0.1.44、Skills Manager 0.1.52、Archive Manager 0.1.43、Agency Agents 0.1.43、Codex Pet 0.1.6、BTW 0.1.8、Simplify 0.1.5、Code Review 0.1.2、PUA 0.3.13、Context 0.53.0、MCP Connector 0.2.49、Usage Billing 1.4.0、dshmarket 1.47.0。Better Sidebar 已是 latest。
 
 ## 1.0.62 — 2026-09-15
 

@@ -40,7 +40,7 @@ export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
   { packageName: 'dsh-context', version: '0.53.0' },
   { packageName: 'dsh-better-sidebar', version: '0.19.1' },
   { packageName: 'dsh-mcp-connector', version: '0.2.49' },
-  { packageName: '@kenz1117/dsh-ui-usage-billing', version: '1.3.0' },
+  { packageName: '@kenz1117/dsh-ui-usage-billing', version: '1.4.0' },
   { packageName: 'dshmarket', version: '1.47.0' },
 ]
 

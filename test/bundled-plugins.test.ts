@@ -58,7 +58,7 @@ test('每个内置插件都钉死精确版本', () => {
     'dsh-context': '0.53.0',
     'dsh-better-sidebar': '0.19.1',
     'dsh-mcp-connector': '0.2.49',
-    '@kenz1117/dsh-ui-usage-billing': '1.3.0',
+    '@kenz1117/dsh-ui-usage-billing': '1.4.0',
     dshmarket: '1.47.0',
   })
 })
