@@ -4,6 +4,11 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.63 — 2026-09-16
+
+- 内置官方 DSH 运行时由 0.1.5-rc.2 升级至 0.1.6-alpha.1，并同步 scope、timeout、invariants 启动 peer。
+- 14 项内置插件升级到当前 npm latest：Codex UI 1.1.11、IM Connect 0.1.50、Automation 0.1.44、Skills Manager 0.1.52、Archive Manager 0.1.43、Agency Agents 0.1.43、Codex Pet 0.1.6、BTW 0.1.8、Simplify 0.1.5、Code Review 0.1.2、PUA 0.3.13、Context 0.53.0、MCP Connector 0.2.49、dshmarket 1.47.0。Better Sidebar 与 Usage Billing 已是 latest。
+
 ## 1.0.62 — 2026-09-15
 
 - 修复内网首次启动时，共享 Web 配置里已有 `node_modules` 但没有记录 pnpm 仓库、桌面改去访问 npm 注册表导致专家/插件/技能装不上的问题。现在会改用随包离线仓库补种。
@@ -24,10 +29,4 @@
 ## 1.0.59 — 2026-09-14
 
 - 修复旧配置下插件安装或更新因 `node-pty`、`protobufjs` 构建许可缺失而失败的问题。升级后启动会补齐必要许可，并恢复此前已安装但未完成构建的配套依赖，无需删除用户配置。
-
-## 1.0.58 — 2026-09-14
-
-- 新增内置 Code Review 和 PUA，支持离线安装。PUA 在未保存过开关选择时默认全局关闭，可在“设置 → 插件 → PUA 配置”中开启；已有开关选择保留。
-
-- 内置 Codex UI 升级至 1.1.5，并同步离线依赖。
 
