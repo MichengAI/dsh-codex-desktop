@@ -4,9 +4,9 @@
 
 The five most recent published versions are listed below.
 
-## Unreleased
+## 1.0.65 — 2026-09-19
 
-- Keep user-enabled official optional team bundles (agent team / team web) across launch cleanup, instead of dropping every extra `@deepseek-ai/*` bundle as leftover official runtime.
+- Keep official profile layers that are not leftover Web-profile dependencies, instead of maintaining a Desktop allowlist of official optional bundles.
 - Refresh 2 bundled plugins to current npm latest: Codex UI 1.1.14 and dshmarket 1.48.0. The other 14 bundled plugins and official DSH 0.1.6-alpha.2 were already latest.
 
 ## 1.0.64 — 2026-09-18
@@ -30,9 +30,4 @@ The five most recent published versions are listed below.
 ## 1.0.61 — 2026-09-14
 
 - Fix offline upgrades from older install folders (for example 1.0.41) failing when the bundled plugin store lacks full package metadata. Startup no longer reports an incomplete built-in plugin update and then contacts the npm registry. The new build can finish bundled plugin updates without a network.
-
-## 1.0.60 — 2026-09-14
-
-- Update bundled Codex UI, IM Connect, automation, archive manager, Context, and MCP Connector plugins and their offline dependencies.
-- Update the desktop runtime to Electron 44.3.0 and Node.js 24.21.0, and the bundled package manager to pnpm 11.26.0. DSH remains on 0.1.5-rc.2.
 

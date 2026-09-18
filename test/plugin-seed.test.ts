@@ -11,7 +11,7 @@ import { parse } from 'yaml'
 import { createServer } from 'node:http'
 
 import { OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, SUITE_PACKAGE, officialDshVersionOverrides } from '../src/bundled-plugins.js'
-import { prepareBundledPluginStore, buildSeedRemoveArgs, applyPendingProfileUpdates, buildSeedPluginArgs, ensureAutoInstallPeersEnabled, isOfficialRuntimeLaunchable, missingOfficialLaunchPeers, officialRuntimeInstallArgs, planBundledPluginSeed, finalizeProfileBundlesAfterInstall, pruneMissingProfileBundles, resolvePnpmStoreDir, seedBundledPlugins, stripOfficialProfileDependencies, writeOfficialRuntimeManifest } from '../src/plugin-seed.js'
+import { prepareBundledPluginStore, buildSeedRemoveArgs, applyPendingProfileUpdates, buildSeedPluginArgs, ensureAutoInstallPeersEnabled, isOfficialRuntimeLaunchable, missingOfficialLaunchPeers, officialRuntimeInstallArgs, planBundledPluginSeed, finalizeProfileBundlesAfterInstall, pruneMissingProfileBundles, reconcileProfileBundles, resolvePnpmStoreDir, seedBundledPlugins, stripOfficialProfileDependencies, writeOfficialRuntimeManifest } from '../src/plugin-seed.js'
 
 async function createBundledStore(store: string): Promise<void> {
   await mkdir(join(store, 'v11', 'files'), { recursive: true })
@@ -322,25 +322,32 @@ test('会从 Web profile 依赖里清掉官方包', async () => {
   }
 })
 
-test('清官方依赖时保留用户打开的官方可选实验层', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-strip-optional-'))
+test('清官方依赖时保留未写入依赖的官方层，并摘掉串进清单的残留运行时', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-strip-official-layers-'))
   try {
     await writeFile(join(root, 'package.json'), JSON.stringify({
-      dependencies: { '@michengai/dsh-codex-ui': '1.1.14' },
+      dependencies: {
+        '@deepseek-ai/dsh': '0.1.0-rc.7',
+        '@michengai/dsh-codex-ui': '1.1.14',
+      },
       dsh: { profile: { bundles: [
         '@deepseek-ai/dsh-base',
         '@deepseek-ai/dsh-web-app',
-        '@deepseek-ai/dsh-experimental-agent-team-profile',
-        '@deepseek-ai/dsh-experimental-agent-team-web-profile',
+        '@deepseek-ai/dsh',
+        '@deepseek-ai/dsh-experimental-future-layer',
       ] } },
     }), 'utf8')
-    assert.deepEqual(await stripOfficialProfileDependencies(root), [])
-    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }
+    assert.deepEqual(await stripOfficialProfileDependencies(root), ['@deepseek-ai/dsh'])
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>
+      dsh?: { profile?: { bundles?: string[] } }
+    }
+    assert.equal(manifest.dependencies?.['@michengai/dsh-codex-ui'], '1.1.14')
+    assert.equal(manifest.dependencies?.['@deepseek-ai/dsh'], undefined)
     assert.deepEqual(manifest.dsh?.profile?.bundles, [
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
-      '@deepseek-ai/dsh-experimental-agent-team-profile',
-      '@deepseek-ai/dsh-experimental-agent-team-web-profile',
+      '@deepseek-ai/dsh-experimental-future-layer',
     ])
   } finally {
     await rm(root, { recursive: true, force: true })
@@ -649,24 +656,27 @@ test('桌面内部 bridge bundle 不依赖 profile dependencies 仍会保留', a
   }
 })
 
-test('启动前保留不在 profile 依赖里的官方可选实验层', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-keep-optional-official-'))
+test('启动前保留不在 profile 依赖里的官方层，不靠桌面白名单', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-keep-official-layers-'))
   try {
     await writeFile(join(root, 'package.json'), JSON.stringify({
       dsh: { profile: { bundles: [
         '@deepseek-ai/dsh-base',
         '@deepseek-ai/dsh-web-app',
-        '@deepseek-ai/dsh-experimental-agent-team-profile',
-        '@deepseek-ai/dsh-experimental-agent-team-web-profile',
+        '@deepseek-ai/dsh-experimental-future-layer',
       ] } },
     }), 'utf8')
     assert.deepEqual(await pruneMissingProfileBundles(root), [])
+    assert.deepEqual(await reconcileProfileBundles(root), [
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      '@deepseek-ai/dsh-experimental-future-layer',
+    ])
     const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }
     assert.deepEqual(manifest.dsh?.profile?.bundles, [
       '@deepseek-ai/dsh-base',
       '@deepseek-ai/dsh-web-app',
-      '@deepseek-ai/dsh-experimental-agent-team-profile',
-      '@deepseek-ai/dsh-experimental-agent-team-web-profile',
+      '@deepseek-ai/dsh-experimental-future-layer',
     ])
   } finally {
     await rm(root, { recursive: true, force: true })

@@ -52,16 +52,6 @@ export const SEEDED_PACKAGES: readonly BundledPlugin[] = [OFFICIAL_RUNTIME, ...B
 
 export const OFFICIAL_PROFILE_BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] as const
 
-/** 官方可选实验层。用户在插件配置里开关，由 DSH 安装提供，不进 profile dependencies。须与官方 OPTIONAL_BUNDLES 对齐。 */
-export const OFFICIAL_OPTIONAL_BUNDLES = [
-  '@deepseek-ai/dsh-experimental-agent-team-profile',
-  '@deepseek-ai/dsh-experimental-agent-team-web-profile',
-] as const
-
-export function isOfficialOptionalBundle(packageName: string): boolean {
-  return (OFFICIAL_OPTIONAL_BUNDLES as readonly string[]).includes(packageName)
-}
-
 export function bundledPluginNames(): readonly string[] {
   return BUNDLED_PLUGINS.map(plugin => plugin.packageName)
 }

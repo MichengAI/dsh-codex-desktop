@@ -17,7 +17,6 @@ import {
   OFFICIAL_LAUNCH_PEERS,
   OFFICIAL_PROFILE_BUNDLES,
   OFFICIAL_RUNTIME,
-  isOfficialOptionalBundle,
   officialRuntimeDependencies,
   officialRuntimePnpmConfig,
   pnpmWorkspaceYaml,
@@ -293,10 +292,10 @@ export async function stripOfficialProfileDependencies(profileDir: string): Prom
     delete nextDependencies[packageName]
     removed.push(packageName)
   }
+  const leftoverOfficialDeps = new Set(removed)
   const nextBundles = [...(manifest.dsh?.profile?.bundles ?? [])].filter((name) => {
     if (name === SUITE_PACKAGE) return false
-    if (!isOfficialProfileDependency(name)) return true
-    return (OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(name) || isOfficialOptionalBundle(name)
+    return !leftoverOfficialDeps.has(name) || (OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(name)
   })
   const officialModules = join(profileDir, 'node_modules', '@deepseek-ai')
   if (existsSync(officialModules)) {
@@ -580,11 +579,7 @@ export async function reconcileProfileBundles(profileDir: string, packageNames?:
     dependencies?: Record<string, string>
     dsh?: { profile?: { bundles?: string[] } }
   }
-  const bundles = [...(manifest.dsh?.profile?.bundles ?? [...OFFICIAL_PROFILE_BUNDLES])].filter((name) => {
-    if (name === SUITE_PACKAGE) return false
-    if (!isOfficialProfileDependency(name)) return true
-    return (OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(name) || isOfficialOptionalBundle(name)
-  })
+  const bundles = [...(manifest.dsh?.profile?.bundles ?? [...OFFICIAL_PROFILE_BUNDLES])].filter((name) => name !== SUITE_PACKAGE)
   const marketDisabled = readMarketDisabledPackages(profileDir)
   let changed = false
   const allowed = packageNames === undefined ? undefined : new Set(packageNames)
@@ -623,8 +618,7 @@ export async function pruneMissingProfileBundles(profileDir: string, extraDirs: 
   }
   const current = manifest.dsh?.profile?.bundles ?? []
   const dependencies = new Set(Object.keys(manifest.dependencies ?? {}))
-  const next = current.filter((packageName) => (OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(packageName)
-    || isOfficialOptionalBundle(packageName)
+  const next = current.filter((packageName) => isOfficialProfileDependency(packageName)
     // Internal package name: keep synchronized with DESKTOP_BRIDGE_PACKAGE in desktop-host.ts.
     || (packageName === 'dsh-desktop-bridge' && isResolvableProfileBundle(profileDir, packageName, extraDirs))
     || (dependencies.has(packageName) && isResolvableProfileBundle(profileDir, packageName, extraDirs)))
