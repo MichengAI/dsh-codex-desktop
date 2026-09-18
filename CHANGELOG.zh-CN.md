@@ -4,6 +4,11 @@
 
 以下记录最近发布的五个版本。
 
+## Unreleased
+
+- 启动清理不再摘掉用户打开的官方可选实验层（智能体团队 / 团队 Web），避免把额外的 `@deepseek-ai/*` bundle 一律当成残留官方运行时清掉。
+- 2 项内置插件升级到当前 npm latest：Codex UI 1.1.14、dshmarket 1.48.0。其余 14 项内置插件和官方 DSH 0.1.6-alpha.2 已是 latest。
+
 ## 1.0.64 — 2026-09-18
 
 - 内置官方 DSH 运行时由 0.1.6-alpha.1 升级至 0.1.6-alpha.2，并同步 scope、timeout、invariants 启动 peer。

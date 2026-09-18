@@ -17,6 +17,7 @@ import {
   OFFICIAL_LAUNCH_PEERS,
   OFFICIAL_PROFILE_BUNDLES,
   OFFICIAL_RUNTIME,
+  isOfficialOptionalBundle,
   officialRuntimeDependencies,
   officialRuntimePnpmConfig,
   pnpmWorkspaceYaml,
@@ -295,7 +296,7 @@ export async function stripOfficialProfileDependencies(profileDir: string): Prom
   const nextBundles = [...(manifest.dsh?.profile?.bundles ?? [])].filter((name) => {
     if (name === SUITE_PACKAGE) return false
     if (!isOfficialProfileDependency(name)) return true
-    return (OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(name)
+    return (OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(name) || isOfficialOptionalBundle(name)
   })
   const officialModules = join(profileDir, 'node_modules', '@deepseek-ai')
   if (existsSync(officialModules)) {
@@ -582,7 +583,7 @@ export async function reconcileProfileBundles(profileDir: string, packageNames?:
   const bundles = [...(manifest.dsh?.profile?.bundles ?? [...OFFICIAL_PROFILE_BUNDLES])].filter((name) => {
     if (name === SUITE_PACKAGE) return false
     if (!isOfficialProfileDependency(name)) return true
-    return (OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(name)
+    return (OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(name) || isOfficialOptionalBundle(name)
   })
   const marketDisabled = readMarketDisabledPackages(profileDir)
   let changed = false
@@ -623,6 +624,7 @@ export async function pruneMissingProfileBundles(profileDir: string, extraDirs: 
   const current = manifest.dsh?.profile?.bundles ?? []
   const dependencies = new Set(Object.keys(manifest.dependencies ?? {}))
   const next = current.filter((packageName) => (OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(packageName)
+    || isOfficialOptionalBundle(packageName)
     // Internal package name: keep synchronized with DESKTOP_BRIDGE_PACKAGE in desktop-host.ts.
     || (packageName === 'dsh-desktop-bridge' && isResolvableProfileBundle(profileDir, packageName, extraDirs))
     || (dependencies.has(packageName) && isResolvableProfileBundle(profileDir, packageName, extraDirs)))

@@ -26,7 +26,7 @@ export const OFFICIAL_LAUNCH_PEERS: readonly BundledPlugin[] = [
 ]
 /** 随桌面端离线仓库分发的社区插件和插件市场组件。 */
 export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
-  { packageName: '@michengai/dsh-codex-ui', version: '1.1.13' },
+  { packageName: '@michengai/dsh-codex-ui', version: '1.1.14' },
   { packageName: '@michengai/dsh-im-connect', version: '0.1.51' },
   { packageName: '@michengai/dsh-automation', version: '0.1.45' },
   { packageName: '@michengai/dsh-skills-manager', version: '0.1.53' },
@@ -41,7 +41,7 @@ export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
   { packageName: 'dsh-better-sidebar', version: '0.19.1' },
   { packageName: 'dsh-mcp-connector', version: '0.2.51' },
   { packageName: '@kenz1117/dsh-ui-usage-billing', version: '1.4.0' },
-  { packageName: 'dshmarket', version: '1.47.0' },
+  { packageName: 'dshmarket', version: '1.48.0' },
 ]
 
 /** 离线 store 只放社区插件，官方运行时单独预装，避免安装包把同一份依赖打两遍。 */
@@ -51,6 +51,16 @@ export const STORE_PACKAGES: readonly BundledPlugin[] = BUNDLED_PLUGINS
 export const SEEDED_PACKAGES: readonly BundledPlugin[] = [OFFICIAL_RUNTIME, ...BUNDLED_PLUGINS]
 
 export const OFFICIAL_PROFILE_BUNDLES = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] as const
+
+/** 官方可选实验层。用户在插件配置里开关，由 DSH 安装提供，不进 profile dependencies。须与官方 OPTIONAL_BUNDLES 对齐。 */
+export const OFFICIAL_OPTIONAL_BUNDLES = [
+  '@deepseek-ai/dsh-experimental-agent-team-profile',
+  '@deepseek-ai/dsh-experimental-agent-team-web-profile',
+] as const
+
+export function isOfficialOptionalBundle(packageName: string): boolean {
+  return (OFFICIAL_OPTIONAL_BUNDLES as readonly string[]).includes(packageName)
+}
 
 export function bundledPluginNames(): readonly string[] {
   return BUNDLED_PLUGINS.map(plugin => plugin.packageName)

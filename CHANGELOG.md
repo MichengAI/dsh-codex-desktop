@@ -4,6 +4,11 @@
 
 The five most recent published versions are listed below.
 
+## Unreleased
+
+- Keep user-enabled official optional team bundles (agent team / team web) across launch cleanup, instead of dropping every extra `@deepseek-ai/*` bundle as leftover official runtime.
+- Refresh 2 bundled plugins to current npm latest: Codex UI 1.1.14 and dshmarket 1.48.0. The other 14 bundled plugins and official DSH 0.1.6-alpha.2 were already latest.
+
 ## 1.0.64 — 2026-09-18
 
 - Update the bundled official DSH runtime from 0.1.6-alpha.1 to 0.1.6-alpha.2, including the matching scope, timeout, and invariants launch peers.

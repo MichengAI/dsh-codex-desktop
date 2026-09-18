@@ -322,6 +322,31 @@ test('会从 Web profile 依赖里清掉官方包', async () => {
   }
 })
 
+test('清官方依赖时保留用户打开的官方可选实验层', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-strip-optional-'))
+  try {
+    await writeFile(join(root, 'package.json'), JSON.stringify({
+      dependencies: { '@michengai/dsh-codex-ui': '1.1.14' },
+      dsh: { profile: { bundles: [
+        '@deepseek-ai/dsh-base',
+        '@deepseek-ai/dsh-web-app',
+        '@deepseek-ai/dsh-experimental-agent-team-profile',
+        '@deepseek-ai/dsh-experimental-agent-team-web-profile',
+      ] } },
+    }), 'utf8')
+    assert.deepEqual(await stripOfficialProfileDependencies(root), [])
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }
+    assert.deepEqual(manifest.dsh?.profile?.bundles, [
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      '@deepseek-ai/dsh-experimental-agent-team-profile',
+      '@deepseek-ai/dsh-experimental-agent-team-web-profile',
+    ])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('会清掉 Web profile 里的官方 node_modules，避免盖掉运行时', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-strip-modules-'))
   try {
@@ -624,6 +649,29 @@ test('桌面内部 bridge bundle 不依赖 profile dependencies 仍会保留', a
   }
 })
 
+test('启动前保留不在 profile 依赖里的官方可选实验层', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-keep-optional-official-'))
+  try {
+    await writeFile(join(root, 'package.json'), JSON.stringify({
+      dsh: { profile: { bundles: [
+        '@deepseek-ai/dsh-base',
+        '@deepseek-ai/dsh-web-app',
+        '@deepseek-ai/dsh-experimental-agent-team-profile',
+        '@deepseek-ai/dsh-experimental-agent-team-web-profile',
+      ] } },
+    }), 'utf8')
+    assert.deepEqual(await pruneMissingProfileBundles(root), [])
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as { dsh?: { profile?: { bundles?: string[] } } }
+    assert.deepEqual(manifest.dsh?.profile?.bundles, [
+      '@deepseek-ai/dsh-base',
+      '@deepseek-ai/dsh-web-app',
+      '@deepseek-ai/dsh-experimental-agent-team-profile',
+      '@deepseek-ai/dsh-experimental-agent-team-web-profile',
+    ])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
 
 test('先认磁盘上的包，再更新 bundle 列表', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-finalize-bundle-'))
