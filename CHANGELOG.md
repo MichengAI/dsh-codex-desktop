@@ -4,6 +4,11 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.64 — 2026-09-18
+
+- Update the bundled official DSH runtime from 0.1.6-alpha.1 to 0.1.6-alpha.2, including the matching scope, timeout, and invariants launch peers.
+- Refresh 13 bundled plugins to current npm latest: Codex UI 1.1.13, IM Connect 0.1.51, Automation 0.1.45, Skills Manager 0.1.53, Archive Manager 0.1.44, Agency Agents 0.1.44, Codex Pet 0.1.7, BTW 0.1.10, Simplify 0.1.7, Code Review 0.1.4, PUA 0.3.16, Context 0.53.3, and MCP Connector 0.2.51. Better Sidebar, Usage Billing, and dshmarket were already latest.
+
 ## 1.0.63 — 2026-09-16
 
 - Update the bundled official DSH runtime from 0.1.5-rc.2 to 0.1.6-alpha.1, including the matching scope, timeout, and invariants launch peers.
@@ -25,8 +30,4 @@ The five most recent published versions are listed below.
 
 - Update bundled Codex UI, IM Connect, automation, archive manager, Context, and MCP Connector plugins and their offline dependencies.
 - Update the desktop runtime to Electron 44.3.0 and Node.js 24.21.0, and the bundled package manager to pnpm 11.26.0. DSH remains on 0.1.5-rc.2.
-
-## 1.0.59 — 2026-09-14
-
-- Fix plugin installation and updates failing when older profiles lack build permissions for `node-pty` or `protobufjs`. Startup after upgrading adds the required permissions and completes previously blocked builds for bundled dependencies, without deleting user configuration.
 

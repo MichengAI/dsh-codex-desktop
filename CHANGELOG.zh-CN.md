@@ -4,6 +4,11 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.64 — 2026-09-18
+
+- 内置官方 DSH 运行时由 0.1.6-alpha.1 升级至 0.1.6-alpha.2，并同步 scope、timeout、invariants 启动 peer。
+- 13 项内置插件升级到当前 npm latest：Codex UI 1.1.13、IM Connect 0.1.51、Automation 0.1.45、Skills Manager 0.1.53、Archive Manager 0.1.44、Agency Agents 0.1.44、Codex Pet 0.1.7、BTW 0.1.10、Simplify 0.1.7、Code Review 0.1.4、PUA 0.3.16、Context 0.53.3、MCP Connector 0.2.51。Better Sidebar、Usage Billing、dshmarket 已是 latest。
+
 ## 1.0.63 — 2026-09-16
 
 - 内置官方 DSH 运行时由 0.1.5-rc.2 升级至 0.1.6-alpha.1，并同步 scope、timeout、invariants 启动 peer。
@@ -25,8 +30,4 @@
 
 - 更新内置 Codex UI、IM Connect、自动化、归档管理、Context 和 MCP Connector 六项插件及其离线依赖。
 - 桌面运行环境升级至 Electron 44.3.0、Node.js 24.21.0，内置依赖管理工具升级至 pnpm 11.26.0；DSH 保持 0.1.5-rc.2。
-
-## 1.0.59 — 2026-09-14
-
-- 修复旧配置下插件安装或更新因 `node-pty`、`protobufjs` 构建许可缺失而失败的问题。升级后启动会补齐必要许可，并恢复此前已安装但未完成构建的配套依赖，无需删除用户配置。
 

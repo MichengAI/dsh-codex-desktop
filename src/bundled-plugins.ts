@@ -8,7 +8,7 @@ export interface BundledPlugin {
 }
 
 /** 官方 DSH 家族统一锁死的版本。打包和在线升级都按这一个号对齐。 */
-export const OFFICIAL_DSH_VERSION = '0.1.6-alpha.1'
+export const OFFICIAL_DSH_VERSION = '0.1.6-alpha.2'
 export const APPLY_PLUGIN_UPDATES_IPC = 'apply-plugin-updates'
 
 /** 官方 DSH 运行时。从 npm 安装，不依赖本地 deepseek-harness 源码。 */
@@ -26,20 +26,20 @@ export const OFFICIAL_LAUNCH_PEERS: readonly BundledPlugin[] = [
 ]
 /** 随桌面端离线仓库分发的社区插件和插件市场组件。 */
 export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
-  { packageName: '@michengai/dsh-codex-ui', version: '1.1.11' },
-  { packageName: '@michengai/dsh-im-connect', version: '0.1.50' },
-  { packageName: '@michengai/dsh-automation', version: '0.1.44' },
-  { packageName: '@michengai/dsh-skills-manager', version: '0.1.52' },
-  { packageName: '@michengai/dsh-archive-manager', version: '0.1.43' },
-  { packageName: '@michengai/dsh-agency-agents', version: '0.1.43' },
-  { packageName: '@michengai/dsh-codex-pet', version: '0.1.6' },
-  { packageName: '@michengai/dsh-btw', version: '0.1.8' },
-  { packageName: '@michengai/dsh-simplify', version: '0.1.5' },
-  { packageName: '@michengai/dsh-code-review', version: '0.1.2' },
-  { packageName: '@michengai/dsh-pua', version: '0.3.13' },
-  { packageName: 'dsh-context', version: '0.53.0' },
+  { packageName: '@michengai/dsh-codex-ui', version: '1.1.13' },
+  { packageName: '@michengai/dsh-im-connect', version: '0.1.51' },
+  { packageName: '@michengai/dsh-automation', version: '0.1.45' },
+  { packageName: '@michengai/dsh-skills-manager', version: '0.1.53' },
+  { packageName: '@michengai/dsh-archive-manager', version: '0.1.44' },
+  { packageName: '@michengai/dsh-agency-agents', version: '0.1.44' },
+  { packageName: '@michengai/dsh-codex-pet', version: '0.1.7' },
+  { packageName: '@michengai/dsh-btw', version: '0.1.10' },
+  { packageName: '@michengai/dsh-simplify', version: '0.1.7' },
+  { packageName: '@michengai/dsh-code-review', version: '0.1.4' },
+  { packageName: '@michengai/dsh-pua', version: '0.3.16' },
+  { packageName: 'dsh-context', version: '0.53.3' },
   { packageName: 'dsh-better-sidebar', version: '0.19.1' },
-  { packageName: 'dsh-mcp-connector', version: '0.2.49' },
+  { packageName: 'dsh-mcp-connector', version: '0.2.51' },
   { packageName: '@kenz1117/dsh-ui-usage-billing', version: '1.4.0' },
   { packageName: 'dshmarket', version: '1.47.0' },
 ]
