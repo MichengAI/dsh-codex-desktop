@@ -123,10 +123,6 @@ Explore the desktop workspace, light-theme settings, and plugin management pages
 
 <p align="center"><a href="assets/screenshots/preview-mcp-connector.webp"><img src="assets/screenshots/preview-mcp-connector.webp" alt="MCP connector: browse services by category and add connections." width="960"></a></p>
 
-<p align="center"><em>Usage statistics: costs, tokens, cache hit rate, and activity heatmap.</em></p>
-
-<p align="center"><a href="assets/screenshots/preview-usage-billing.webp"><img src="assets/screenshots/preview-usage-billing.webp" alt="Usage statistics: costs, tokens, cache hit rate, and activity heatmap." width="960"></a></p>
-
 <p align="center"><em>Plugin market: discover community plugins and inspect installation and update status.</em></p>
 
 <p align="center"><a href="assets/screenshots/preview-plugin-market.webp"><img src="assets/screenshots/preview-plugin-market.webp" alt="Plugin market: discover community plugins and inspect installation and update status." width="960"></a></p>
@@ -146,12 +142,13 @@ The installer ships with the local runtime required to start DSH. On first launc
 | Archive management | [`@michengai/dsh-archive-manager`](https://github.com/MichengAI/dsh-archive-manager) |
 | IM assistant | [`@michengai/dsh-im-connect`](https://github.com/MichengAI/dsh-im-connect) |
 | Scheduled automation | [`@michengai/dsh-automation`](https://github.com/MichengAI/dsh-automation) |
-| Context inspection and management | [`dsh-context`](https://github.com/bowenliang123/dsh-context) |
 | Extensible workspace sidebar | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
 | MCP connection management | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
-| Usage and cost tracking | [`@kenz1117/dsh-ui-usage-billing`](https://github.com/kenz1117/dsh-ui-usage-billing) |
 | One-off read-only side questions | [`@michengai/dsh-btw`](https://github.com/MichengAI/dsh-btw) |
 | Code simplification scoped to Git changes | [`@michengai/dsh-simplify`](https://github.com/MichengAI/dsh-simplify) |
+| Retry, diagnose, and verify after failures | [`@michengai/dsh-pua`](https://github.com/MichengAI/dsh-pua) |
+| Independent Agent code review | [`@michengai/dsh-code-review`](https://github.com/MichengAI/dsh-code-review) |
+| Plugin market | [`dshmarket`](https://www.npmjs.com/package/dshmarket) |
 
 You can later manage additional plugins from the plugin market. The desktop application keeps its own runtime separate from profile-installed community plugins so plugin changes do not overwrite the application runtime.
 
@@ -175,7 +172,7 @@ For a desktop workbench, download [DSH Codex Desktop](https://github.com/Micheng
 | [Code Review](https://github.com/MichengAI/dsh-code-review) | Use `/review` to request an independent Agent code review and receive the report in the current conversation |
 | [Codex Pet](https://github.com/MichengAI/dsh-codex-pet) | View conversation notifications and respond to tool approvals and questions through a desktop pet |
 
-The desktop app also integrates [DSH Context](https://github.com/bowenliang123/dsh-context), [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar), [DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector), [Usage Billing](https://github.com/kenz1117/dsh-ui-usage-billing) and [App Market](https://www.npmjs.com/package/dshmarket) as third-party plugins for context insights, file navigation, connections, usage statistics, and plugin discovery and installation.
+The desktop app also integrates [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar), [DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector) and [App Market](https://www.npmjs.com/package/dshmarket) as third-party plugins for file navigation, connections, and plugin discovery and installation.
 
 ## Updates and recovery
 

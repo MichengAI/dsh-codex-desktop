@@ -4,6 +4,11 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.66 — 2026-09-21
+
+- Slim the bundled community catalog: drop Context and Usage Billing. New installs no longer ship those two plugins.
+- Refresh 5 bundled plugins to current npm latest: Skills Manager 1.0.1, Archive Manager 1.0.2, Agency Agents 1.0.1, MCP Connector 0.2.54, and dshmarket 1.53.0. The other 9 bundled plugins were already latest. Official DSH remains 0.1.6-alpha.2.
+
 ## 1.0.65 — 2026-09-19
 
 - Keep official profile layers that are not leftover Web-profile dependencies, instead of maintaining a Desktop allowlist of official optional bundles.
@@ -26,8 +31,4 @@ The five most recent published versions are listed below.
 - `pack` and `dist` now delete leftover runtime folders and extra `release-*` directories first, so a stale bundled plugin store cannot be reused.
 - Skip empty pending-update, desktop-bridge, and bundle-reconcile scans on a normal launch.
 - Startup no longer auto-repairs community plugins that are listed in the profile but missing on disk. Those installs follow the client pending list. Bundled plugins are still seeded as before.
-
-## 1.0.61 — 2026-09-14
-
-- Fix offline upgrades from older install folders (for example 1.0.41) failing when the bundled plugin store lacks full package metadata. Startup no longer reports an incomplete built-in plugin update and then contacts the npm registry. The new build can finish bundled plugin updates without a network.
 
