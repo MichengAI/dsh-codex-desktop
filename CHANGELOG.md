@@ -6,7 +6,7 @@ The five most recent published versions are listed below.
 
 ## 1.0.66 — 2026-09-21
 
-- Slim the bundled community catalog: drop Context and Usage Billing. New installs no longer ship those two plugins.
+- Slim the bundled community catalog: drop Context and Usage Billing. New installs no longer ship those two plugins. The offline store still keeps them so older profiles can upgrade without lockfile resolution failures.
 - Refresh 5 bundled plugins to current npm latest: Skills Manager 1.0.1, Archive Manager 1.0.2, Agency Agents 1.0.1, MCP Connector 0.2.54, and dshmarket 1.53.0. The other 9 bundled plugins were already latest. Official DSH remains 0.1.6-alpha.2.
 
 ## 1.0.65 — 2026-09-19

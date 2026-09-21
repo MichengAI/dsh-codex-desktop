@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { BUNDLED_PLUGINS, OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, compareReleaseVersions, isDeepSeekOfficialPackage, isOfficialDshPackage, officialDshVersionOverrides, officialRuntimeDependencies, officialRuntimePnpmConfig, planOfficialRuntimeTarget, pnpmAllowBuildsManifest, pnpmWorkspaceYaml, SUITE_PACKAGE, bundledPluginNames, seededPackageNames } from '../src/bundled-plugins.js'
+import { BUNDLED_PLUGINS, OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, RETAINED_STORE_PACKAGES, STORE_PACKAGES, compareReleaseVersions, isDeepSeekOfficialPackage, isOfficialDshPackage, officialDshVersionOverrides, officialRuntimeDependencies, officialRuntimePnpmConfig, planOfficialRuntimeTarget, pnpmAllowBuildsManifest, pnpmWorkspaceYaml, SUITE_PACKAGE, bundledPluginNames, seededPackageNames } from '../src/bundled-plugins.js'
 
 test('内置目录包含十四个社区插件和市场组件', () => {
   assert.deepEqual(bundledPluginNames(), [
@@ -22,6 +22,18 @@ test('内置目录包含十四个社区插件和市场组件', () => {
   ])
   assert.equal(BUNDLED_PLUGINS.length, 14)
   assert.equal(SUITE_PACKAGE, '@michengai/dsh-codex-suite')
+})
+
+test('离线仓库保留已移出内置清单的包，供旧 Profile 升级', () => {
+  assert.deepEqual(RETAINED_STORE_PACKAGES.map(plugin => plugin.packageName), [
+    'dsh-context',
+    '@kenz1117/dsh-ui-usage-billing',
+  ])
+  assert.equal(STORE_PACKAGES.length, BUNDLED_PLUGINS.length + RETAINED_STORE_PACKAGES.length)
+  for (const plugin of RETAINED_STORE_PACKAGES) {
+    assert.equal(BUNDLED_PLUGINS.some(item => item.packageName === plugin.packageName), false)
+    assert.equal(STORE_PACKAGES.some(item => item.packageName === plugin.packageName && item.version === plugin.version), true)
+  }
 })
 
 test('所有 DeepSeek 官方作用域包使用同一套隔离判定', () => {

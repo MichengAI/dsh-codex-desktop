@@ -42,8 +42,14 @@ export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
   { packageName: 'dshmarket', version: '1.53.0' },
 ]
 
+/** 已移出内置清单，但仍放进离线仓库。旧 Profile 的 lockfile 还可能引用它们。 */
+export const RETAINED_STORE_PACKAGES: readonly BundledPlugin[] = [
+  { packageName: 'dsh-context', version: '0.53.3' },
+  { packageName: '@kenz1117/dsh-ui-usage-billing', version: '1.4.0' },
+]
+
 /** 离线 store 只放社区插件，官方运行时单独预装，避免安装包把同一份依赖打两遍。 */
-export const STORE_PACKAGES: readonly BundledPlugin[] = BUNDLED_PLUGINS
+export const STORE_PACKAGES: readonly BundledPlugin[] = [...BUNDLED_PLUGINS, ...RETAINED_STORE_PACKAGES]
 
 /** 首次补种的完整清单：官方运行时和社区插件/市场组件。 */
 export const SEEDED_PACKAGES: readonly BundledPlugin[] = [OFFICIAL_RUNTIME, ...BUNDLED_PLUGINS]

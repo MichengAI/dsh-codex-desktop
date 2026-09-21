@@ -6,7 +6,7 @@
 
 ## 1.0.66 — 2026-09-21
 
-- 内置社区插件改为克制清单：去掉 Context、Usage Billing。新安装不再随包这两项。
+- 内置社区插件改为克制清单：去掉 Context、Usage Billing。新安装不再随包这两项。离线仓库仍保留它们，避免旧 Profile 升级时锁文件解析失败。
 - 5 项内置插件升级到当前 npm latest：Skills Manager 1.0.1、Archive Manager 1.0.2、Agency Agents 1.0.1、MCP Connector 0.2.54、dshmarket 1.53.0。其余 9 项已是 latest。官方 DSH 仍为 0.1.6-alpha.2。
 
 ## 1.0.65 — 2026-09-19
