@@ -4,6 +4,10 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.72 — 2026-09-24
+
+- 离线仓库先复制成不含链接的目录再打包，并按 Windows 启动时的解压复制再做一次离线安装。1.0.71 只校验了打包前的目录，安装包里仍可能丢掉 lucide-react 1.48.0。
+
 ## 1.0.71 — 2026-09-24
 
 - 接受 0.1.7 的 bundle 补丁列表。1.0.70 把 `@deepseek-ai/dsh-web-app` 判成缺失，因为它的 patch 字段是数组，五个平台都在 HTTP 服务起来前退出。
@@ -20,11 +24,4 @@
 ## 1.0.68 — 2026-09-24
 
 - 首次启动按随包锁文件离线安装内置插件，不再按依赖范围重新解析。新发布的传递依赖，例如 lucide-react 1.48.0，不会再挡住离线启动。
-
-## 1.0.67 — 2026-09-24
-
-- 桌面端 v2 宠物在空闲时会跟着光标转头。原生窗口轮询屏幕光标；网页浮层不变。
-- 内置官方 DSH 运行时由 0.1.6-alpha.2 升级至 0.1.7-rc.1，并同步 scope、timeout、invariants。cordis-plugin-group 由 1.0.2 升至 1.0.4，否则 0.1.7-rc.1 的启动 peer 装不进去。
-- 14 项内置插件全部升级到当前 npm latest：Codex UI 1.1.17、IM Connect 0.1.54、Automation 0.1.50、Skills Manager 1.1.3、Archive Manager 1.0.4、Agency Agents 1.0.3、Codex Pet 0.1.9、BTW 0.1.12、Simplify 0.1.9、Code Review 0.1.5、PUA 0.3.17、Better Sidebar 0.21.1、MCP Connector 0.2.58、dshmarket 1.64.0。
-- 离线仓库不再打包 Context 和 Usage Billing。这两项在 1.0.66 已移出安装清单。
 

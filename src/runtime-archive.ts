@@ -1,7 +1,8 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash, timingSafeEqual } from 'node:crypto'
-import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readSync, readFileSync, writeFileSync } from 'node:fs'
-import { copyFile, readdir, rename, rm, stat } from 'node:fs/promises'
+import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFile, cp, readdir, rename, rm, stat } from 'node:fs/promises'
+import { DatabaseSync } from 'node:sqlite'
 import { join } from 'node:path'
 
 /** 把指向目录外的硬链接落成普通文件，避免 tar 只记下外部链接，解压后内容丢失。 */
@@ -25,6 +26,48 @@ export async function materializeHardlinks(root: string): Promise<number> {
   }
   await walk(root)
   return count
+}
+
+/** 把 WAL 里尚未检查点的包索引写入主库。打包若漏掉 WAL，解压后就会少包。 */
+export function checkpointPnpmStore(storeDir: string): void {
+  const dbPath = join(storeDir, 'v11', 'index.db')
+  if (!existsSync(dbPath)) return
+  const db = new DatabaseSync(dbPath)
+  try {
+    db.exec('PRAGMA wal_checkpoint(TRUNCATE)')
+  } finally {
+    db.close()
+  }
+  rmSync(`${dbPath}-wal`, { force: true })
+  rmSync(`${dbPath}-shm`, { force: true })
+}
+
+/** 复制成普通文件树。硬链接、联接和符号链接都展开，避免 tar 只记下外部路径。 */
+export async function cloneTreeForArchive(source: string, destination: string): Promise<void> {
+  await rm(destination, { recursive: true, force: true })
+  await cp(source, destination, { recursive: true, dereference: true })
+  checkpointPnpmStore(destination)
+}
+
+export function listPnpmStorePackageIds(storeDir: string): string[] {
+  const dbPath = join(storeDir, 'v11', 'index.db')
+  if (!existsSync(dbPath)) return []
+  const db = new DatabaseSync(dbPath, { readOnly: true })
+  try {
+    return db.prepare('SELECT key FROM package_index').all().map(row => String((row as { key: unknown }).key))
+  } catch {
+    return []
+  } finally {
+    db.close()
+  }
+}
+
+/** 压缩并按安装时的复制解压后，索引里的包必须还在。 */
+export function assertPnpmStorePackagesPreserved(sourceStore: string, packagedStore: string): void {
+  const missing = listPnpmStorePackageIds(sourceStore).filter(id => !listPnpmStorePackageIds(packagedStore).includes(id))
+  if (missing.length === 0) return
+  const names = missing.slice(0, 5).map(id => id.split('\t')[1] ?? id)
+  throw new Error(`压缩包丢失了仓库索引：${names.join('、')}${missing.length > 5 ? ` 等 ${missing.length} 项` : ''}`)
 }
 
 /** 把目录打成单个 tar.gz，避免安装器解压上万个小文件。 */

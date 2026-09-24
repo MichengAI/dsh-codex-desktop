@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -8,6 +8,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { packDirectoryToTarGz, writeFileSha256 } from '../src/runtime-archive.js'
 import {
   RUNTIME_EXTRACTION_PROGRESS_PREFIX,
+  copyExtractedTree,
   extractPackagedRuntimes,
   extractPackagedRuntimesInChild,
   packagedRuntimesNeedExtraction,
@@ -230,6 +231,25 @@ test('随包归档被篡改时拒绝解压', async () => {
     writeFileSha256(archive)
     await writeFile(archive, 'tampered', 'utf8')
     await assert.rejects(() => extractPackagedRuntimes(resources, join(root, 'runtime'), join(root, 'store')), /SHA256/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('复制解压结果时展开目录联接，源目录删除后内容仍在', async () => {
+  if (process.platform !== 'win32') return
+  const root = await mkdtemp(join(tmpdir(), 'dsh-extract-junction-'))
+  try {
+    const outside = join(root, 'outside')
+    await mkdir(outside)
+    await writeFile(join(outside, 'keep.txt'), 'lucide', 'utf8')
+    const source = join(root, 'source')
+    await mkdir(source)
+    await symlink(outside, join(source, 'files'), 'junction')
+    const dest = join(root, 'dest')
+    copyExtractedTree(source, dest)
+    await rm(outside, { recursive: true, force: true })
+    assert.equal(await readFile(join(dest, 'files', 'keep.txt'), 'utf8'), 'lucide')
   } finally {
     await rm(root, { recursive: true, force: true })
   }

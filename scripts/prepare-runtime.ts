@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url'
 
 import { ALLOWED_BUILD_PACKAGES, officialRuntimeDependencies, officialRuntimePnpmConfig, pnpmWorkspaceYaml, STORE_PACKAGES } from '../src/bundled-plugins.js'
 import { BUNDLED_LOCKFILE_NAME } from '../src/plugin-seed.js'
-import { extractTarGz, materializeHardlinks, packDirectoryToTarGz, writeFileSha256 } from '../src/runtime-archive.js'
+import { extractTarGz, materializeHardlinks, packDirectoryToTarGz, writeFileSha256, cloneTreeForArchive, assertPnpmStorePackagesPreserved } from '../src/runtime-archive.js'
+import { copyExtractedTree } from '../src/extract-runtime.js'
 
 const projectRoot = resolve(import.meta.dirname, '..', '..')
 const nodeRoot = join(projectRoot, 'runtime-node')
@@ -73,7 +74,16 @@ async function main(): Promise<void> {
   await removePreparedPath(officialStore)
   await materializeHardlinks(join(pluginRoot, 'store'))
   await materializeHardlinks(officialRuntimeRoot)
-  packDirectoryToTarGz(join(pluginRoot, 'store'), join(pluginRoot, 'store.tgz'))
+  const storeDir = join(pluginRoot, 'store')
+  const snapshotDir = join(pluginRoot, 'store-snapshot')
+  const archivePath = join(pluginRoot, 'store.tgz')
+  await cloneTreeForArchive(storeDir, snapshotDir)
+  try {
+    packDirectoryToTarGz(snapshotDir, archivePath)
+    await verifyPackagedPluginArchive(pluginRoot, nodeRoot, snapshotDir, archivePath)
+  } finally {
+    await removePreparedPath(snapshotDir)
+  }
   packDirectoryToTarGz(officialRuntimeRoot, join(projectRoot, 'runtime-dsh.tgz'))
   writeFileSha256(join(pluginRoot, 'store.tgz'))
   writeFileSha256(join(projectRoot, 'runtime-dsh.tgz'))
@@ -195,10 +205,10 @@ export async function publishBundledLockfile(stagingDir: string, storeDir: strin
 
 /** 打包前用空 Profile 和随包锁文件离线安装，缺少任何依赖即阻止生成安装包。 */
 export async function verifyBundledPluginStore(destinationRoot: string, nodeRoot: string,
-  run: (args: readonly string[]) => void = args => runStagedPnpm(nodeRoot, args)): Promise<void> {
+  run: (args: readonly string[]) => void = args => runStagedPnpm(nodeRoot, args),
+  storeDir = join(destinationRoot, 'store')): Promise<void> {
   const profile = await mkdtemp(join(destinationRoot, 'verify-offline-'))
-  const store = join(destinationRoot, 'store')
-  const lockSource = join(store, BUNDLED_LOCKFILE_NAME)
+  const lockSource = join(storeDir, BUNDLED_LOCKFILE_NAME)
   try {
     if (!existsSync(lockSource)) throw new Error('随包仓库缺少锁定的依赖树。')
     await writeFile(join(profile, 'package.json'), JSON.stringify({
@@ -209,7 +219,7 @@ export async function verifyBundledPluginStore(destinationRoot: string, nodeRoot
     await copyFile(lockSource, join(profile, 'pnpm-lock.yaml'))
     run([
       'install', `--dir=${profile}`, '--frozen-lockfile',
-      '--store-dir', store, '--cache-dir', join(store, 'cache'), '--offline',
+      '--store-dir', storeDir, '--cache-dir', join(storeDir, 'cache'), '--offline',
       '--config.node-linker=hoisted', '--config.auto-install-peers=false', '--config.minimumReleaseAge=0',
       '--registry=https://registry.npmjs.org/',
     ])
@@ -219,6 +229,23 @@ export async function verifyBundledPluginStore(destinationRoot: string, nodeRoot
     }
   } finally {
     await rm(profile, { recursive: true, force: true })
+  }
+}
+
+/** 用安装时的解压复制检查压缩包，不能只检查还没打包的目录。 */
+export async function verifyPackagedPluginArchive(destinationRoot: string, nodeRoot: string, sourceStore: string, archivePath: string,
+  run?: (args: readonly string[]) => void): Promise<void> {
+  const root = await mkdtemp(join(destinationRoot, 'verify-archive-'))
+  const staging = join(root, 'staging')
+  const copied = join(root, 'store')
+  try {
+    extractTarGz(archivePath, staging)
+    copyExtractedTree(staging, copied)
+    await rm(staging, { recursive: true, force: true })
+    assertPnpmStorePackagesPreserved(sourceStore, copied)
+    await verifyBundledPluginStore(root, nodeRoot, run, copied)
+  } finally {
+    await rm(root, { recursive: true, force: true })
   }
 }
 

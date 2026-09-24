@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -152,7 +152,7 @@ async function extractOnce(archivePath: string, destDir: string, readyPath: (dir
     if (isExtractionCurrent(archivePath, destDir, readyPath)) return false
     if (process.platform === 'win32') {
       mkdirSync(destDir, { recursive: true })
-      copyRuntimeFiles(stagingDir, destDir, onProgress)
+      copyExtractedTree(stagingDir, destDir, onProgress)
     } else {
       rmSync(destDir, { recursive: true, force: true })
       renameSync(stagingDir, destDir)
@@ -164,35 +164,47 @@ async function extractOnce(archivePath: string, destDir: string, readyPath: (dir
   }
 }
 
-/** 在独立初始化进程中复制；只在文件实际落盘后增加计数。 */
-function copyRuntimeFiles(source: string, destination: string, onProgress?: (progress: StartupProgress) => void): void {
+/** 在独立初始化进程中复制；只在文件实际落盘后增加计数。链接展开成普通文件，避免随后删除临时目录时内容丢失。 */
+export function copyExtractedTree(source: string, destination: string, onProgress?: (progress: StartupProgress) => void): void {
   onProgress?.({ phase: 'scan' })
-  const files: { path: string; regular: boolean }[] = []
+  const files: string[] = []
   function collect(directory: string): void {
     mkdirSync(join(destination, directory), { recursive: true })
     for (const entry of readdirSync(join(source, directory), { withFileTypes: true })) {
-      const path = join(directory, entry.name)
-      if (entry.isDirectory()) collect(path)
-      else files.push({ path, regular: entry.isFile() })
+      const relative = join(directory, entry.name)
+      if (isCopiedDirectory(join(source, relative), entry)) {
+        collect(relative)
+        continue
+      }
+      files.push(relative)
     }
   }
   collect('')
   let completed = 0, lastReport = 0
   onProgress?.({ phase: 'copy', completed, total: files.length })
-  for (const { path, regular } of files) {
-    const from = join(source, path), to = join(destination, path)
-    // 普通文件使用直接复制，避免数万次重复执行通用目录复制检查；链接仍沿用原语义。
-    if (regular) {
-      try { copyFileSync(from, to) } catch (error) {
-        if (!['EACCES', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error
-        cpSync(from, to, { force: true })
-      }
-    } else cpSync(from, to, { force: true })
+  for (const relative of files) {
+    const from = join(source, relative), to = join(destination, relative)
+    try {
+      copyFileSync(from, to)
+    } catch (error) {
+      if (!['EACCES', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error
+      cpSync(from, to, { dereference: true, force: true })
+    }
     completed++
     if (Date.now() - lastReport >= 100 || completed === files.length) {
       onProgress?.({ phase: 'copy', completed, total: files.length })
       lastReport = Date.now()
     }
+  }
+}
+
+function isCopiedDirectory(path: string, entry: { isDirectory(): boolean; isFile(): boolean; isSymbolicLink(): boolean }): boolean {
+  if (entry.isDirectory()) return true
+  if (entry.isFile() && !entry.isSymbolicLink()) return false
+  try {
+    return statSync(path).isDirectory()
+  } catch {
+    return false
   }
 }
 
