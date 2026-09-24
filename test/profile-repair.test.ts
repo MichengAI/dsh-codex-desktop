@@ -133,6 +133,39 @@ test('启动因缺 bundle 失败时会摘掉坏项并重试', async () => {
   }
 })
 
+test('官方 Web bundle 的补丁可以是文件列表', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-repair-patch-list-'))
+  const profile = join(root, 'profile')
+  const runtime = join(root, 'runtime')
+  try {
+    await mkdir(profile, { recursive: true })
+    await writeFile(join(profile, 'package.json'), JSON.stringify({
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-web-app'] } },
+    }), 'utf8')
+    const dshPackage = join(runtime, 'node_modules', '@deepseek-ai', 'dsh')
+    const webPackage = join(dshPackage, 'node_modules', '@deepseek-ai', 'dsh-web-app')
+    await mkdir(webPackage, { recursive: true })
+    await writeFile(join(dshPackage, 'package.json'), JSON.stringify({ name: '@deepseek-ai/dsh' }), 'utf8')
+    await writeFile(join(webPackage, 'package.json'), JSON.stringify({
+      name: '@deepseek-ai/dsh-web-app',
+      dsh: { bundle: { patch: ['./cordis.patch.yml', './presets/standard.patch.yml'] } },
+    }), 'utf8')
+    await mkdir(join(webPackage, 'presets'), { recursive: true })
+    await writeFile(join(webPackage, 'cordis.patch.yml'), '[]\n', 'utf8')
+    await writeFile(join(webPackage, 'presets', 'standard.patch.yml'), '[]\n', 'utf8')
+    let attempts = 0
+    const started = await startWithProfileSelfRepair({
+      profileDir: profile,
+      extraDirs: [runtime],
+      start: async () => { attempts += 1; return 'ok' },
+    })
+    assert.equal(started.result, 'ok')
+    assert.equal(attempts, 1)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('官方 Web bundle 缺失时在启动前报告安装损坏，不等待启动超时', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-repair-official-bundle-'))
   const profile = join(root, 'profile')

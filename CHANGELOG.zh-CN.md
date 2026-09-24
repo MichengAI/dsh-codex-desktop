@@ -4,6 +4,10 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.71 — 2026-09-24
+
+- 接受 0.1.7 的 bundle 补丁列表。1.0.70 把 `@deepseek-ai/dsh-web-app` 判成缺失，因为它的 patch 字段是数组，五个平台都在 HTTP 服务起来前退出。
+
 ## 1.0.70 — 2026-09-24
 
 - 打包前把仓库里的硬链接落成普通文件。1.0.69 只校验了还没压缩的目录，Windows 打包时把指向目录外的 lucide-react 1.48.0 丢掉了。
@@ -23,9 +27,4 @@
 - 内置官方 DSH 运行时由 0.1.6-alpha.2 升级至 0.1.7-rc.1，并同步 scope、timeout、invariants。cordis-plugin-group 由 1.0.2 升至 1.0.4，否则 0.1.7-rc.1 的启动 peer 装不进去。
 - 14 项内置插件全部升级到当前 npm latest：Codex UI 1.1.17、IM Connect 0.1.54、Automation 0.1.50、Skills Manager 1.1.3、Archive Manager 1.0.4、Agency Agents 1.0.3、Codex Pet 0.1.9、BTW 0.1.12、Simplify 0.1.9、Code Review 0.1.5、PUA 0.3.17、Better Sidebar 0.21.1、MCP Connector 0.2.58、dshmarket 1.64.0。
 - 离线仓库不再打包 Context 和 Usage Billing。这两项在 1.0.66 已移出安装清单。
-
-## 1.0.66 — 2026-09-21
-
-- 内置社区插件改为克制清单：去掉 Context、Usage Billing。新安装不再随包这两项。离线仓库仍保留它们，避免旧 Profile 升级时锁文件解析失败。
-- 5 项内置插件升级到当前 npm latest：Skills Manager 1.0.1、Archive Manager 1.0.2、Agency Agents 1.0.1、MCP Connector 0.2.54、dshmarket 1.53.0。其余 9 项已是 latest。官方 DSH 仍为 0.1.6-alpha.2。
 

@@ -840,7 +840,8 @@ function hasOfficialRuntimeBundle(runtimeDir: string, packageName: string): bool
     const packageDir = dirname(resolvedManifestPath)
     const manifest = JSON.parse(readFileSync(resolvedManifestPath, 'utf8')) as { name?: unknown, dsh?: { bundle?: { patch?: unknown } } }
     const patch = manifest.dsh?.bundle?.patch
-    return manifest.name === packageName && typeof patch === 'string' && patch.trim() !== '' && isPackageFile(packageDir, patch)
+    const files = bundlePatchFiles(patch)
+    return manifest.name === packageName && files.length > 0 && files.every(file => isPackageFile(packageDir, file))
   } catch {
     return false
   }
@@ -856,11 +857,18 @@ function hasBundleManifest(profileDir: string, packageName: string): boolean {
       dsh?: { bundle?: { patch?: unknown } }
     }
     const patch = manifest.dsh?.bundle?.patch
-    if (manifest.name !== packageName || typeof patch !== 'string' || patch.trim() === '') return false
-    return isPackageFile(packageDir, patch)
+    const files = bundlePatchFiles(patch)
+    return manifest.name === packageName && files.length > 0 && files.every(file => isPackageFile(packageDir, file))
   } catch {
     return false
   }
+}
+
+/** 0.1.7 起官方 bundle 的 patch 可以是单个文件，也可以是文件列表。 */
+function bundlePatchFiles(patch: unknown): string[] {
+  const values = typeof patch === 'string' ? [patch] : Array.isArray(patch) ? patch : []
+  const files = values.filter((value): value is string => typeof value === 'string' && value.trim() !== '')
+  return files.length === values.length && files.length > 0 ? files : []
 }
 
 /** bundle patch 只能读取插件目录内的普通文件，避免半安装与路径逃逸进入 DSH 加载图。 */
