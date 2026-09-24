@@ -10,7 +10,7 @@ import { assertNoStartupErrors } from './smoke-startup-errors.mjs'
 import { verifyBundledPluginsInstalled } from './smoke-packaged-plugins.mjs'
 
 const execFileAsync = promisify(execFile)
-const startupTimeoutMs = 60_000
+const startupTimeoutMs = 180_000
 
 async function main(): Promise<void> {
   if (process.platform !== 'linux') throw new Error('Linux 冒烟脚本只能在 Linux 上执行。')
@@ -92,7 +92,7 @@ async function waitForHealthyServer(application: ChildProcess, getApplicationOut
     await delay(500)
   }
   const startupError = readStartupError(startupErrorFile)
-  throw new Error(`打包应用在 60 秒内未启动本机 HTTP 服务。${startupError === undefined ? getApplicationOutput() : ` 启动诊断：${startupError}`}`)
+  throw new Error(`打包应用在 ${startupTimeoutMs / 1_000} 秒内未启动本机 HTTP 服务。${startupError === undefined ? getApplicationOutput() : ` 启动诊断：${startupError}`}`)
 }
 
 function readStartupError(startupErrorFile: string): string | undefined {
@@ -123,7 +123,7 @@ async function waitForApplicationReady(
     await delay(250)
   }
   assertNoStartupErrors(dirname(startupErrorFile))
-  if (!existsSync(smokeReadyFile)) throw new Error('桌面应用未在 60 秒内报告启动完成。')
+  if (!existsSync(smokeReadyFile)) throw new Error(`桌面应用未在 ${startupTimeoutMs / 1_000} 秒内报告启动完成。`)
   if (application.exitCode !== null) throw new Error(`桌面应用在启动标记后退出（退出码 ${application.exitCode}）。${getApplicationOutput()}`)
 }
 

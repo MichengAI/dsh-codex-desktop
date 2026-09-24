@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 import { ALLOWED_BUILD_PACKAGES, officialRuntimeDependencies, officialRuntimePnpmConfig, pnpmWorkspaceYaml, STORE_PACKAGES } from '../src/bundled-plugins.js'
 import { BUNDLED_LOCKFILE_NAME } from '../src/plugin-seed.js'
-import { extractTarGz, packDirectoryToTarGz, writeFileSha256 } from '../src/runtime-archive.js'
+import { extractTarGz, materializeHardlinks, packDirectoryToTarGz, writeFileSha256 } from '../src/runtime-archive.js'
 
 const projectRoot = resolve(import.meta.dirname, '..', '..')
 const nodeRoot = join(projectRoot, 'runtime-node')
@@ -71,6 +71,8 @@ async function main(): Promise<void> {
   const officialStore = join(officialRuntimeRoot, '.store')
   await stageOfficialRuntime(officialRuntimeRoot, nodeRoot, officialStore)
   await removePreparedPath(officialStore)
+  await materializeHardlinks(join(pluginRoot, 'store'))
+  await materializeHardlinks(officialRuntimeRoot)
   packDirectoryToTarGz(join(pluginRoot, 'store'), join(pluginRoot, 'store.tgz'))
   packDirectoryToTarGz(officialRuntimeRoot, join(projectRoot, 'runtime-dsh.tgz'))
   writeFileSha256(join(pluginRoot, 'store.tgz'))

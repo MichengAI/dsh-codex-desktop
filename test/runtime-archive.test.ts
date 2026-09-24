@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { link, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { extractTarGz, packDirectoryToTarGz, validateArchiveEntries } from '../src/runtime-archive.js'
+import { extractTarGz, materializeHardlinks, packDirectoryToTarGz, validateArchiveEntries } from '../src/runtime-archive.js'
 
 test('目录可以打成 tar.gz 再解回原结构', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-archive-'))
@@ -17,6 +17,23 @@ test('目录可以打成 tar.gz 再解回原结构', async () => {
     packDirectoryToTarGz(source, archive)
     extractTarGz(archive, dest)
     assert.equal(await readFile(join(dest, 'nested', 'ok.txt'), 'utf8'), 'ready')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('目录外硬链接会先落成普通文件再打包', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-hardlink-'))
+  try {
+    const outside = join(root, 'outside.txt')
+    const source = join(root, 'source')
+    await writeFile(outside, 'tarball', 'utf8')
+    await mkdir(source)
+    await link(outside, join(source, 'inside.txt'))
+    assert.equal(await materializeHardlinks(source), 1)
+    packDirectoryToTarGz(source, join(root, 'bundle.tgz'))
+    extractTarGz(join(root, 'bundle.tgz'), join(root, 'dest'))
+    assert.equal(await readFile(join(root, 'dest', 'inside.txt'), 'utf8'), 'tarball')
   } finally {
     await rm(root, { recursive: true, force: true })
   }

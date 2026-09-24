@@ -4,6 +4,11 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.70 — 2026-09-24
+
+- 打包前把仓库里的硬链接落成普通文件。1.0.69 只校验了还没压缩的目录，Windows 打包时把指向目录外的 lucide-react 1.48.0 丢掉了。
+- 首次启动失败会写入冒烟能看到的日志。Linux 打包冒烟等待时间改为与 macOS 一样的 180 秒。
+
 ## 1.0.69 — 2026-09-24
 
 - 冻结离线安装不再带 `--allow-build`。这个参数只属于 `pnpm add`，1.0.68 因此在首次安装时被拒绝。
@@ -23,9 +28,4 @@
 
 - 内置社区插件改为克制清单：去掉 Context、Usage Billing。新安装不再随包这两项。离线仓库仍保留它们，避免旧 Profile 升级时锁文件解析失败。
 - 5 项内置插件升级到当前 npm latest：Skills Manager 1.0.1、Archive Manager 1.0.2、Agency Agents 1.0.1、MCP Connector 0.2.54、dshmarket 1.53.0。其余 9 项已是 latest。官方 DSH 仍为 0.1.6-alpha.2。
-
-## 1.0.65 — 2026-09-19
-
-- 启动清理只摘掉串进 Web profile 依赖的残留官方包，不再用桌面白名单维护官方可选层。官方以后加插件不必再改 Desktop。
-- 2 项内置插件升级到当前 npm latest：Codex UI 1.1.14、dshmarket 1.48.0。其余 14 项内置插件和官方 DSH 0.1.6-alpha.2 已是 latest。
 

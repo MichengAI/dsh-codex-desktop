@@ -1,6 +1,31 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFile, readdir, rename, rm, stat } from 'node:fs/promises'
+import { join } from 'node:path'
+
+/** 把指向目录外的硬链接落成普通文件，避免 tar 只记下外部链接，解压后内容丢失。 */
+export async function materializeHardlinks(root: string): Promise<number> {
+  let count = 0
+  const walk = async (dir: string): Promise<void> => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        await walk(path)
+        continue
+      }
+      if (!entry.isFile()) continue
+      if ((await stat(path)).nlink <= 1) continue
+      const temporary = `${path}.materialize`
+      await copyFile(path, temporary)
+      await rm(path)
+      await rename(temporary, path)
+      count += 1
+    }
+  }
+  await walk(root)
+  return count
+}
 
 /** 把目录打成单个 tar.gz，避免安装器解压上万个小文件。 */
 export function packDirectoryToTarGz(sourceDir: string, archivePath: string): void {

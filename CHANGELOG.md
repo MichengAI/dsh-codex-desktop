@@ -4,6 +4,11 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.70 — 2026-09-24
+
+- Copy hardlinked store files into the package before archiving. 1.0.69 verified the live store, then Windows tar dropped lucide-react 1.48.0 because it was a link outside the archive.
+- Write first-launch failures to the smoke log, and give Linux packaged startup the same 180 seconds as macOS.
+
 ## 1.0.69 — 2026-09-24
 
 - Frozen offline install no longer passes `--allow-build`. That flag is only valid for `pnpm add`, so 1.0.68 rejected the first-launch install command.
@@ -23,9 +28,4 @@ The five most recent published versions are listed below.
 
 - Slim the bundled community catalog: drop Context and Usage Billing. New installs no longer ship those two plugins. The offline store still keeps them so older profiles can upgrade without lockfile resolution failures.
 - Refresh 5 bundled plugins to current npm latest: Skills Manager 1.0.1, Archive Manager 1.0.2, Agency Agents 1.0.1, MCP Connector 0.2.54, and dshmarket 1.53.0. The other 9 bundled plugins were already latest. Official DSH remains 0.1.6-alpha.2.
-
-## 1.0.65 — 2026-09-19
-
-- Keep official profile layers that are not leftover Web-profile dependencies, instead of maintaining a Desktop allowlist of official optional bundles.
-- Refresh 2 bundled plugins to current npm latest: Codex UI 1.1.14 and dshmarket 1.48.0. The other 14 bundled plugins and official DSH 0.1.6-alpha.2 were already latest.
 

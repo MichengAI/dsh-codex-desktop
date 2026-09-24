@@ -647,6 +647,8 @@ async function presentDshLoadFailure(profileDir: string, message: string, candid
 async function reportStartupFailure(error: unknown, profileDir?: string): Promise<void> {
   const logPath = startupErrorLogPath(profileDir)
   const message = error instanceof Error ? error.message : '未知启动错误。'
+  console.error(message)
+  const userDataLog = join(app.getPath('userData'), 'startup-error.log')
   const candidates = profileDir === undefined ? [] : await startupRecoveryCandidates(profileDir, message)
   if (profileDir !== undefined) {
     await failStartupDiagnostic(startupDiagnosticPath(profileDir), {
@@ -656,6 +658,7 @@ async function reportStartupFailure(error: unknown, profileDir?: string): Promis
       plugins: candidates,
     }).catch(diagnosticError => { console.error('无法记录 DSH 启动失败。', diagnosticError) })
   }
+  await writeTextFile(userDataLog, message + '\n', 'utf8').catch(() => undefined)
   await writeTextFile(logPath, message + '\n', 'utf8').catch(() => undefined)
   const short = message.split(/\r?\n/)[0]?.slice(0, 240) ?? '未知启动错误。'
   try {
