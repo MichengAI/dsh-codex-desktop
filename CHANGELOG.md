@@ -4,6 +4,10 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.74 — 2026-09-24
+
+- Merging an existing Profile also pulls in that machine's own pnpm metadata cache, so an offline upgrade can verify the old lockfile. 1.0.73 failed on the 1.0.41 Windows check because that lockfile referenced packages the bundled store no longer carries, such as cosmokit 1.8.1.
+
 ## 1.0.73 — 2026-09-24
 
 - The upgrade smoke reads the PUA default from the Profile patch, where DSH 0.1.7 keeps global plugin settings. `settings.yaml` is legacy and is no longer written, so 1.0.72 aborted the Windows 1.0.51 upgrade check on a missing file.
@@ -21,8 +25,4 @@ The five most recent published versions are listed below.
 
 - Copy hardlinked store files into the package before archiving. 1.0.69 verified the live store, then Windows tar dropped lucide-react 1.48.0 because it was a link outside the archive.
 - Write first-launch failures to the smoke log, and give Linux packaged startup the same 180 seconds as macOS.
-
-## 1.0.69 — 2026-09-24
-
-- Frozen offline install no longer passes `--allow-build`. That flag is only valid for `pnpm add`, so 1.0.68 rejected the first-launch install command.
 

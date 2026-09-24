@@ -683,7 +683,7 @@ export async function finalizeProfileBundlesAfterInstall(profileDir: string, ext
 }
 
 /** 将随包内容寻址仓库合入原 store，避免改 store-dir 破坏已有 pnpm 安装。 */
-export async function prepareBundledPluginStore(profileDir: string, bundledStore: string, onProgress?: (progress: StartupProgress) => void): Promise<SeedPnpmOptions> {
+export async function prepareBundledPluginStore(profileDir: string, bundledStore: string, onProgress?: (progress: StartupProgress) => void, env: NodeJS.ProcessEnv = process.env): Promise<SeedPnpmOptions> {
   for (const part of ['v11', 'cache', 'v11/files', 'v11/index.db']) {
     const path = join(bundledStore, part)
     if (!existsSync(path) || (part.endsWith('.db') ? !statSync(path).isFile() : !statSync(path).isDirectory())) {
@@ -742,7 +742,63 @@ export async function prepareBundledPluginStore(profileDir: string, bundledStore
   const cacheDir = existing === undefined ? bundledCache
     : join(basename(existing) === 'v11' ? dirname(existing) : existing, 'cache')
   if (resolve(cacheDir) !== resolve(bundledCache)) await mergeBundledMetadata(bundledCache, cacheDir)
+  // 旧 Profile 的 lockfile 会引用随包仓库里没有的包（例如老版官方运行时的 cosmokit）。
+  // 离线安装要按元数据校验锁文件，这些包的元数据只存在于本机旧安装留下的 pnpm 缓存里。
+  if (existing !== undefined) await mergeLegacyPnpmCacheMetadata(cacheDir, env)
   return { storeDir, cacheDir, offline: true }
+}
+
+/** 本机可能留有旧元数据缓存的 pnpm 缓存目录，按 pnpm 的默认位置推断。 */
+export function legacyPnpmCacheDirs(env: NodeJS.ProcessEnv): string[] {
+  const candidates = [
+    env.XDG_CACHE_HOME === undefined || env.XDG_CACHE_HOME === '' ? undefined : join(env.XDG_CACHE_HOME, 'pnpm'),
+    env.LOCALAPPDATA === undefined || env.LOCALAPPDATA === '' ? undefined : join(env.LOCALAPPDATA, 'pnpm-cache'),
+    env.HOME === undefined || env.HOME === '' ? undefined : join(env.HOME, '.cache', 'pnpm'),
+    env.USERPROFILE === undefined || env.USERPROFILE === '' ? undefined : join(env.USERPROFILE, '.cache', 'pnpm'),
+  ]
+  const seen = new Set<string>()
+  return candidates.filter((candidate): candidate is string => {
+    if (candidate === undefined) return false
+    const key = resolve(candidate)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+/** 把旧缓存的缩写元数据并进离线仓库缓存，并补出校验只认的 metadata-full 同名文件。 */
+export async function mergeLegacyPnpmCacheMetadata(cacheDir: string, env: NodeJS.ProcessEnv = process.env): Promise<number> {
+  const metadataRoot = join(cacheDir, 'v11', 'metadata')
+  const fullRoot = join(cacheDir, 'v11', 'metadata-full')
+  let merged = 0
+  for (const cacheRoot of legacyPnpmCacheDirs(env)) {
+    const source = join(cacheRoot, 'v11', 'metadata')
+    // 更新已有文件会覆盖随包元数据，只补仓库里没有的包。
+    if (!existsSync(source) || resolve(source) === resolve(metadataRoot)) continue
+    try {
+      merged += await mergeMissingMetadataTree(source, metadataRoot)
+      merged += await mergeMissingMetadataTree(source, fullRoot)
+    } catch (error) {
+      console.warn('并入本机旧 pnpm 元数据缓存失败，离线校验可能仍缺部分包元数据。', error)
+    }
+  }
+  return merged
+}
+
+async function mergeMissingMetadataTree(source: string, destination: string): Promise<number> {
+  let copied = 0
+  await mkdir(destination, { recursive: true })
+  for (const entry of await readdir(source, { withFileTypes: true })) {
+    const from = join(source, entry.name), to = join(destination, entry.name)
+    if (entry.isDirectory()) {
+      copied += await mergeMissingMetadataTree(from, to)
+      continue
+    }
+    if (!entry.isFile() || existsSync(to)) continue
+    await writeTextFileAtomic(to, await readFile(from, 'utf8'))
+    copied += 1
+  }
+  return copied
 }
 
 /** 更新随包包的元数据，保留旧仓库独有包；否则移出内置的插件会令离线锁文件校验失败。 */
