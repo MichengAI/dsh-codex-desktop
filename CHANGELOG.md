@@ -4,6 +4,11 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.75 — 2026-09-24
+
+- An offline upgrade now merges the machine's own pnpm metadata cache, so a legacy lockfile can be verified without network. The 1.0.41 lockfile references cosmokit 1.8.1, which the bundled store no longer carries.
+- The upgrade smoke no longer matches patch entries by id. The 1.0.41 profile declares its desktop bridge as an insert list without an id, and the product's own bridge migration removes that declaration by design.
+
 ## 1.0.74 — 2026-09-24
 
 - Merging an existing Profile also pulls in that machine's own pnpm metadata cache, so an offline upgrade can verify the old lockfile. 1.0.73 failed on the 1.0.41 Windows check because that lockfile referenced packages the bundled store no longer carries, such as cosmokit 1.8.1.
@@ -20,9 +25,4 @@ The five most recent published versions are listed below.
 ## 1.0.71 — 2026-09-24
 
 - Accept the 0.1.7 bundle patch list. 1.0.70 treated `@deepseek-ai/dsh-web-app` as missing because its patch field is an array, so every platform aborted before the HTTP server started.
-
-## 1.0.70 — 2026-09-24
-
-- Copy hardlinked store files into the package before archiving. 1.0.69 verified the live store, then Windows tar dropped lucide-react 1.48.0 because it was a link outside the archive.
-- Write first-launch failures to the smoke log, and give Linux packaged startup the same 180 seconds as macOS.
 

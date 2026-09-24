@@ -8,6 +8,7 @@ import { dirname, join, resolve, sep } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { BUNDLED_PLUGINS } from '../src/bundled-plugins.js'
 import { terminateProcessTree } from '../src/process-control.js'
+import { findMissingPatchEntry, keptPatchEntries } from './patch-entry-subset.mjs'
 import { assertNoStartupErrors } from './smoke-startup-errors.mjs'
 import { parse } from 'yaml'
 import { extractTarGz } from '../src/runtime-archive.js'
@@ -107,13 +108,15 @@ try {
   const nextPatch = await readFile(patchPath, 'utf8')
   assert.match(nextPatch, /# 升级冒烟：保留用户配置/)
   // 0.1.7 起全局插件配置写在 Profile 补丁条目里，settings.yaml 已废弃，不能再按旧文件断言。
-  const nextEntries = new Map<string, PatchEntry>(((parse(nextPatch) ?? []) as PatchEntry[]).map(entry => [entry.id, entry]))
+  const nextPatchEntries = (parse(nextPatch) ?? []) as PatchEntry[]
+  const nextEntries = new Map<string, PatchEntry>(nextPatchEntries
+    .filter(entry => typeof entry.id === 'string')
+    .map(entry => [entry.id, entry]))
   const puaEntry = nextEntries.get('michengai-pua')
   assert.ok(puaEntry !== undefined, '升级后 PUA 条目应写入 Profile 补丁')
   assert.equal(puaEntry.config?.alwaysOn, false, '新增内置 PUA 应默认全局关闭')
-  for (const entry of (parse(patch) ?? []) as PatchEntry[]) {
-    assert.ok(nextEntries.has(entry.id), `升级不应丢失既有补丁条目：${entry.id}`)
-  }
+  const missingEntry = findMissingPatchEntry(keptPatchEntries(patch), nextPatchEntries)
+  assert.equal(missingEntry, undefined, `升级不应丢失既有补丁条目：${JSON.stringify(missingEntry)}`)
   assert.equal(await readFile(join(profile, 'user-preserved.txt'), 'utf8'), 'preserved')
   console.log(`PASS: 真实旧版 Profile（归档 ${oldArchive}）离线升级，全部 ${BUNDLED_PLUGINS.length} 个配套插件版本正确，配置和原仓库保留，未进入恢复模式。`)
 } finally {
