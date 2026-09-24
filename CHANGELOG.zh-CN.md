@@ -4,6 +4,10 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.68 — 2026-09-24
+
+- 首次启动按随包锁文件离线安装内置插件，不再按依赖范围重新解析。新发布的传递依赖，例如 lucide-react 1.48.0，不会再挡住离线启动。
+
 ## 1.0.67 — 2026-09-24
 
 - 桌面端 v2 宠物在空闲时会跟着光标转头。原生窗口轮询屏幕光标；网页浮层不变。
@@ -25,9 +29,4 @@
 
 - 内置官方 DSH 运行时由 0.1.6-alpha.1 升级至 0.1.6-alpha.2，并同步 scope、timeout、invariants 启动 peer。
 - 13 项内置插件升级到当前 npm latest：Codex UI 1.1.13、IM Connect 0.1.51、Automation 0.1.45、Skills Manager 0.1.53、Archive Manager 0.1.44、Agency Agents 0.1.44、Codex Pet 0.1.7、BTW 0.1.10、Simplify 0.1.7、Code Review 0.1.4、PUA 0.3.16、Context 0.53.3、MCP Connector 0.2.51。Better Sidebar、Usage Billing、dshmarket 已是 latest。
-
-## 1.0.63 — 2026-09-16
-
-- 内置官方 DSH 运行时由 0.1.5-rc.2 升级至 0.1.6-alpha.1，并同步 scope、timeout、invariants 启动 peer。
-- 15 项内置插件升级到当前 npm latest：Codex UI 1.1.11、IM Connect 0.1.50、Automation 0.1.44、Skills Manager 0.1.52、Archive Manager 0.1.43、Agency Agents 0.1.43、Codex Pet 0.1.6、BTW 0.1.8、Simplify 0.1.5、Code Review 0.1.2、PUA 0.3.13、Context 0.53.0、MCP Connector 0.2.49、Usage Billing 1.4.0、dshmarket 1.47.0。Better Sidebar 已是 latest。
 

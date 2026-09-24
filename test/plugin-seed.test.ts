@@ -27,6 +27,60 @@ const catalog = [
   { packageName: '@michengai/dsh-im-connect', version: '0.1.10' },
 ] as const
 
+test('空 Profile 离线补种使用随包锁文件，不再按范围重新解析', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-frozen-seed-'))
+  try {
+    const store = join(root, 'store')
+    const profile = join(root, 'profile')
+    await createBundledStore(store)
+    await writeFile(join(store, 'bundled-lock.yaml'), 'lockfileVersion: 9.0\n', 'utf8')
+    const calls: string[][] = []
+    await seedBundledPlugins({
+      nodeExecutable: 'node',
+      profileDir: profile,
+      pluginStoreDir: store,
+      catalog,
+      runner: async args => { calls.push([...args]) },
+    })
+    assert.equal(calls.length, 1)
+    assert.equal(calls[0]?.[0], 'install')
+    assert.equal(calls[0]?.includes('--frozen-lockfile'), true)
+    assert.equal(calls[0]?.includes('--offline'), true)
+    assert.equal(calls[0]?.includes('add'), false)
+    assert.equal(await readFile(join(profile, 'pnpm-lock.yaml'), 'utf8'), 'lockfileVersion: 9.0\n')
+    const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as { dependencies?: Record<string, string> }
+    assert.equal(manifest.dependencies?.['@michengai/dsh-codex-ui'], '0.2.58')
+    assert.equal(manifest.dependencies?.['@michengai/dsh-im-connect'], '0.1.10')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('已有锁文件的 Profile 仍按增量安装，不覆盖用户锁文件', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-keep-lock-'))
+  try {
+    const store = join(root, 'store')
+    const profile = join(root, 'profile')
+    await createBundledStore(store)
+    await writeFile(join(store, 'bundled-lock.yaml'), 'lockfileVersion: 9.0\n', 'utf8')
+    await mkdir(profile)
+    await writeFile(join(profile, 'pnpm-lock.yaml'), 'lockfileVersion: 9.0\nuser: true\n', 'utf8')
+    await writeFile(join(profile, 'package.json'), JSON.stringify({ private: true, dependencies: {} }), 'utf8')
+    const calls: string[][] = []
+    await seedBundledPlugins({
+      nodeExecutable: 'node',
+      profileDir: profile,
+      pluginStoreDir: store,
+      catalog,
+      runner: async args => { calls.push([...args]) },
+    })
+    assert.equal(calls[0]?.[0], 'add')
+    assert.equal(await readFile(join(profile, 'pnpm-lock.yaml'), 'utf8'), 'lockfileVersion: 9.0\nuser: true\n')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('已安装套件时拆成单独插件，便于各自更新', () => {
   const plan = planBundledPluginSeed({
     catalog,

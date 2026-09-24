@@ -6,7 +6,8 @@ import { join } from 'node:path'
 import test from 'node:test'
 import { pathToFileURL } from 'node:url'
 
-import { assertBundledPluginMetadataComplete, completeBundledPluginMetadata, verifyBundledPluginStore, copyWorkspacePackages, officialRuntimeGlobalNodeModulesRoot, officialRuntimeNpmDependencies, officialRuntimeNpmInstallArgs, pruneStoreForPackaging, removePreparedPath, resolveBundledNodeSha256, validateOfficialRuntimeLayout, writePnpmShims } from '../scripts/prepare-runtime.js'
+import { assertBundledPluginMetadataComplete, completeBundledPluginMetadata, publishBundledLockfile, verifyBundledPluginStore, copyWorkspacePackages, officialRuntimeGlobalNodeModulesRoot, officialRuntimeNpmDependencies, officialRuntimeNpmInstallArgs, pruneStoreForPackaging, removePreparedPath, resolveBundledNodeSha256, validateOfficialRuntimeLayout, writePnpmShims } from '../scripts/prepare-runtime.js'
+import { STORE_PACKAGES } from '../src/bundled-plugins.js'
 import { DESKTOP_BRIDGE_FILES } from '../src/desktop-host.js'
 
 test('按目标平台选择随包 Node 的 SHA256', () => {
@@ -443,40 +444,63 @@ test('Linux ARM64 使用原生 runner、独立更新元数据与双格式制品'
   assert.deepEqual(manifest.build?.linux?.target, ['AppImage', 'deb'])
 })
 
+test('装配锁文件会放进随包仓库', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-publish-lock-'))
+  try {
+    const staging = join(root, 'staging')
+    const store = join(root, 'store')
+    await mkdir(staging)
+    await mkdir(store)
+    await writeFile(join(staging, 'pnpm-lock.yaml'), 'lockfileVersion: 9.0\n', 'utf8')
+    await publishBundledLockfile(staging, store)
+    assert.equal(await readFile(join(store, 'bundled-lock.yaml'), 'utf8'), 'lockfileVersion: 9.0\n')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('打包离线门禁传播安装失败并清理临时 Profile', async () => {
   const root=await mkdtemp(join(tmpdir(),'dsh-offline-gate-'))
   try {
+    await mkdir(join(root, 'store'), { recursive: true })
+    await writeFile(join(root, 'store', 'bundled-lock.yaml'), 'lockfileVersion: 9.0\n', 'utf8')
     let calls=0
     await assert.rejects(verifyBundledPluginStore(root,'unused',args=>{
       calls++
       assert.ok(args.includes('--offline'))
+      assert.ok(args.includes('--frozen-lockfile'))
       throw new Error('ERR_PNPM_NO_OFFLINE_META')
     }),/ERR_PNPM_NO_OFFLINE_META/)
     assert.equal(calls,1)
-    assert.deepEqual(await readdir(root),[])
+    assert.deepEqual(await readdir(root), ['store'])
   } finally { await rm(root,{recursive:true,force:true}) }
 })
 
 test('pnpm 返回成功但未装全插件时打包门禁仍拒绝', async () => {
   const root=await mkdtemp(join(tmpdir(),'dsh-offline-incomplete-'))
   try {
+    await mkdir(join(root, 'store'), { recursive: true })
+    await writeFile(join(root, 'store', 'bundled-lock.yaml'), 'lockfileVersion: 9.0\n', 'utf8')
     await assert.rejects(verifyBundledPluginStore(root,'unused',()=>{}),/ENOENT/)
-    assert.deepEqual(await readdir(root),[])
+    assert.deepEqual(await readdir(root), ['store'])
   } finally { await rm(root,{recursive:true,force:true}) }
 })
 
 test('离线安装返回错误插件版本时阻止打包', async () => {
   const root=await mkdtemp(join(tmpdir(),'dsh-offline-version-'))
   try {
+    await mkdir(join(root, 'store'), { recursive: true })
+    await writeFile(join(root, 'store', 'bundled-lock.yaml'), 'lockfileVersion: 9.0\n', 'utf8')
     await assert.rejects(verifyBundledPluginStore(root,'unused',args=>{
-      const profile=args[args.indexOf('--dir')+1]!
-      const spec=args[1]!
-      const name=spec.slice(0,spec.lastIndexOf('@'))
-      const dir=join(profile,'node_modules',name)
-      mkdirSync(dir,{recursive:true})
-      writeFileSync(join(dir,'package.json'),JSON.stringify({name,version:'0.0.0'}),'utf8')
+      const profile = args.find(arg => arg.startsWith('--dir='))?.slice('--dir='.length)
+      if (profile === undefined) throw new Error('缺少安装目录')
+      for (const plugin of STORE_PACKAGES) {
+        const dir = join(profile, 'node_modules', ...plugin.packageName.split('/'))
+        mkdirSync(dir, { recursive: true })
+        writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: plugin.packageName, version: '0.0.0' }), 'utf8')
+      }
     }),/版本不匹配/)
-    assert.deepEqual(await readdir(root),[])
+    assert.deepEqual(await readdir(root), ['store'])
   } finally {await rm(root,{recursive:true,force:true})}
 })
 

@@ -4,6 +4,10 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.68 — 2026-09-24
+
+- First launch installs bundled plugins from the lockfile packed with the offline store, instead of re-resolving dependency ranges. A newly published transitive package, such as lucide-react 1.48.0, no longer blocks an offline start.
+
 ## 1.0.67 — 2026-09-24
 
 - Desktop v2 pets turn their head toward the cursor while idle. The native window polls the screen cursor; the web overlay is unchanged.
@@ -25,9 +29,4 @@ The five most recent published versions are listed below.
 
 - Update the bundled official DSH runtime from 0.1.6-alpha.1 to 0.1.6-alpha.2, including the matching scope, timeout, and invariants launch peers.
 - Refresh 13 bundled plugins to current npm latest: Codex UI 1.1.13, IM Connect 0.1.51, Automation 0.1.45, Skills Manager 0.1.53, Archive Manager 0.1.44, Agency Agents 0.1.44, Codex Pet 0.1.7, BTW 0.1.10, Simplify 0.1.7, Code Review 0.1.4, PUA 0.3.16, Context 0.53.3, and MCP Connector 0.2.51. Better Sidebar, Usage Billing, and dshmarket were already latest.
-
-## 1.0.63 — 2026-09-16
-
-- Update the bundled official DSH runtime from 0.1.5-rc.2 to 0.1.6-alpha.1, including the matching scope, timeout, and invariants launch peers.
-- Refresh 15 bundled plugins to current npm latest: Codex UI 1.1.11, IM Connect 0.1.50, Automation 0.1.44, Skills Manager 0.1.52, Archive Manager 0.1.43, Agency Agents 0.1.43, Codex Pet 0.1.6, BTW 0.1.8, Simplify 0.1.5, Code Review 0.1.2, PUA 0.3.13, Context 0.53.0, MCP Connector 0.2.49, Usage Billing 1.4.0, and dshmarket 1.47.0. Better Sidebar was already latest.
 

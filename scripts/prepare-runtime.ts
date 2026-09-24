@@ -1,11 +1,12 @@
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { chmodSync, existsSync, readFileSync } from 'node:fs'
-import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
+import { cp, copyFile, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { ALLOWED_BUILD_PACKAGES, officialRuntimeDependencies, officialRuntimePnpmConfig, pnpmWorkspaceYaml, STORE_PACKAGES } from '../src/bundled-plugins.js'
+import { BUNDLED_LOCKFILE_NAME } from '../src/plugin-seed.js'
 import { extractTarGz, packDirectoryToTarGz, writeFileSha256 } from '../src/runtime-archive.js'
 
 const projectRoot = resolve(import.meta.dirname, '..', '..')
@@ -174,6 +175,7 @@ export async function stageBundledPlugins(destinationRoot: string, nodeRoot: str
       throw new Error(`内置插件装配后缺失：${plugin.packageName}`)
     }
   }
+  await publishBundledLockfile(stagingDir, storeDir)
   await pruneStoreForPackaging(storeDir)
   await completeBundledPluginMetadata(storeDir)
   await assertBundledPluginMetadataComplete(storeDir)
@@ -182,17 +184,30 @@ export async function stageBundledPlugins(destinationRoot: string, nodeRoot: str
   await removePreparedPath(stagingDir)
 }
 
-/** 打包前用空 Profile 和随包元数据离线安装，缺少任何依赖即阻止生成安装包。 */
+/** 把装配时解析好的锁文件放进仓库，首启按它冻结安装，避免范围再解析到未下载的压缩包。 */
+export async function publishBundledLockfile(stagingDir: string, storeDir: string): Promise<void> {
+  const source = join(stagingDir, 'pnpm-lock.yaml')
+  if (!existsSync(source)) throw new Error('内置插件装配没有生成锁文件。')
+  await copyFile(source, join(storeDir, BUNDLED_LOCKFILE_NAME))
+}
+
+/** 打包前用空 Profile 和随包锁文件离线安装，缺少任何依赖即阻止生成安装包。 */
 export async function verifyBundledPluginStore(destinationRoot: string, nodeRoot: string,
   run: (args: readonly string[]) => void = args => runStagedPnpm(nodeRoot, args)): Promise<void> {
   const profile = await mkdtemp(join(destinationRoot, 'verify-offline-'))
   const store = join(destinationRoot, 'store')
+  const lockSource = join(store, BUNDLED_LOCKFILE_NAME)
   try {
-    await writeFile(join(profile, 'package.json'), JSON.stringify({ private: true }), 'utf8')
+    if (!existsSync(lockSource)) throw new Error('随包仓库缺少锁定的依赖树。')
+    await writeFile(join(profile, 'package.json'), JSON.stringify({
+      private: true,
+      dependencies: Object.fromEntries(STORE_PACKAGES.map(plugin => [plugin.packageName, plugin.version])),
+    }, undefined, 2) + '\n', 'utf8')
     await writeFile(join(profile, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml(false), 'utf8')
+    await copyFile(lockSource, join(profile, 'pnpm-lock.yaml'))
     run([
-      'add', ...STORE_PACKAGES.map(plugin => `${plugin.packageName}@${plugin.version}`),
-      '--dir', profile, '--store-dir', store, '--cache-dir', join(store, 'cache'), '--offline',
+      'install', `--dir=${profile}`, '--frozen-lockfile',
+      '--store-dir', store, '--cache-dir', join(store, 'cache'), '--offline',
       '--config.node-linker=hoisted', '--config.auto-install-peers=false', '--config.minimumReleaseAge=0',
       '--registry=https://registry.npmjs.org/',
     ])

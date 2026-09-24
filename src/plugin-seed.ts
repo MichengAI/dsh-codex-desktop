@@ -136,6 +136,24 @@ export function buildSeedRemoveArgs(packageNames: readonly string[], targetDir: 
   ]
 }
 
+export const BUNDLED_LOCKFILE_NAME = 'bundled-lock.yaml'
+
+export function buildFrozenSeedInstallArgs(targetDir: string, options: SeedPnpmOptions = {}): string[] {
+  return [
+    'install',
+    `--dir=${targetDir}`,
+    '--frozen-lockfile',
+    ...(options.storeDir === undefined ? [] : [`--store-dir=${options.storeDir}`]),
+    ...(options.offline === true && options.storeDir !== undefined ? [`--cache-dir=${options.cacheDir ?? join(options.storeDir, 'cache')}`] : []),
+    ...(options.offline === true ? ['--offline'] : []),
+    '--config.node-linker=hoisted',
+    '--config.auto-install-peers=false',
+    '--config.minimumReleaseAge=0',
+    ...ALLOWED_BUILD_PACKAGES.map(name => `--allow-build=${name}`),
+    '--registry=https://registry.npmjs.org/',
+  ]
+}
+
 export function buildSeedPluginArgs(packages: readonly BundledPlugin[], targetDir: string, options: SeedPnpmOptions = {}): string[] {
   return [
     'add',
@@ -460,6 +478,24 @@ function combinePluginSeedErrors(previous: unknown, current: unknown): Error {
   return new Error(`${first}\n在线重试仍失败：${last.message}`)
 }
 
+async function applyBundledLockfile(options: SeedOptions, packages: readonly BundledPlugin[]): Promise<boolean> {
+  const source = join(options.pluginStoreDir, BUNDLED_LOCKFILE_NAME)
+  const destination = join(options.profileDir, 'pnpm-lock.yaml')
+  if (existsSync(destination) || !existsSync(source)) return false
+  const catalog = communitySeedCatalog(options.catalog ?? BUNDLED_PLUGINS)
+  if (packages.length !== catalog.length) return false
+  const wanted = new Map(catalog.map(plugin => [plugin.packageName, plugin.version]))
+  if (packages.some(plugin => wanted.get(plugin.packageName) !== plugin.version)) return false
+  const manifestPath = join(options.profileDir, 'package.json')
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as { dependencies?: Record<string, string> }
+  const dependencies = { ...(manifest.dependencies ?? {}) }
+  for (const plugin of packages) dependencies[plugin.packageName] = plugin.version
+  manifest.dependencies = dependencies
+  await writeTextFileAtomic(manifestPath, `${JSON.stringify(manifest, undefined, 2)}\n`)
+  await copyFile(source, destination)
+  return true
+}
+
 async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
   await ensureProfileScaffold(options.profileDir)
   const { declared, installed } = await readProfilePluginNames(options.profileDir)
@@ -505,11 +541,15 @@ async function seedCommunityPlugins(options: SeedOptions): Promise<SeedResult> {
     previousError = error
   }
   if (plan.packages.length > 0) {
-    const args = buildSeedPluginArgs(plan.packages, options.profileDir, storeOptions)
+    const frozen = storeOptions.offline === true && await applyBundledLockfile(options, plan.packages)
+    const args = frozen
+      ? buildFrozenSeedInstallArgs(options.profileDir, storeOptions)
+      : buildSeedPluginArgs(plan.packages, options.profileDir, storeOptions)
     try {
       await runner(args)
       previousError = undefined
     } catch (error) {
+      if (frozen) await rm(join(options.profileDir, 'pnpm-lock.yaml'), { force: true })
       if (storeOptions.offline !== true) throw combinePluginSeedErrors(previousError, error)
       console.warn('随包插件离线安装失败，尝试在线安装。', error)
       previousError = error
