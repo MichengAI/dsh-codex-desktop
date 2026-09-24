@@ -7,4 +7,5 @@ petContextBridge.exposeInMainWorld('petWindow', {
   pointer(interactive: boolean) { petIpcRenderer.send('dsh-pet:pointer', interactive) },
   move(dx: number, dy: number) { petIpcRenderer.send('dsh-pet:move', dx, dy) },
   action(action: string) { petIpcRenderer.send('dsh-pet:action', action) },
+  onCursor(listener: (value: { dx: number; dy: number } | null) => void) { const wrapped = (_event: Electron.IpcRendererEvent, value: { dx: number; dy: number } | null) => listener(value); petIpcRenderer.on('dsh-pet:cursor', wrapped); return () => petIpcRenderer.removeListener('dsh-pet:cursor', wrapped) },
 })

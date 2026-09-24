@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { BUNDLED_PLUGINS, OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, RETAINED_STORE_PACKAGES, STORE_PACKAGES, compareReleaseVersions, isDeepSeekOfficialPackage, isOfficialDshPackage, officialDshVersionOverrides, officialRuntimeDependencies, officialRuntimePnpmConfig, planOfficialRuntimeTarget, pnpmAllowBuildsManifest, pnpmWorkspaceYaml, SUITE_PACKAGE, bundledPluginNames, seededPackageNames } from '../src/bundled-plugins.js'
+import { BUNDLED_PLUGINS, OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, STORE_PACKAGES, compareReleaseVersions, isDeepSeekOfficialPackage, isOfficialDshPackage, officialDshVersionOverrides, officialRuntimeDependencies, officialRuntimePnpmConfig, planOfficialRuntimeTarget, pnpmAllowBuildsManifest, pnpmWorkspaceYaml, SUITE_PACKAGE, bundledPluginNames, seededPackageNames } from '../src/bundled-plugins.js'
 
 test('内置目录包含十四个社区插件和市场组件', () => {
   assert.deepEqual(bundledPluginNames(), [
@@ -24,16 +24,11 @@ test('内置目录包含十四个社区插件和市场组件', () => {
   assert.equal(SUITE_PACKAGE, '@michengai/dsh-codex-suite')
 })
 
-test('离线仓库保留已移出内置清单的包，供旧 Profile 升级', () => {
-  assert.deepEqual(RETAINED_STORE_PACKAGES.map(plugin => plugin.packageName), [
-    'dsh-context',
-    '@kenz1117/dsh-ui-usage-billing',
-  ])
-  assert.equal(STORE_PACKAGES.length, BUNDLED_PLUGINS.length + RETAINED_STORE_PACKAGES.length)
-  for (const plugin of RETAINED_STORE_PACKAGES) {
-    assert.equal(BUNDLED_PLUGINS.some(item => item.packageName === plugin.packageName), false)
-    assert.equal(STORE_PACKAGES.some(item => item.packageName === plugin.packageName && item.version === plugin.version), true)
-  }
+test('离线仓库不再打包已去掉的 Context 和费用插件', () => {
+  const names = STORE_PACKAGES.map(plugin => plugin.packageName)
+  assert.equal(names.includes('dsh-context'), false)
+  assert.equal(names.includes('@kenz1117/dsh-ui-usage-billing'), false)
+  assert.equal(STORE_PACKAGES.length, BUNDLED_PLUGINS.length)
 })
 
 test('所有 DeepSeek 官方作用域包使用同一套隔离判定', () => {
@@ -52,32 +47,32 @@ test('每个内置插件都钉死精确版本', () => {
       true,
     )
   }
-  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.53.0')
+  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.64.0')
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
-    '@michengai/dsh-codex-ui': '1.1.14',
-    '@michengai/dsh-im-connect': '0.1.51',
-    '@michengai/dsh-automation': '0.1.45',
-    '@michengai/dsh-skills-manager': '1.0.1',
-    '@michengai/dsh-archive-manager': '1.0.2',
-    '@michengai/dsh-agency-agents': '1.0.1',
-    '@michengai/dsh-codex-pet': '0.1.7',
-    '@michengai/dsh-btw': '0.1.10',
-    '@michengai/dsh-simplify': '0.1.7',
-    '@michengai/dsh-code-review': '0.1.4',
-    '@michengai/dsh-pua': '0.3.16',
-    'dsh-better-sidebar': '0.19.1',
-    'dsh-mcp-connector': '0.2.54',
-    dshmarket: '1.53.0',
+    '@michengai/dsh-codex-ui': '1.1.17',
+    '@michengai/dsh-im-connect': '0.1.54',
+    '@michengai/dsh-automation': '0.1.50',
+    '@michengai/dsh-skills-manager': '1.1.3',
+    '@michengai/dsh-archive-manager': '1.0.4',
+    '@michengai/dsh-agency-agents': '1.0.3',
+    '@michengai/dsh-codex-pet': '0.1.9',
+    '@michengai/dsh-btw': '0.1.12',
+    '@michengai/dsh-simplify': '0.1.9',
+    '@michengai/dsh-code-review': '0.1.5',
+    '@michengai/dsh-pua': '0.3.17',
+    'dsh-better-sidebar': '0.21.1',
+    'dsh-mcp-connector': '0.2.58',
+    dshmarket: '1.64.0',
   })
 })
 
 test('官方 DSH 家族锁在同一个精确版本', () => {
   assert.equal(OFFICIAL_RUNTIME.packageName, '@deepseek-ai/dsh')
   assert.equal(OFFICIAL_RUNTIME.version, OFFICIAL_DSH_VERSION)
-  assert.equal(OFFICIAL_DSH_VERSION, '0.1.6-alpha.2')
+  assert.equal(OFFICIAL_DSH_VERSION, '0.1.7-rc.1')
   assert.equal(seededPackageNames()[0], '@deepseek-ai/dsh')
   assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.packageName, '@deepseek-ai/cordis-plugin-group')
-  assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.version, '1.0.2')
+  assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.version, '1.0.4')
   assert.equal(officialRuntimeDependencies()['@deepseek-ai/dsh-invariants'], OFFICIAL_DSH_VERSION)
   assert.deepEqual(officialDshVersionOverrides(), {
     '@deepseek-ai/dsh': OFFICIAL_DSH_VERSION,

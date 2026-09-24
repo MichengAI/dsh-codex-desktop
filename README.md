@@ -208,7 +208,7 @@ Code Review and PUA are included in the bundled plugin catalog. PUA defaults to 
 
 ### Bundled pet integration
 
-The bundled `@michengai/dsh-codex-pet` 0.1.7 is distributed offline and installed automatically on first launch. Select a pet and enable visibility in pet settings to use the native companion. The plugin exposes `window.dshPet` API version 1. Desktop subscribes to snapshots and forwards conversation actions through that API; Desktop owns rendering, dragging, position storage, click-through and window recovery. The plugin remains usable in a web browser without Desktop. Older plugins exposing only `dshDesktopPet` are not supported by this adapter.
+The bundled `@michengai/dsh-codex-pet` 0.1.9 is distributed offline and installed automatically on first launch. Select a pet and enable visibility in pet settings to use the native companion. The plugin exposes `window.dshPet` API version 1. Desktop subscribes to snapshots and forwards conversation actions through that API; Desktop owns rendering, dragging, position storage, click-through, v2 idle gaze and window recovery. The plugin remains usable in a web browser without Desktop. Older plugins exposing only `dshDesktopPet` are not supported by this adapter.
 
 Run `npm run smoke:pet` to build and verify real Electron windows, preload/IPC, multi-session approval and answers, stale-command rejection, reload, hide and display handoff. The test uses a protocol fixture and a tiny image fixture, requires only this repository's development dependencies, and cleans its temporary user directory. It does not replace an installed-plugin or packaged-release acceptance test.
 

@@ -3,6 +3,7 @@ import { app, BrowserWindow, ipcMain, screen, type WebContents, type IpcMainEven
 import { join } from 'node:path'
 import { readFileSync, writeFileSync, renameSync } from 'node:fs'
 import { constrainPetBounds, parsePetWindowState, validPetCommand, type PetWindowState } from './pet-window-policy.js'
+import { gazePayload } from './pet-gaze.js'
 import { randomUUID } from 'node:crypto'
 import { petWindowHtml } from './pet-window-html.js'
 import { installPetSourceAdapter } from './pet-source-adapter.js'
@@ -15,8 +16,23 @@ export function installPetWindow(options: { source(): WebContents | undefined; r
   const locationFile = join(app.getPath('userData'), 'pet-position.json')
   const isSource = (event: IpcMainEvent | IpcMainInvokeEvent) => event.sender === options.source() && event.senderFrame === event.sender.mainFrame
   const isPet = (event: IpcMainEvent) => event.sender === window?.webContents && event.senderFrame === event.sender.mainFrame
-  const send = () => { if (state && window && origin && !window.isDestroyed()) window.webContents.send(CHANNEL + 'state', { ...state, sprite: undefined, pet: { ...state.pet, url: state.sprite } }) }
-  const close = () => { for (const pending of pendingCommands.values()) { clearTimeout(pending.timer); pending.reject(new Error('宠物窗口已关闭')) }; pendingCommands.clear(); const old = window; window = undefined; origin = undefined; old?.destroy() }
+  let gazeTimer: ReturnType<typeof setInterval> | undefined
+  let lastGazeKey = ''
+  const stopGaze = () => { if (gazeTimer) clearInterval(gazeTimer); gazeTimer = undefined; lastGazeKey = '' }
+  const publishGaze = () => {
+    if (!window || window.isDestroyed()) return
+    const point = screen.getCursorScreenPoint()
+    const bounds = window.getBounds()
+    const payload = gazePayload(state, point, bounds)
+    const key = payload ? `${bounds.x},${bounds.y},${bounds.width},${bounds.height}|${point.x},${point.y}` : 'off'
+    if (key === lastGazeKey) return
+    lastGazeKey = key
+    window.webContents.send(CHANNEL + 'cursor', payload)
+  }
+  // 窗口默认鼠标穿透，页内 mousemove 收不到桌面光标。只把偏移推给隔离窗口，不交给网页。
+  const ensureGaze = () => { if (!window || window.isDestroyed()) return; if (!gazeTimer) gazeTimer = setInterval(publishGaze, 50); publishGaze() }
+  const send = () => { if (state && window && origin && !window.isDestroyed()) { window.webContents.send(CHANNEL + 'state', { ...state, sprite: undefined, pet: { ...state.pet, url: state.sprite } }); ensureGaze() } }
+  const close = () => { stopGaze(); for (const pending of pendingCommands.values()) { clearTimeout(pending.timer); pending.reject(new Error('宠物窗口已关闭')) }; pendingCommands.clear(); const old = window; window = undefined; origin = undefined; old?.destroy() }
   const release = () => { const source = options.source(); if (source && !source.isDestroyed()) source.send(CHANNEL + 'action', 'release') }
   const areaPosition = () => {
     const area = screen.getPrimaryDisplay().workArea

@@ -4,6 +4,13 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.67 — 2026-09-24
+
+- 桌面端 v2 宠物在空闲时会跟着光标转头。原生窗口轮询屏幕光标；网页浮层不变。
+- 内置官方 DSH 运行时由 0.1.6-alpha.2 升级至 0.1.7-rc.1，并同步 scope、timeout、invariants。cordis-plugin-group 由 1.0.2 升至 1.0.4，否则 0.1.7-rc.1 的启动 peer 装不进去。
+- 14 项内置插件全部升级到当前 npm latest：Codex UI 1.1.17、IM Connect 0.1.54、Automation 0.1.50、Skills Manager 1.1.3、Archive Manager 1.0.4、Agency Agents 1.0.3、Codex Pet 0.1.9、BTW 0.1.12、Simplify 0.1.9、Code Review 0.1.5、PUA 0.3.17、Better Sidebar 0.21.1、MCP Connector 0.2.58、dshmarket 1.64.0。
+- 离线仓库不再打包 Context 和 Usage Billing。这两项在 1.0.66 已移出安装清单。
+
 ## 1.0.66 — 2026-09-21
 
 - 内置社区插件改为克制清单：去掉 Context、Usage Billing。新安装不再随包这两项。离线仓库仍保留它们，避免旧 Profile 升级时锁文件解析失败。
@@ -23,12 +30,4 @@
 
 - 内置官方 DSH 运行时由 0.1.5-rc.2 升级至 0.1.6-alpha.1，并同步 scope、timeout、invariants 启动 peer。
 - 15 项内置插件升级到当前 npm latest：Codex UI 1.1.11、IM Connect 0.1.50、Automation 0.1.44、Skills Manager 0.1.52、Archive Manager 0.1.43、Agency Agents 0.1.43、Codex Pet 0.1.6、BTW 0.1.8、Simplify 0.1.5、Code Review 0.1.2、PUA 0.3.13、Context 0.53.0、MCP Connector 0.2.49、Usage Billing 1.4.0、dshmarket 1.47.0。Better Sidebar 已是 latest。
-
-## 1.0.62 — 2026-09-15
-
-- 修复内网首次启动时，共享 Web 配置里已有 `node_modules` 但没有记录 pnpm 仓库、桌面改去访问 npm 注册表导致专家/插件/技能装不上的问题。现在会改用随包离线仓库补种。
-- 冷启动等待加长：进程就绪由 45 秒改为 120 秒，页面完成插件加载由 30 秒改为 90 秒。慢启动不再用失败窗盖掉工作台；若再等约 90 秒仍是白页，会显示带日志路径的失败提示。期间若页面恢复健康，会自动回到工作台。帮助菜单在已有配置时提供「打开恢复页」。
-- `pack` / `dist` 会先清掉残留运行时目录和额外的 `release-*` 目录，避免沿用旧的随包插件仓库。
-- 日常启动跳过空的 pending、desktop-bridge 和 bundle 对账扫描。
-- 启动不再自动补齐「清单有、磁盘没有」的社区插件；改由客户端 pending 清单驱动。随包插件仍会按原逻辑补种。
 

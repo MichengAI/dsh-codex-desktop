@@ -1,13 +1,15 @@
 import type { PetWindowState } from './pet-window-policy.js'
+import { lookCell } from './pet-gaze.js'
 
 /** Desktop 自有渲染器；函数序列化到隔离透明窗口，只调用有限 preload 接口。 */
 export function renderPetWindow(): void {
   type Item = NonNullable<PetWindowState['notifications']>['items'][number]
   type Answer = { id: string; selected: string[]; custom?: string }
-  const bridge = (window as unknown as { petWindow: { onState(fn: (state: PetWindowState) => void): () => void; ready(): void; pointer(value: boolean): void; move(dx: number, dy: number): void; command(value: unknown): Promise<void>; action(value: string): void } }).petWindow
+  const bridge = (window as unknown as { petWindow: { onState(fn: (state: PetWindowState) => void): () => void; ready(): void; pointer(value: boolean): void; move(dx: number, dy: number): void; command(value: unknown): Promise<void>; action(value: string): void; onCursor?(fn: (value: { dx: number; dy: number } | null) => void): () => void } }).petWindow
   let state: PetWindowState | undefined, expanded = false, menu = false, latest = false, detail = '', error = ''
   const drafts = new Map<string, Answer[]>(), busy = new Set<string>()
   let pose = '', frame = 0, last = 0, motion = '', motionTimer: ReturnType<typeof setTimeout> | undefined
+  let gaze: { row: number; col: number } | null = null
   let dragging: { x: number; y: number; startX: number; startY: number; moved: boolean } | undefined
   const anim: Record<string, [number, number[]]> = {
     idle: [0, [280, 110, 110, 140, 140, 320]], 'running-right': [1, [120,120,120,120,120,120,120,220]], 'running-left': [2, [120,120,120,120,120,120,120,220]],
@@ -103,9 +105,15 @@ export function renderPetWindow(): void {
   document.addEventListener('pointerdown',event=>{if(menu&&!panel.contains(event.target as Node)&&!sprite.contains(event.target as Node)){menu=false;render()}})
   const reduced=matchMedia('(prefers-reduced-motion: reduce)')
   const tick=(time:number)=>{
-    if(state){const next=motion||state.activity.pose;if(next!==pose){pose=next;frame=0;last=time}const [row,durations]=anim[pose]??anim.idle;if(!reduced.matches&&time-last>=durations[frame]){frame=(frame+1)%durations.length;last=time}image.style.backgroundPosition=`${-frame*state.config.size}px ${-row*state.config.size*208/192}px`}
+    if(state){
+      const size=state.config.size
+      const looking=state.pet.version===2&&state.activity.pose==='idle'&&!motion&&!dragging?gaze:null
+      if(looking)image.style.backgroundPosition=`${-looking.col*size}px ${-looking.row*size*208/192}px`
+      else{const next=motion||state.activity.pose;if(next!==pose){pose=next;frame=0;last=time}const [row,durations]=anim[pose]??anim.idle;if(!reduced.matches&&time-last>=durations[frame]){frame=(frame+1)%durations.length;last=time}image.style.backgroundPosition=`${-frame*size}px ${-row*size*208/192}px`}
+    }
     requestAnimationFrame(tick)
   }
+  bridge.onCursor?.(value=>{gaze=value&&Number.isFinite(value.dx)&&Number.isFinite(value.dy)?lookCell(value.dx,value.dy):null})
   bridge.onState(value=>{state=value;const keys=new Set(value.notifications?.items.map(identity));for(const key of drafts.keys())if(!keys.has(key))drafts.delete(key);render()})
   requestAnimationFrame(tick);bridge.ready()
 }

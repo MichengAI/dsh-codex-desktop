@@ -4,6 +4,13 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.67 — 2026-09-24
+
+- Desktop v2 pets turn their head toward the cursor while idle. The native window polls the screen cursor; the web overlay is unchanged.
+- Update the bundled official DSH runtime from 0.1.6-alpha.2 to 0.1.7-rc.1, including scope, timeout, and invariants. cordis-plugin-group moves from 1.0.2 to 1.0.4 so the 0.1.7-rc.1 boot peer can install.
+- Refresh all 14 bundled plugins to current npm latest: Codex UI 1.1.17, IM Connect 0.1.54, Automation 0.1.50, Skills Manager 1.1.3, Archive Manager 1.0.4, Agency Agents 1.0.3, Codex Pet 0.1.9, BTW 0.1.12, Simplify 0.1.9, Code Review 0.1.5, PUA 0.3.17, Better Sidebar 0.21.1, MCP Connector 0.2.58, and dshmarket 1.64.0.
+- Stop shipping Context and Usage Billing in the offline store. They were already removed from the install catalog in 1.0.66.
+
 ## 1.0.66 — 2026-09-21
 
 - Slim the bundled community catalog: drop Context and Usage Billing. New installs no longer ship those two plugins. The offline store still keeps them so older profiles can upgrade without lockfile resolution failures.
@@ -23,12 +30,4 @@ The five most recent published versions are listed below.
 
 - Update the bundled official DSH runtime from 0.1.5-rc.2 to 0.1.6-alpha.1, including the matching scope, timeout, and invariants launch peers.
 - Refresh 15 bundled plugins to current npm latest: Codex UI 1.1.11, IM Connect 0.1.50, Automation 0.1.44, Skills Manager 0.1.52, Archive Manager 0.1.43, Agency Agents 0.1.43, Codex Pet 0.1.6, BTW 0.1.8, Simplify 0.1.5, Code Review 0.1.2, PUA 0.3.13, Context 0.53.0, MCP Connector 0.2.49, Usage Billing 1.4.0, and dshmarket 1.47.0. Better Sidebar was already latest.
-
-## 1.0.62 — 2026-09-15
-
-- Fix first launch on an intranet when the shared Web profile already has a `node_modules` folder but no recorded pnpm store. Desktop now uses the bundled offline plugin store instead of contacting the npm registry, so experts, plugins, and skills can install without a network.
-- Give cold starts more time: DSH now waits up to 120 seconds for the process to become ready (was 45) and up to 90 seconds for the workbench to finish loading plugins (was 30). A slow first launch no longer replaces the workbench with an error screen. If the page is still blank after another 90 seconds, the failure window returns with the log path. If the workbench becomes healthy during that wait, Desktop returns to it automatically. Help → Open Recovery Page is available once a profile exists.
-- `pack` and `dist` now delete leftover runtime folders and extra `release-*` directories first, so a stale bundled plugin store cannot be reused.
-- Skip empty pending-update, desktop-bridge, and bundle-reconcile scans on a normal launch.
-- Startup no longer auto-repairs community plugins that are listed in the profile but missing on disk. Those installs follow the client pending list. Bundled plugins are still seeded as before.
 

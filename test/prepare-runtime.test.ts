@@ -223,11 +223,11 @@ test('官方运行时使用 npm 安装以兼容预发布 peer 依赖', () => {
     '--no-fund',
     '--allow-scripts=@deepseek-ai/dsh-subprocess-local,@google/genai,koffi,node-pty,protobufjs',
     '--registry=https://registry.npmjs.org/',
-    '@deepseek-ai/dsh@0.1.6-alpha.2',
-    '@deepseek-ai/cordis-plugin-group@1.0.2',
-    '@deepseek-ai/dsh-scope@0.1.6-alpha.2',
-    '@deepseek-ai/dsh-timeout@0.1.6-alpha.2',
-    '@deepseek-ai/dsh-invariants@0.1.6-alpha.2',
+    '@deepseek-ai/dsh@0.1.7-rc.1',
+    '@deepseek-ai/cordis-plugin-group@1.0.4',
+    '@deepseek-ai/dsh-scope@0.1.7-rc.1',
+    '@deepseek-ai/dsh-timeout@0.1.7-rc.1',
+    '@deepseek-ai/dsh-invariants@0.1.7-rc.1',
   ])
 })
 
@@ -238,11 +238,11 @@ test('npm 全局安装目录按平台归一化', () => {
 
 test('官方运行时把 DSH 和启动 peer 一起装成 npm 顶层依赖', () => {
   assert.deepEqual(officialRuntimeNpmDependencies(), {
-    '@deepseek-ai/dsh': '0.1.6-alpha.2',
-    '@deepseek-ai/cordis-plugin-group': '1.0.2',
-    '@deepseek-ai/dsh-scope': '0.1.6-alpha.2',
-    '@deepseek-ai/dsh-timeout': '0.1.6-alpha.2',
-    '@deepseek-ai/dsh-invariants': '0.1.6-alpha.2',
+    '@deepseek-ai/dsh': '0.1.7-rc.1',
+    '@deepseek-ai/cordis-plugin-group': '1.0.4',
+    '@deepseek-ai/dsh-scope': '0.1.7-rc.1',
+    '@deepseek-ai/dsh-timeout': '0.1.7-rc.1',
+    '@deepseek-ai/dsh-invariants': '0.1.7-rc.1',
   })
 })
 
