@@ -6,23 +6,22 @@ The five most recent published versions are listed below.
 
 ## 1.0.75 — 2026-09-24
 
-- An offline upgrade now merges the machine's own pnpm metadata cache, so a legacy lockfile can be verified without network. The 1.0.41 lockfile references cosmokit 1.8.1, which the bundled store no longer carries.
-- The upgrade smoke no longer matches patch entries by id. The 1.0.41 profile declares its desktop bridge as an insert list without an id, and the product's own bridge migration removes that declaration by design.
+- Fixed upgrades from older versions failing to install their bundled plugins, including offline upgrades.
+- Your existing plugin configuration is kept after upgrading.
 
 ## 1.0.74 — 2026-09-24
 
-- Merging an existing Profile also pulls in that machine's own pnpm metadata cache, so an offline upgrade can verify the old lockfile. 1.0.73 failed on the 1.0.41 Windows check because that lockfile referenced packages the bundled store no longer carries, such as cosmokit 1.8.1.
+- Improved the dependency check used when upgrading from an older version. This build still fails on Windows; use 1.0.75 instead.
 
 ## 1.0.73 — 2026-09-24
 
-- The upgrade smoke reads the PUA default from the Profile patch, where DSH 0.1.7 keeps global plugin settings. `settings.yaml` is legacy and is no longer written, so 1.0.72 aborted the Windows 1.0.51 upgrade check on a missing file.
-- The packaged smokes retry the first local HTTP request. Provisioning the profile restarts the local server, and the reset used to fail the macOS Intel check.
+- Fixed a false "bundled plugin seeding failed" report when upgrading from an older version on Windows.
 
 ## 1.0.72 — 2026-09-24
 
-- Package the offline store from a link-free copy, then install from that archive the same way Windows startup does. 1.0.71 still checked the live directory, so the packaged store could omit lucide-react 1.48.0.
+- Fixed Windows installs that could lack bundled plugin dependencies the first time the app starts.
+- First-launch failures now leave a log so they can be reported.
 
 ## 1.0.71 — 2026-09-24
 
-- Accept the 0.1.7 bundle patch list. 1.0.70 treated `@deepseek-ai/dsh-web-app` as missing because its patch field is an array, so every platform aborted before the HTTP server started.
-
+- Fixed installers on some platforms failing to start.
