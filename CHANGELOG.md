@@ -4,6 +4,11 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.73 — 2026-09-24
+
+- The upgrade smoke reads the PUA default from the Profile patch, where DSH 0.1.7 keeps global plugin settings. `settings.yaml` is legacy and is no longer written, so 1.0.72 aborted the Windows 1.0.51 upgrade check on a missing file.
+- The packaged smokes retry the first local HTTP request. Provisioning the profile restarts the local server, and the reset used to fail the macOS Intel check.
+
 ## 1.0.72 — 2026-09-24
 
 - Package the offline store from a link-free copy, then install from that archive the same way Windows startup does. 1.0.71 still checked the live directory, so the packaged store could omit lucide-react 1.48.0.
@@ -20,8 +25,4 @@ The five most recent published versions are listed below.
 ## 1.0.69 — 2026-09-24
 
 - Frozen offline install no longer passes `--allow-build`. That flag is only valid for `pnpm add`, so 1.0.68 rejected the first-launch install command.
-
-## 1.0.68 — 2026-09-24
-
-- First launch installs bundled plugins from the lockfile packed with the offline store, instead of re-resolving dependency ranges. A newly published transitive package, such as lucide-react 1.48.0, no longer blocks an offline start.
 

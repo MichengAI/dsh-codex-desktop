@@ -49,7 +49,7 @@ async function main(): Promise<void> {
   try {
     const baseUrl = await waitForHealthyServer(application, () => applicationOutput, deadline, startupErrorFile)
     bootstrapProcessId = await findBootstrapProcessId(application.pid)
-    const page = await fetch(`${baseUrl}/`, { signal: AbortSignal.timeout(10_000) })
+    const page = await fetchRootPage(baseUrl, bootstrapProcessId, deadline)
     const content = await page.text()
     if (page.status === 401) {
       if (!content.includes('dsh web authentication required')) throw new Error('根页面返回了未知的 HTTP 401 响应。')
@@ -58,7 +58,7 @@ async function main(): Promise<void> {
       if (page.status !== 200) throw new Error(`根页面返回 HTTP ${page.status}。`)
       const assetPath = /(?:src|href)=["'](?<path>\/[^"']+\.(?:js|css))/.exec(content)?.groups?.path
       if (!assetPath) throw new Error('根页面未找到可验证的前端资源。')
-      const asset = await fetch(baseUrl + assetPath, { signal: AbortSignal.timeout(10_000) })
+      const asset = await fetchResource(baseUrl + assetPath, deadline)
       if (asset.status !== 200) throw new Error(`前端资源返回 HTTP ${asset.status}。`)
       await waitForApplicationReady(application, smokeReadyFile, startupErrorFile, deadline, () => applicationOutput)
     }
@@ -165,6 +165,38 @@ async function findHealthyBaseUrl(processId: number): Promise<string | undefined
     }
   }
   return undefined
+}
+
+async function fetchResource(url: string, deadline: number): Promise<Response> {
+  let lastError: unknown
+  while (Date.now() < deadline) {
+    try {
+      return await fetch(url, { signal: AbortSignal.timeout(10_000) })
+    } catch (error) {
+      lastError = error
+      await delay(500)
+    }
+  }
+  throw new Error(`无法访问打包应用的本机服务 ${url}：${lastError instanceof Error ? lastError.message : String(lastError)}`)
+}
+
+/**
+ * 首启装配配套插件会让本机服务重启，健康检查通过后的首个请求可能被重置（ECONNRESET）。
+ * 这类重置不算打包故障，因此在同一截止时间内重试，并按引导进程重新解析端口。
+ */
+async function fetchRootPage(initialBaseUrl: string, bootstrapProcessId: number | undefined, deadline: number): Promise<Response> {
+  let baseUrl = initialBaseUrl
+  let lastError: unknown
+  while (Date.now() < deadline) {
+    try {
+      return await fetch(`${baseUrl}/`, { signal: AbortSignal.timeout(10_000) })
+    } catch (error) {
+      lastError = error
+      if (bootstrapProcessId !== undefined) baseUrl = await findHealthyBaseUrl(bootstrapProcessId) ?? baseUrl
+      await delay(500)
+    }
+  }
+  throw new Error(`无法访问打包应用的本机服务：${lastError instanceof Error ? lastError.message : String(lastError)}`)
 }
 
 async function stopApplication(application: ChildProcess): Promise<void> {
