@@ -149,7 +149,6 @@ export function buildFrozenSeedInstallArgs(targetDir: string, options: SeedPnpmO
     '--config.node-linker=hoisted',
     '--config.auto-install-peers=false',
     '--config.minimumReleaseAge=0',
-    ...ALLOWED_BUILD_PACKAGES.map(name => `--allow-build=${name}`),
     '--registry=https://registry.npmjs.org/',
   ]
 }

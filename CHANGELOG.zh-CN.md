@@ -4,6 +4,10 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.69 — 2026-09-24
+
+- 冻结离线安装不再带 `--allow-build`。这个参数只属于 `pnpm add`，1.0.68 因此在首次安装时被拒绝。
+
 ## 1.0.68 — 2026-09-24
 
 - 首次启动按随包锁文件离线安装内置插件，不再按依赖范围重新解析。新发布的传递依赖，例如 lucide-react 1.48.0，不会再挡住离线启动。
@@ -24,9 +28,4 @@
 
 - 启动清理只摘掉串进 Web profile 依赖的残留官方包，不再用桌面白名单维护官方可选层。官方以后加插件不必再改 Desktop。
 - 2 项内置插件升级到当前 npm latest：Codex UI 1.1.14、dshmarket 1.48.0。其余 14 项内置插件和官方 DSH 0.1.6-alpha.2 已是 latest。
-
-## 1.0.64 — 2026-09-18
-
-- 内置官方 DSH 运行时由 0.1.6-alpha.1 升级至 0.1.6-alpha.2，并同步 scope、timeout、invariants 启动 peer。
-- 13 项内置插件升级到当前 npm latest：Codex UI 1.1.13、IM Connect 0.1.51、Automation 0.1.45、Skills Manager 0.1.53、Archive Manager 0.1.44、Agency Agents 0.1.44、Codex Pet 0.1.7、BTW 0.1.10、Simplify 0.1.7、Code Review 0.1.4、PUA 0.3.16、Context 0.53.3、MCP Connector 0.2.51。Better Sidebar、Usage Billing、dshmarket 已是 latest。
 

@@ -46,6 +46,7 @@ test('空 Profile 离线补种使用随包锁文件，不再按范围重新解�
     assert.equal(calls[0]?.[0], 'install')
     assert.equal(calls[0]?.includes('--frozen-lockfile'), true)
     assert.equal(calls[0]?.includes('--offline'), true)
+    assert.equal(calls[0]?.some(arg => arg.startsWith('--allow-build=')), false)
     assert.equal(calls[0]?.includes('add'), false)
     assert.equal(await readFile(join(profile, 'pnpm-lock.yaml'), 'utf8'), 'lockfileVersion: 9.0\n')
     const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as { dependencies?: Record<string, string> }
