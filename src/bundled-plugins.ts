@@ -8,7 +8,7 @@ export interface BundledPlugin {
 }
 
 /** 官方 DSH 家族统一锁死的版本。打包和在线升级都按这一个号对齐。 */
-export const OFFICIAL_DSH_VERSION = '0.1.7-rc.1'
+export const OFFICIAL_DSH_VERSION = '0.1.7-rc.2'
 export const APPLY_PLUGIN_UPDATES_IPC = 'apply-plugin-updates'
 
 /** 官方 DSH 运行时。从 npm 安装，不依赖本地 deepseek-harness 源码。 */
@@ -26,20 +26,20 @@ export const OFFICIAL_LAUNCH_PEERS: readonly BundledPlugin[] = [
 ]
 /** 随桌面端离线仓库分发的社区插件和插件市场组件。 */
 export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
-  { packageName: '@michengai/dsh-codex-ui', version: '1.1.17' },
-  { packageName: '@michengai/dsh-im-connect', version: '0.1.54' },
-  { packageName: '@michengai/dsh-automation', version: '0.1.50' },
-  { packageName: '@michengai/dsh-skills-manager', version: '1.1.3' },
-  { packageName: '@michengai/dsh-archive-manager', version: '1.0.4' },
-  { packageName: '@michengai/dsh-agency-agents', version: '1.0.3' },
-  { packageName: '@michengai/dsh-codex-pet', version: '0.1.9' },
-  { packageName: '@michengai/dsh-btw', version: '0.1.12' },
-  { packageName: '@michengai/dsh-simplify', version: '0.1.9' },
-  { packageName: '@michengai/dsh-code-review', version: '0.1.5' },
-  { packageName: '@michengai/dsh-pua', version: '0.3.17' },
+  { packageName: '@michengai/dsh-codex-ui', version: '1.1.18' },
+  { packageName: '@michengai/dsh-im-connect', version: '0.1.55' },
+  { packageName: '@michengai/dsh-automation', version: '0.1.51' },
+  { packageName: '@michengai/dsh-skills-manager', version: '1.1.4' },
+  { packageName: '@michengai/dsh-archive-manager', version: '1.0.5' },
+  { packageName: '@michengai/dsh-agency-agents', version: '1.0.5' },
+  { packageName: '@michengai/dsh-codex-pet', version: '0.1.10' },
+  { packageName: '@michengai/dsh-btw', version: '0.1.13' },
+  { packageName: '@michengai/dsh-simplify', version: '0.1.10' },
+  { packageName: '@michengai/dsh-code-review', version: '0.1.7' },
+  { packageName: '@michengai/dsh-pua', version: '0.3.18' },
   { packageName: 'dsh-better-sidebar', version: '0.21.1' },
   { packageName: 'dsh-mcp-connector', version: '0.2.58' },
-  { packageName: 'dshmarket', version: '1.64.0' },
+  { packageName: 'dshmarket', version: '1.65.1' },
 ]
 
 /** 离线 store 只放仍随包的社区插件，官方运行时单独预装。 */

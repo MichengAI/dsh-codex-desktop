@@ -4,6 +4,13 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.76 — 2026-09-25
+
+**适配与升级**
+
+- 内置 DSH 运行时由 0.1.7-rc.1 升级到 0.1.7-rc.2，并同步 scope、timeout、invariants 与启动依赖。
+- 内置插件升级到当前最新版：Codex UI 1.1.18、IM Connect 0.1.55、Automation 0.1.51、Skills Manager 1.1.4、Archive Manager 1.0.5、Agency Agents 1.0.5、Codex Pet 0.1.10、BTW 0.1.13、Simplify 0.1.10、Code Review 0.1.7、PUA 0.3.18、dshmarket 1.65.1；Better Sidebar 0.21.1 和 MCP Connector 0.2.58 已是当前最新版，本次不变。
+
 ## 1.0.75 — 2026-09-24
 
 这一版是 1.0.66 之后的首次发布，包含这段时间的全部变更。
@@ -37,6 +44,3 @@
 - 修复 Windows 安装包首次启动补装配套插件时可能缺少依赖的问题。
 - 首次启动失败时会留下日志，方便反馈排查。
 
-## 1.0.71 — 2026-09-24
-
-- 修复部分平台的安装包无法正常启动的问题。
