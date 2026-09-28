@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
 import { writeTextFileAtomic } from './atomic-file.js'
 
@@ -12,7 +13,7 @@ export type DesktopUpdateStatus =
   | { kind: 'error'; message: string }
 
 export type DesktopUpdatePolicy = 'notify' | 'auto-download' | 'manual'
-export type DesktopUpdateAction = 'check' | 'download' | 'install'
+export type DesktopUpdateAction = 'check' | 'download' | 'install' | 'open-archive'
 
 export interface DesktopUpdatePreferences {
   readonly policy: DesktopUpdatePolicy
@@ -22,6 +23,7 @@ export interface DesktopUpdateSnapshot {
   readonly currentVersion: string
   readonly lastCheckedAt?: string
   readonly packaged: boolean
+  readonly installable: boolean
   readonly status: DesktopUpdateStatus
 }
 
@@ -48,8 +50,8 @@ export function shouldCheckForUpdatesOnStartup(preferences: DesktopUpdatePrefere
   return packaged && preferences.policy !== 'manual'
 }
 
-export function shouldDownloadUpdateAutomatically(preferences: DesktopUpdatePreferences): boolean {
-  return preferences.policy === 'auto-download'
+export function shouldDownloadUpdateAutomatically(preferences: DesktopUpdatePreferences, installable = true): boolean {
+  return installable && preferences.policy === 'auto-download'
 }
 
 export async function loadUpdatePreferences(path: string): Promise<DesktopUpdatePreferences> {
@@ -64,6 +66,34 @@ export async function saveUpdatePreferences(path: string, value: unknown): Promi
   const preferences = sanitizeUpdatePreferences(value)
   await writeTextFileAtomic(path, JSON.stringify(preferences, null, 2) + '\n')
   return preferences
+}
+
+export const WINDOWS_UNINSTALLER_NAME = 'Uninstall DSH Codex Desktop.exe'
+
+/** Windows 解压版没有 NSIS 卸载器，不能把正在运行的目录换成安装包。 */
+export function canInstallDesktopUpdateInPlace(options: {
+  platform: string
+  execDir: string
+  exists: (path: string) => boolean
+}): boolean {
+  if (options.platform !== 'win32') return true
+  return options.exists(join(options.execDir, WINDOWS_UNINSTALLER_NAME))
+}
+
+const RELEASE_VERSION = /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$/
+
+/** 只打开与当前架构对应的 zip。版本号不合法时不拼接下载地址。 */
+export function desktopArchiveDownloadUrl(version: string, arch: string): string | undefined {
+  if (!RELEASE_VERSION.test(version)) return undefined
+  if (arch !== 'x64') return 'https://github.com/MichengAI/dsh-codex-desktop/releases/latest'
+  return `https://github.com/MichengAI/dsh-codex-desktop/releases/download/v${version}/dsh-codex-desktop-${version}-win-x64.zip`
+}
+
+export function desktopArchiveUpdatePrompt(version: string, locale = 'zh'): string {
+  const zh = locale.toLowerCase().startsWith('zh')
+  return zh
+    ? `发现桌面端 ${version}。当前是压缩包，不能原地安装。请下载新的 zip，退出后替换当前文件夹。不要运行安装包，否则会在另一个位置再装一份。`
+    : `Desktop ${version} is available. This is a zip build and cannot install in place. Download the new zip, quit, and replace this folder. Do not run the installer, or it will install a second copy elsewhere.`
 }
 
 export function desktopUpdateChannel(platform = process.platform, arch = process.arch): string | undefined {
@@ -128,6 +158,7 @@ export function buildDesktopTrayItems(input: {
   status: DesktopUpdateStatus
   currentVersion: string
   packaged: boolean
+  installable?: boolean
   locale?: string
 }): DesktopTrayItem[] {
   const zh = (input.locale ?? 'zh').toLowerCase().startsWith('zh')
@@ -145,8 +176,12 @@ export function buildDesktopTrayItems(input: {
   } else if (input.status.kind === 'downloading') {
     const percent = Math.max(0, Math.min(100, Math.round(input.status.percent)))
     items.push({ id: 'download', label: zh ? `正在下载 ${percent}%` : `Downloading ${percent}%`, enabled: false, type: 'normal' })
+  } else if (input.status.kind === 'available' && input.installable === false) {
+    items.push({ id: 'open-archive', label: zh ? `下载压缩包 ${input.status.version}` : `Download Zip ${input.status.version}`, enabled: true, type: 'normal' })
   } else if (input.status.kind === 'available') {
     items.push({ id: 'download', label: zh ? `下载并安装 ${input.status.version}` : `Download and Install ${input.status.version}`, enabled: true, type: 'normal' })
+  } else if (input.status.kind === 'ready' && input.installable === false) {
+    items.push({ id: 'open-archive', label: zh ? `下载压缩包 ${input.status.version}` : `Download Zip ${input.status.version}`, enabled: true, type: 'normal' })
   } else if (input.status.kind === 'ready') {
     items.push({ id: 'install', label: zh ? `安装并重启 ${input.status.version}` : `Install and Restart ${input.status.version}`, enabled: true, type: 'normal' })
   } else {

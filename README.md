@@ -50,7 +50,6 @@ The application keeps DSH data in your existing user profile (`%USERPROFILE%\.ds
 | **Archive management** | Search archived conversations, restore a session when needed, or permanently remove archived records. |
 | **IM assistant** | Configure DingTalk, Feishu, Lark, WeChat, WeCom, QQ, Telegram, and other available channels in one place. |
 | **Plugin market** | Discover, install, update, enable, and diagnose DSH plugins without leaving the desktop client. |
-| **MCP connector** | Add and manage MCP services through OAuth, API keys, HTTP, stdio, or JSON configuration. |
 | **Scheduled automation** | Use the built-in DSH scheduling capability to manage recurring tasks from the same workspace. |
 | **Safe local runtime** | The app starts DSH on a validated loopback address and keeps the browser UI inside the desktop shell. |
 
@@ -109,7 +108,7 @@ Explore the desktop workspace, light-theme settings, and plugin management pages
 </details>
 
 <details>
-<summary>Community plugin pages (5 screenshots)</summary>
+<summary>Community plugin pages (4 screenshots)</summary>
 
 <p align="center"><em>Context settings</em></p>
 
@@ -118,10 +117,6 @@ Explore the desktop workspace, light-theme settings, and plugin management pages
 <p align="center"><em>Sidebar settings</em></p>
 
 <p align="center"><a href="assets/screenshots/preview-sidebar.webp"><img src="assets/screenshots/preview-sidebar.webp" alt="Sidebar settings" width="960"></a></p>
-
-<p align="center"><em>MCP connector: browse services by category and add connections.</em></p>
-
-<p align="center"><a href="assets/screenshots/preview-mcp-connector.webp"><img src="assets/screenshots/preview-mcp-connector.webp" alt="MCP connector: browse services by category and add connections." width="960"></a></p>
 
 <p align="center"><em>Plugin market: discover community plugins and inspect installation and update status.</em></p>
 
@@ -143,7 +138,6 @@ The installer ships with the local runtime required to start DSH. On first launc
 | IM assistant | [`@michengai/dsh-im-connect`](https://github.com/MichengAI/dsh-im-connect) |
 | Scheduled automation | [`@michengai/dsh-automation`](https://github.com/MichengAI/dsh-automation) |
 | Extensible workspace sidebar | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
-| MCP connection management | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
 | One-off read-only side questions | [`@michengai/dsh-btw`](https://github.com/MichengAI/dsh-btw) |
 | Code simplification scoped to Git changes | [`@michengai/dsh-simplify`](https://github.com/MichengAI/dsh-simplify) |
 | Retry, diagnose, and verify after failures | [`@michengai/dsh-pua`](https://github.com/MichengAI/dsh-pua) |
@@ -172,11 +166,11 @@ For a desktop workbench, download [DSH Codex Desktop](https://github.com/Micheng
 | [Code Review](https://github.com/MichengAI/dsh-code-review) | Use `/review` to request an independent Agent code review and receive the report in the current conversation |
 | [Codex Pet](https://github.com/MichengAI/dsh-codex-pet) | View conversation notifications and respond to tool approvals and questions through a desktop pet |
 
-The desktop app also integrates [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar), [DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector) and [App Market](https://www.npmjs.com/package/dshmarket) as third-party plugins for file navigation, connections, and plugin discovery and installation.
+The desktop app also integrates [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) and [App Market](https://www.npmjs.com/package/dshmarket) as third-party plugins for file navigation and plugin discovery and installation.
 
 ## Updates and recovery
 
-- **Desktop updates** are checked after startup by default and notify you when a new release is available. Settings → Updates can instead download releases automatically or switch to manual-only checks. Installation and restart always require an explicit action.
+- **Desktop updates** for the installer are checked after startup by default and notify you when a new release is available. Settings → Updates can instead download releases automatically or switch to manual-only checks. Installation and restart always require an explicit action. A zip build only checks for a new version and does not download the installer; download the new zip from Releases, quit, and replace the current folder.
 - **DSH reload** is available from the tray menu after changing plugins or profile configuration; it restarts the local DSH service without reinstalling the desktop application.
 - **Plugin updates** remain in the DSH settings and plugin market. A failed plugin installation is not activated as a running bundle.
 - **Startup recovery** removes stale community-plugin registrations that no longer have an installed package, then retries the local DSH startup.

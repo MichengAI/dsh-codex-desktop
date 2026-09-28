@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { runInNewContext } from 'node:vm'
 import test from 'node:test'
 
-import { DEFAULT_UPDATE_PREFERENCES, buildDesktopTrayItems, DESKTOP_UPDATE_WARNING, desktopUpdateChannel, desktopUpdatePrompt, formatDesktopReleaseNotes, loadUpdatePreferences, publicDesktopUpdateError, sanitizeUpdatePreferences, saveUpdatePreferences, shouldCheckForUpdatesOnStartup, shouldDownloadUpdateAutomatically } from '../src/desktop-updater.js'
+import { DEFAULT_UPDATE_PREFERENCES, buildDesktopTrayItems, DESKTOP_UPDATE_WARNING, canInstallDesktopUpdateInPlace, desktopArchiveDownloadUrl, desktopArchiveUpdatePrompt, desktopUpdateChannel, desktopUpdatePrompt, formatDesktopReleaseNotes, loadUpdatePreferences, publicDesktopUpdateError, sanitizeUpdatePreferences, saveUpdatePreferences, shouldCheckForUpdatesOnStartup, shouldDownloadUpdateAutomatically } from '../src/desktop-updater.js'
 
 test('更新策略使用安全默认值并持久化', async () => {
   assert.deepEqual(sanitizeUpdatePreferences(undefined), DEFAULT_UPDATE_PREFERENCES)
@@ -145,6 +145,7 @@ test('主进程遵循更新库可用标志，旧版和受策略限制的新版�
       setDesktopUpdateStatus: (next: typeof status) => { status = next },
       dismissDesktopUpdateNotification: () => {},
       shouldDownloadUpdateAutomatically,
+      runningDesktopUpdateInstallable: () => true,
       downloadDesktopUpdate: async () => { downloads += 1 },
       showDesktopUpdateNotification: () => { notices += 1 },
       formatDesktopReleaseNotes,
@@ -155,4 +156,30 @@ test('主进程遵循更新库可用标志，旧版和受策略限制的新版�
     assert.equal(downloads, scenario.available ? 1 : 0)
     assert.equal(notices, 0)
   }
+})
+
+test('Windows 解压版没有卸载器，不能原地安装更新', () => {
+  const exists = (path: string) => path.endsWith('Uninstall DSH Codex Desktop.exe')
+  assert.equal(canInstallDesktopUpdateInPlace({ platform: 'win32', execDir: 'D:\\soft\\app', exists: () => false }), false)
+  assert.equal(canInstallDesktopUpdateInPlace({ platform: 'win32', execDir: 'C:\\Users\\me\\AppData\\Local\\Programs\\DSH Codex Desktop', exists }), true)
+  assert.equal(canInstallDesktopUpdateInPlace({ platform: 'darwin', execDir: '/Applications/DSH Codex Desktop.app', exists: () => false }), true)
+})
+
+test('压缩包发现新版本时只打开对应 zip，不提供安装包动作', () => {
+  assert.equal(shouldDownloadUpdateAutomatically({ policy: 'auto-download' }, false), false)
+  assert.equal(
+    desktopArchiveDownloadUrl('1.0.77', 'x64'),
+    'https://github.com/MichengAI/dsh-codex-desktop/releases/download/v1.0.77/dsh-codex-desktop-1.0.77-win-x64.zip',
+  )
+  assert.equal(desktopArchiveDownloadUrl('../evil', 'x64'), undefined)
+  const items = buildDesktopTrayItems({
+    status: { kind: 'available', version: '1.0.77' },
+    currentVersion: '1.0.76',
+    packaged: true,
+    installable: false,
+  })
+  assert.equal(items.some(item => item.id === 'open-archive' && item.label === '下载压缩包 1.0.77'), true)
+  assert.equal(items.some(item => item.id === 'download' || item.id === 'install'), false)
+  assert.match(desktopArchiveUpdatePrompt('1.0.77'), /不能原地安装/)
+  assert.match(desktopArchiveUpdatePrompt('1.0.77'), /不要运行安装包/)
 })

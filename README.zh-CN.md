@@ -50,7 +50,6 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | **归档管理** | 搜索已归档会话、按需恢复，或永久清理归档记录。 |
 | **IM 助理** | 在一个界面中配置钉钉、飞书、Lark、微信、企业微信、QQ、Telegram 等可用频道。 |
 | **插件市场** | 无需离开桌面客户端，即可发现、安装、更新、启用和诊断 DSH 插件。 |
-| **MCP 连接器** | 通过 OAuth、API Key、HTTP、stdio 或 JSON 配置添加并管理 MCP 服务。 |
 | **定时自动化** | 使用内置 DSH 定时能力，在同一工作台管理周期任务。 |
 | **安全的本地运行时** | 应用只在经过校验的本机回环地址启动 DSH，并将 Web 界面承载在桌面壳中。 |
 
@@ -109,7 +108,7 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 </details>
 
 <details>
-<summary>社区插件页面（5 张）</summary>
+<summary>社区插件页面（4 张）</summary>
 
 <p align="center"><em>上下文设置</em></p>
 
@@ -118,10 +117,6 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 <p align="center"><em>侧边栏设置</em></p>
 
 <p align="center"><a href="assets/screenshots/preview-sidebar.webp"><img src="assets/screenshots/preview-sidebar.webp" alt="侧边栏设置" width="960"></a></p>
-
-<p align="center"><em>MCP 连接器：按分类浏览服务并添加连接。</em></p>
-
-<p align="center"><a href="assets/screenshots/preview-mcp-connector.webp"><img src="assets/screenshots/preview-mcp-connector.webp" alt="MCP 连接器：按分类浏览服务并添加连接。" width="960"></a></p>
 
 <p align="center"><em>插件市场：发现社区插件并查看安装与更新状态。</em></p>
 
@@ -143,7 +138,6 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | IM 助理 | [`@michengai/dsh-im-connect`](https://github.com/MichengAI/dsh-im-connect) |
 | 定时自动化 | [`@michengai/dsh-automation`](https://github.com/MichengAI/dsh-automation) |
 | 可扩展工作区侧边栏 | [`dsh-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) |
-| MCP 连接管理 | [`dsh-mcp-connector`](https://github.com/duhu2000/dsh-mcp-connector) |
 | 一次性只读旁问 | [`@michengai/dsh-btw`](https://github.com/MichengAI/dsh-btw) |
 | Git 变更范围内的代码简化 | [`@michengai/dsh-simplify`](https://github.com/MichengAI/dsh-simplify) |
 | 失败后换方法并验证结果 | [`@michengai/dsh-pua`](https://github.com/MichengAI/dsh-pua) |
@@ -172,11 +166,11 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | [Code Review](https://github.com/MichengAI/dsh-code-review) | 用 `/review` 发起独立 Agent 代码审查，在当前会话接收报告 |
 | [Codex Pet](https://github.com/MichengAI/dsh-codex-pet) | 通过桌面宠物查看会话提醒、处理工具审批和问题回答 |
 
-桌面端还集成 [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)、[DSH MCP Connector](https://github.com/duhu2000/dsh-mcp-connector) 和 [App Market](https://www.npmjs.com/package/dshmarket) 等第三方插件，提供文件导航、连接管理及插件发现与安装。
+桌面端还集成 [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 和 [App Market](https://www.npmjs.com/package/dshmarket) 等第三方插件，提供文件导航及插件发现与安装。
 
 ## 更新与自修复
 
-- **桌面端更新**：默认在启动完成后检查新版本并提醒；可在“设置 → 更新”中改为自动下载或仅手动检查。安装与重启始终需要你明确操作。
+- **桌面端更新**：安装包默认在启动完成后检查新版本并提醒；可在“设置 → 更新”中改为自动下载或仅手动检查。安装与重启始终需要你明确操作。压缩包只检查新版本，不会下载安装包；请到发布页下载新的 zip，退出后替换当前文件夹。
 - **重新加载 DSH**：修改插件或 profile 配置后，可从托盘菜单重新加载本地 DSH 服务，不需要重装桌面应用。
 - **插件更新**：仍在 DSH 设置和插件市场中完成；安装失败的插件不会被激活为运行 bundle。
 - **启动自修复**：启动时会移除磁盘上已不存在的社区插件登记，再重试启动本地 DSH。

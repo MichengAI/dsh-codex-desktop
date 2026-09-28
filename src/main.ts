@@ -39,7 +39,7 @@ import { DSH_MARKET_STATUS_PATH, waitForDshMarketBatchToSettle } from './dshmark
 import { DEFAULT_NOTIFICATION_PREFERENCES, buildWindowsReplyToastXml, loadNotificationPreferences, parseDesktopNotificationBridgeEvent, parseWindowsNotificationReplyActivation, saveNotificationPreferences, shouldShowDesktopNotification, windowsNotificationReplyArguments, type DesktopNotificationEvent, type DesktopNotificationPreferences } from './desktop-notifications.js'
 import { watchProfileActivation } from './profile-watch.js'
 import updater from 'electron-updater'
-import { DEFAULT_UPDATE_PREFERENCES, STARTUP_UPDATE_CHECK_DELAY_MS, buildDesktopTrayItems, desktopUpdateChannel, desktopUpdatePrompt, formatDesktopReleaseNotes, loadUpdatePreferences, publicDesktopUpdateError, saveUpdatePreferences, shouldCheckForUpdatesOnStartup, shouldDownloadUpdateAutomatically, type DesktopUpdateAction, type DesktopUpdatePreferences, type DesktopUpdateSnapshot, type DesktopUpdateStatus } from './desktop-updater.js'
+import { DEFAULT_UPDATE_PREFERENCES, STARTUP_UPDATE_CHECK_DELAY_MS, buildDesktopTrayItems, canInstallDesktopUpdateInPlace, desktopArchiveDownloadUrl, desktopArchiveUpdatePrompt, desktopUpdateChannel, desktopUpdatePrompt, formatDesktopReleaseNotes, loadUpdatePreferences, publicDesktopUpdateError, saveUpdatePreferences, shouldCheckForUpdatesOnStartup, shouldDownloadUpdateAutomatically, type DesktopUpdateAction, type DesktopUpdatePreferences, type DesktopUpdateSnapshot, type DesktopUpdateStatus } from './desktop-updater.js'
 
 interface DshProcessModule {
   isApplyPluginUpdatesIpc: (message: unknown) => boolean
@@ -1029,6 +1029,7 @@ function desktopUpdateSnapshot(): DesktopUpdateSnapshot {
   return {
     currentVersion: app.getVersion(),
     packaged: app.isPackaged,
+    installable: runningDesktopUpdateInstallable(),
     status: updateStatus,
     ...(lastUpdateCheckAt === undefined ? {} : { lastCheckedAt: lastUpdateCheckAt }),
   }
@@ -1217,7 +1218,7 @@ function installShellIpc(): void {
   ipcMain.handle(SHELL_IPC.updateUpdatePreferences, async (event, value: unknown) => {
     if (!mayAccessDesktopUpdates(shellRendererKind(event.sender))) return
     updatePreferences = await saveUpdatePreferences(updatePreferencesPath(), value)
-    if (shouldDownloadUpdateAutomatically(updatePreferences) && updateStatus.kind === 'available') {
+    if (shouldDownloadUpdateAutomatically(updatePreferences, runningDesktopUpdateInstallable()) && updateStatus.kind === 'available') {
       runMainTask(downloadDesktopUpdate('settings'))
     }
     return updatePreferences
@@ -1228,7 +1229,7 @@ function installShellIpc(): void {
   })
   ipcMain.handle(SHELL_IPC.desktopUpdateAction, async (event, value: unknown) => {
     if (!mayAccessDesktopUpdates(shellRendererKind(event.sender))) return
-    if (value !== 'check' && value !== 'download' && value !== 'install') return
+    if (value !== 'check' && value !== 'download' && value !== 'install' && value !== 'open-archive') return
     await handleDesktopUpdateSettingsAction(value)
     return desktopUpdateSnapshot()
   })
@@ -1849,6 +1850,7 @@ function refreshTrayMenu(): void {
     status: updateStatus,
     currentVersion: app.getVersion(),
     packaged: app.isPackaged,
+    installable: runningDesktopUpdateInstallable(),
     locale: desktopLocale(),
   })
   tray.setContextMenu(Menu.buildFromTemplate(items.map(item => {
@@ -1876,6 +1878,10 @@ async function handleTrayUpdateAction(id: string): Promise<void> {
   }
   if (id === 'check') {
     await checkDesktopUpdate()
+    return
+  }
+  if (id === 'open-archive') {
+    await openDesktopArchiveDownload()
     return
   }
   if (id === 'download') {
@@ -1920,11 +1926,23 @@ async function checkDesktopUpdate(interaction: DesktopUpdateInteraction = 'inter
     const available: Extract<DesktopUpdateStatus, { kind: 'available' }> = { kind: 'available', version, releaseNotes: formatDesktopReleaseNotes(result?.updateInfo.releaseNotes) }
     setDesktopUpdateStatus(available, true)
     if (interaction === 'background') {
-      if (shouldDownloadUpdateAutomatically(updatePreferences)) await downloadDesktopUpdate('background')
+      if (shouldDownloadUpdateAutomatically(updatePreferences, runningDesktopUpdateInstallable())) await downloadDesktopUpdate('background')
       else showDesktopUpdateNotification('available', version)
       return
     }
     if (interaction === 'settings') return
+    if (!runningDesktopUpdateInstallable()) {
+      const prompt = await dialog.showMessageBox({
+        type: 'info',
+        title: DESKTOP_APP_NAME,
+        message: desktopArchiveUpdatePrompt(version, desktopLocale()),
+        buttons: [desktopText('下载压缩包', 'Download Zip'), desktopText('取消', 'Cancel')],
+        defaultId: 0,
+        cancelId: 1,
+      })
+      if (prompt.response === 0) await openDesktopArchiveDownload(version)
+      return
+    }
     const prompt = await dialog.showMessageBox({
       type: 'question',
       title: DESKTOP_APP_NAME,
@@ -1948,6 +1966,11 @@ async function checkDesktopUpdate(interaction: DesktopUpdateInteraction = 'inter
 }
 
 async function downloadDesktopUpdate(interaction: DesktopUpdateInteraction = 'interactive'): Promise<void> {
+  if (!runningDesktopUpdateInstallable()) {
+    const version = updateStatus.kind === 'available' || updateStatus.kind === 'ready' ? updateStatus.version : undefined
+    if (version !== undefined) await openDesktopArchiveDownload(version)
+    return
+  }
   if (updateStatus.kind !== 'available') return
   const version = updateStatus.version
   setDesktopUpdateStatus({ kind: 'downloading', percent: 0 })
@@ -1984,6 +2007,7 @@ async function downloadDesktopUpdate(interaction: DesktopUpdateInteraction = 'in
 
 async function handleDesktopUpdateSettingsAction(action: DesktopUpdateAction): Promise<void> {
   if (action === 'check') await checkDesktopUpdate('settings')
+  else if (action === 'open-archive') await openDesktopArchiveDownload()
   else if (action === 'download') await downloadDesktopUpdate('settings')
   else await installDesktopUpdate()
 }
@@ -2018,7 +2042,26 @@ function showDesktopUpdateNotification(kind: 'available' | 'ready', version: str
 }
 
 async function installDesktopUpdate(): Promise<void> {
+  if (!runningDesktopUpdateInstallable()) {
+    await openDesktopArchiveDownload()
+    return
+  }
   await shutdownDesktop(() => { autoUpdater.quitAndInstall(false, true) })
+}
+
+function runningDesktopUpdateInstallable(): boolean {
+  return canInstallDesktopUpdateInPlace({
+    platform: process.platform,
+    execDir: dirname(app.getPath('exe')),
+    exists: existsSync,
+  })
+}
+
+async function openDesktopArchiveDownload(version = updateStatus.kind === 'available' || updateStatus.kind === 'ready' ? updateStatus.version : undefined): Promise<void> {
+  if (version === undefined) return
+  const url = desktopArchiveDownloadUrl(version, process.arch)
+  if (url === undefined) return
+  await shell.openExternal(url)
 }
 
 function showMainWindow(): void {

@@ -217,7 +217,11 @@
       let action='check',actionLabel=text('检查更新','Check for updates'),disabled=false,feedback='';
       if(!value.packaged){disabled=true;feedback=text('开发版本不连接发布更新服务。','Development builds do not connect to the release update service.')}
       else if(kind==='checking'){disabled=true;feedback=text('正在检查新版本…','Checking for a new version…')}
-      else if(kind==='available'){action='download';actionLabel=text('下载 '+status.version,'Download '+status.version);feedback=text('发现桌面端 '+status.version+'。','Desktop '+status.version+' is available.');if(status.releaseNotes){releaseNotes.hidden=false;releaseNotesBody.textContent=status.releaseNotes}}
+      else if(kind==='available'){
+        if(value.installable===false){action='open-archive';actionLabel=text('下载压缩包','Download zip');feedback=text('发现桌面端 '+status.version+'。当前是压缩包，不能原地安装。将打开对应 zip，请退出后替换当前文件夹。不要运行安装包。','Desktop '+status.version+' is available. This zip build cannot install in place. The matching zip will open; quit and replace this folder. Do not run the installer.')}
+        else{action='download';actionLabel=text('下载 '+status.version,'Download '+status.version);feedback=text('发现桌面端 '+status.version+'。','Desktop '+status.version+' is available.')}
+        if(status.releaseNotes){releaseNotes.hidden=false;releaseNotesBody.textContent=status.releaseNotes}
+      }
       else if(kind==='downloading'){disabled=true;feedback=text('正在下载 '+Math.round(status.percent||0)+'%…','Downloading '+Math.round(status.percent||0)+'%…')}
       else if(kind==='ready'){action='install';actionLabel=text('安装并重启','Install and restart');feedback=text('桌面端 '+status.version+' 已下载。安装将关闭并重启应用，请先保存工作。','Desktop '+status.version+' is downloaded. Installation closes and restarts the app, so save your work first.')}
       else if(kind==='none'){feedback=text('当前已是最新桌面端版本。','You already have the latest desktop version.')}

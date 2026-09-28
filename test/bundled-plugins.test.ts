@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { BUNDLED_PLUGINS, OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, STORE_PACKAGES, compareReleaseVersions, isDeepSeekOfficialPackage, isOfficialDshPackage, officialDshVersionOverrides, officialRuntimeDependencies, officialRuntimePnpmConfig, planOfficialRuntimeTarget, pnpmAllowBuildsManifest, pnpmWorkspaceYaml, SUITE_PACKAGE, bundledPluginNames, seededPackageNames } from '../src/bundled-plugins.js'
 
-test('内置目录包含十四个社区插件和市场组件', () => {
+test('内置目录包含十三个社区插件和市场组件', () => {
   assert.deepEqual(bundledPluginNames(), [
     '@michengai/dsh-codex-ui',
     '@michengai/dsh-im-connect',
@@ -17,17 +17,18 @@ test('内置目录包含十四个社区插件和市场组件', () => {
     '@michengai/dsh-code-review',
     '@michengai/dsh-pua',
     'dsh-better-sidebar',
-    'dsh-mcp-connector',
     'dshmarket',
   ])
-  assert.equal(BUNDLED_PLUGINS.length, 14)
+  assert.equal(BUNDLED_PLUGINS.length, 13)
   assert.equal(SUITE_PACKAGE, '@michengai/dsh-codex-suite')
 })
 
-test('离线仓库不再打包已去掉的 Context 和费用插件', () => {
+test('离线仓库不再打包已去掉的 Context、费用和 MCP 连接器插件', () => {
   const names = STORE_PACKAGES.map(plugin => plugin.packageName)
   assert.equal(names.includes('dsh-context'), false)
   assert.equal(names.includes('@kenz1117/dsh-ui-usage-billing'), false)
+  assert.equal(names.includes('dsh-mcp-connector'), false)
+  assert.equal(names.includes('dsh-better-sidebar'), true)
   assert.equal(STORE_PACKAGES.length, BUNDLED_PLUGINS.length)
 })
 
@@ -43,33 +44,32 @@ test('每个内置插件都钉死精确版本', () => {
     assert.match(plugin.version, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/)
     assert.equal(
       plugin.packageName.startsWith('@michengai/')
-        || ['dsh-better-sidebar', 'dsh-mcp-connector', 'dshmarket'].includes(plugin.packageName),
+        || ['dsh-better-sidebar', 'dshmarket'].includes(plugin.packageName),
       true,
     )
   }
-  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.65.1')
+  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.66.5')
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
-    '@michengai/dsh-codex-ui': '1.1.18',
-    '@michengai/dsh-im-connect': '0.1.55',
-    '@michengai/dsh-automation': '0.1.51',
-    '@michengai/dsh-skills-manager': '1.1.4',
-    '@michengai/dsh-archive-manager': '1.0.5',
-    '@michengai/dsh-agency-agents': '1.0.5',
-    '@michengai/dsh-codex-pet': '0.1.10',
-    '@michengai/dsh-btw': '0.1.13',
-    '@michengai/dsh-simplify': '0.1.10',
-    '@michengai/dsh-code-review': '0.1.7',
-    '@michengai/dsh-pua': '0.3.18',
-    'dsh-better-sidebar': '0.21.1',
-    'dsh-mcp-connector': '0.2.58',
-    dshmarket: '1.65.1',
+    '@michengai/dsh-codex-ui': '1.1.22',
+    '@michengai/dsh-im-connect': '0.1.57',
+    '@michengai/dsh-automation': '0.1.52',
+    '@michengai/dsh-skills-manager': '1.1.5',
+    '@michengai/dsh-archive-manager': '1.0.7',
+    '@michengai/dsh-agency-agents': '1.0.6',
+    '@michengai/dsh-codex-pet': '0.1.11',
+    '@michengai/dsh-btw': '0.1.14',
+    '@michengai/dsh-simplify': '0.1.11',
+    '@michengai/dsh-code-review': '0.1.8',
+    '@michengai/dsh-pua': '0.3.19',
+    'dsh-better-sidebar': '0.24.1',
+    dshmarket: '1.66.5',
   })
 })
 
 test('官方 DSH 家族锁在同一个精确版本', () => {
   assert.equal(OFFICIAL_RUNTIME.packageName, '@deepseek-ai/dsh')
   assert.equal(OFFICIAL_RUNTIME.version, OFFICIAL_DSH_VERSION)
-  assert.equal(OFFICIAL_DSH_VERSION, '0.1.7-rc.2')
+  assert.equal(OFFICIAL_DSH_VERSION, '0.2.0-rc.1')
   assert.equal(seededPackageNames()[0], '@deepseek-ai/dsh')
   assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.packageName, '@deepseek-ai/cordis-plugin-group')
   assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.version, '1.0.4')
