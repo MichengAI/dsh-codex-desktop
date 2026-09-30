@@ -4,6 +4,16 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.79 — 2026-10-01
+
+**Fixes**
+
+- Turning on LAN access no longer makes Desktop report a startup timeout after two minutes. The window still opens only the local 127.0.0.1 address.
+
+**Host and bundled plugins**
+
+- Bundled plugins are upgraded to their current latest versions: IM Connect 0.1.60, Skills Manager 1.1.8, Archive Manager 1.0.10, Simplify 0.1.13, Code Review 0.1.10, PUA 0.3.22, dshmarket 1.66.7. Codex UI 1.1.25, Automation 0.1.53, Agency Agents 1.0.7, Codex Pet 0.1.12, BTW 0.1.15, and Better Sidebar 0.24.1 were already the latest versions and are unchanged.
+
 ## 1.0.78 — 2026-09-30
 
 **Host and bundled plugins**
@@ -50,10 +60,6 @@ This is the first release after 1.0.66 and includes everything shipped since the
 - Upgrades from older versions no longer fail to install their bundled plugins, including offline upgrades; your existing plugin configuration is kept.
 - Windows installs no longer lack bundled plugin dependencies the first time the app starts.
 - Installers on some platforms no longer fail to start.
-
-## 1.0.74 — 2026-09-24
-
-- Improved the dependency check used when upgrading from an older version. This build still fails on Windows; use 1.0.75 instead.
 
 
 
