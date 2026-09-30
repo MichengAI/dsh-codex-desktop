@@ -4,6 +4,13 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.78 — 2026-09-30
+
+**Host and bundled plugins**
+
+- The bundled DSH runtime moves from 0.2.0-rc.1 to 0.2.0-rc.2, together with scope, timeout, invariants and the required launch dependencies.
+- Bundled plugins are upgraded to their current latest versions: Codex UI 1.1.25, IM Connect 0.1.58, Automation 0.1.53, Skills Manager 1.1.7, Archive Manager 1.0.9, Agency Agents 1.0.7, Codex Pet 0.1.12, BTW 0.1.15, Simplify 0.1.12, Code Review 0.1.9, PUA 0.3.21, dshmarket 1.66.6. Better Sidebar 0.24.1 was already the latest version and is unchanged.
+
 ## 1.0.77 — 2026-09-29
 
 **Host and bundled plugins**
@@ -48,8 +55,5 @@ This is the first release after 1.0.66 and includes everything shipped since the
 
 - Improved the dependency check used when upgrading from an older version. This build still fails on Windows; use 1.0.75 instead.
 
-## 1.0.73 — 2026-09-24
-
-- Fixed a false "bundled plugin seeding failed" report when upgrading from an older version on Windows.
 
 

@@ -4,6 +4,13 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.78 — 2026-09-30
+
+**适配与升级**
+
+- 内置 DSH 运行时由 0.2.0-rc.1 升级到 0.2.0-rc.2，并同步 scope、timeout、invariants 与启动依赖。
+- 内置插件升级到当前最新版：Codex UI 1.1.25、IM Connect 0.1.58、Automation 0.1.53、Skills Manager 1.1.7、Archive Manager 1.0.9、Agency Agents 1.0.7、Codex Pet 0.1.12、BTW 0.1.15、Simplify 0.1.12、Code Review 0.1.9、PUA 0.3.21、dshmarket 1.66.6。Better Sidebar 0.24.1 已是当前最新版，本次不变。
+
 ## 1.0.77 — 2026-09-29
 
 **适配与升级**
@@ -48,8 +55,5 @@
 
 - 改进从旧版本升级时的依赖检查；这一版在 Windows 上仍会失败，请直接使用 1.0.75。
 
-## 1.0.73 — 2026-09-24
-
-- 修复 Windows 上从旧版本升级时误报「配套插件补装失败」的问题。
 
 
