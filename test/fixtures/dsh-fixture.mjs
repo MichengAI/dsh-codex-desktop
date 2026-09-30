@@ -56,6 +56,10 @@ if (mode === 'silent' || mode === 'unhealthy') {
       setTimeout(() => process.stdout.write('?token=desktop-secret\n'), 10)
       return
     }
+    if (mode === 'lan') {
+      process.stdout.write(`${ready}/?token=desktop-secret (LAN: http://172.25.3.102:${address.port}/?token=desktop-secret)\n`)
+      return
+    }
     if (mode === 'chunked') {
       process.stdout.write(ready.slice(0, 24))
       setTimeout(() => process.stdout.write(`${ready.slice(24)}\n`), 10)

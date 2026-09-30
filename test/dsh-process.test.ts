@@ -36,6 +36,19 @@ test('进程就绪、页面覆盖与恢复页等待文案保持同一套超时',
   assert.ok(DSH_RENDERER_LOAD_TIMEOUT_MS < DSH_STARTUP_TIMEOUT_MS)
 })
 
+test('局域网就绪行只采用本机地址', async () => {
+  const server = await startFixture('lan')
+  try {
+    const url = new URL(server.url)
+    assert.equal(url.hostname, '127.0.0.1')
+    assert.equal(url.searchParams.get('token'), 'desktop-secret')
+    assert.equal(url.href.includes('172.25.3.102'), false)
+    assert.equal((await fetch(server.url)).status, 200)
+  } finally {
+    await server.stop()
+  }
+})
+
 test('等待 alpha.2+ 分片输出完整 token 后再做健康检查', async () => {
   const server = await startFixture('authenticated')
   try {
@@ -84,7 +97,7 @@ test('重复关闭同一 DSH 子进程是安全的', async () => {
 
 const fixtureStartupTimeoutMs = 3_000
 
-function startFixture(mode: 'authenticated' | 'chunked' | 'exit' | 'healthy' | 'silent' | 'unhealthy', startupTimeoutMs = fixtureStartupTimeoutMs, environment: NodeJS.ProcessEnv = {}): Promise<DshServer> {
+function startFixture(mode: 'authenticated' | 'chunked' | 'exit' | 'healthy' | 'lan' | 'silent' | 'unhealthy', startupTimeoutMs = fixtureStartupTimeoutMs, environment: NodeJS.ProcessEnv = {}): Promise<DshServer> {
   return startDsh({
     bootstrapPath,
     environment: { ...process.env, ...environment, DSH_FIXTURE_MODE: mode },

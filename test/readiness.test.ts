@@ -11,6 +11,18 @@ test('解析 DSH 输出的本机就绪地址', () => {
     'http://127.0.0.1:10406/?token=desktop-secret',
   )
   assert.equal(parseReadyUrl('dsh web: http://127.0.0.1:10406/'), undefined)
+  assert.equal(
+    parseReadyUrl('dsh web: http://127.0.0.1:3080/?token=desktop-secret (LAN: http://172.25.3.102:3080/?token=desktop-secret)\n'),
+    'http://127.0.0.1:3080/?token=desktop-secret',
+  )
+  assert.equal(
+    parseReadyUrl('dsh web: http://127.0.0.1:3080/?token=desktop-secret (LAN: http://172.25.3.102:3080/?token=desktop-secret)\r\n'),
+    'http://127.0.0.1:3080/?token=desktop-secret',
+  )
+  assert.equal(
+    parseReadyUrl('dsh web: http://127.0.0.1:3080/?token=desktop-secret (LAN: http://172.25.3.102:3080/?token=desktop-secret)'),
+    undefined,
+  )
 })
 
 test('拒绝非本机或不安全的就绪地址', () => {
