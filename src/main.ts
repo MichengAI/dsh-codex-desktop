@@ -14,6 +14,7 @@ import { WINDOW_ICON_PIXEL_SIZES, isLoopbackFaviconRequest } from './window-icon
 import { clearPreviousDshAuthCookies } from './desktop-auth-cookies.js'
 import { quitDesktopApp, shouldHideInsteadOfClose } from './app-lifecycle.js'
 import { DSH_RENDERER_LOAD_TIMEOUT_MS, DSH_RENDERER_TIMEOUT_GRACE_MS, type DshServer, type StartDshOptions } from './dsh-process.js'
+import { installAccountLoginOpener } from './account-login.js'
 import { isExternalOpenUrl, isSameOrigin } from './navigation.js'
 import { applyPendingProfileUpdates, resolvePnpmStoreDir, seedBundledPlugins, resolveWebProfileDir } from './plugin-seed.js'
 import { parseUnresolvedBundleError, removeProfileBundle, startAfterPluginUpdates, startWithProfileSelfRepair } from './profile-repair.js'
@@ -123,10 +124,15 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'dsh-icon', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
 ])
 
+registerDshProtocol()
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   app.on('second-instance', () => showMainWindow())
+  app.on('open-url', (event, url) => {
+    event.preventDefault()
+    if (url === 'dsh://open' || url === 'dsh://open/') showMainWindow()
+  })
   app.on('activate', () => showMainWindow())
   app.on('before-quit', event => {
     if (isQuitting) return
@@ -922,6 +928,7 @@ function createWindow(): BrowserWindow {
   window.on('unmaximize', () => { layoutDshView(window); layoutRecoveryView(window) })
   runMainTask(window.loadFile(resolveShellAsset('shell.html'), { query: { theme: activeDshColorScheme, backdrop: nativeBackdropEnabled ? 'mica' : 'none' } }))
 
+  installAccountLoginOpener(view.webContents, url => shell.openExternal(url), () => activeDshColorScheme === 'dark')
   view.webContents.setWindowOpenHandler(({ url }) => {
     if (isExternalOpenUrl(url, allowedOrigin)) runMainTask(shell.openExternal(url))
     return { action: 'deny' }
@@ -2062,6 +2069,15 @@ async function openDesktopArchiveDownload(version = updateStatus.kind === 'avail
   const url = desktopArchiveDownloadUrl(version, process.arch)
   if (url === undefined) return
   await shell.openExternal(url)
+}
+
+/** 登录完成页会打开 dsh://open。不注册的话，系统会把这个地址交给已安装的官方桌面。 */
+function registerDshProtocol(): void {
+  if (process.defaultApp && process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('dsh', process.execPath, [resolve(process.argv[1])])
+    return
+  }
+  app.setAsDefaultProtocolClient('dsh')
 }
 
 function showMainWindow(): void {

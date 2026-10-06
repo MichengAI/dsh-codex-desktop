@@ -170,6 +170,12 @@ window.addEventListener('DOMContentLoaded', () => {
   if (typeof process !== 'undefined' && process.argv.includes('--dsh-native-backdrop')) {
     document.documentElement.dataset.dshNativeBackdrop = 'mica'
   }
+  // 官方深色菜单底色写在 body[data-ds-dark-theme]，大约只有 45% 不透明。
+  // 官方窗口不透出背后文字；我们的窗口会透出侧栏，所以这里改成实底。
+  const menuSurface = document.createElement('style')
+  menuSurface.dataset.dshDesktopMenuSurface = 'solid'
+  menuSurface.textContent = 'body{--dsw-menu-surface-fill:#f8f9fa !important;--dsw-menu-backdrop-filter:none !important}body[data-ds-dark-theme]{--dsw-menu-surface-fill:#303136 !important;--dsw-menu-backdrop-filter:none !important}'
+  document.documentElement.append(menuSurface)
   document.addEventListener('click', scheduleTrackSelection, true)
   document.addEventListener('keydown', closeDshSettingsDialogOnEscape, true)
   new MutationObserver(scheduleTrackSelection).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-selected', 'class'] })
@@ -221,3 +227,6 @@ contextBridge.exposeInMainWorld('dshDesktopShell', {
     ipcRenderer.send(IPC.dshTheme, colorScheme)
   },
 })
+
+// 官方账号插件只在页面存在 dshDesktop 时注册左下角登录。登录本身走 DSH account 远程接口，不在这里保存凭证。
+contextBridge.exposeInMainWorld('dshDesktop', { protocolVersion: 1 })
