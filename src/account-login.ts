@@ -7,6 +7,9 @@ const ACCOUNT_LOGIN_HOSTS = ['platform.deepseek.com', 'api.deepseek.com'] as con
 const WAITING_PHASE = /["\\]+phase["\\]+\s*:\s*["\\]+waiting-browser["\\]+/u
 const IDLE_PHASE = /["\\]+phase["\\]+\s*:\s*["\\]+(?:cancelled|failed|expired|succeeded)["\\]+/u
 
+/** 页面不发终态时，同一登录地址最多被挡住这么久，避免登录按钮在整个进程生命周期里失效。 */
+export const LOGIN_REOPEN_AFTER_MS = 10 * 60 * 1000
+
 
 
 export interface AccountLoginSniffer {
@@ -70,25 +73,27 @@ export function platformLoginUrl(authorizeUrl: string, dark: boolean): string {
 }
 
 /**
- * 同一登录地址在终态到来前只打开一次，不看帧间隔或帧里的 id。
- * open 失败或阶段结束后可以立刻再开。
+ * 同一登录地址在终态到来前不重复打开，不看帧里的 id。
+ * 页面一直不发终态时，超过兜底时限后允许再开。open 失败或阶段结束后可以立刻再开。
  */
 export function createAccountLoginSniffer(
   open: (url: string) => Promise<void>,
   dark: () => boolean = () => false,
+  now: () => number = Date.now,
   warn: (message: string) => void = message => console.warn(message),
 ): AccountLoginSniffer {
-  const opened = new Set<string>()
+  const openedAt = new Map<string, number>()
   return {
     handleFrame(payload: string): void {
       const waiting = WAITING_PHASE.test(payload)
-      if (!waiting && IDLE_PHASE.test(payload)) opened.clear()
+      if (!waiting && IDLE_PHASE.test(payload)) openedAt.clear()
       if (!waiting) return
       for (const authorizeUrl of loginUrlsFromPayload(payload)) {
-        if (opened.has(authorizeUrl)) continue
-        opened.add(authorizeUrl)
+        const opened = openedAt.get(authorizeUrl)
+        if (opened !== undefined && now() - opened < LOGIN_REOPEN_AFTER_MS) continue
+        openedAt.set(authorizeUrl, now())
         void open(platformLoginUrl(authorizeUrl, dark())).catch(error => {
-          opened.delete(authorizeUrl)
+          openedAt.delete(authorizeUrl)
           warn(`未能打开登录页：${error instanceof Error ? error.message : '未知错误'}`)
         })
       }
@@ -132,7 +137,7 @@ export function installAccountLoginOpener(
   dark: () => boolean = () => false,
   warn: (message: string) => void = message => console.warn(message),
 ): void {
-  const sniffer = createAccountLoginSniffer(open, dark, warn)
+  const sniffer = createAccountLoginSniffer(open, dark, Date.now, warn)
   const localSockets = new Set<string>()
   try {
     if (!contents.debugger.isAttached()) contents.debugger.attach('1.3')
