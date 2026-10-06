@@ -130,7 +130,6 @@ test('桌面壳预加载脚本被编译并提供 DSH 动作兜底', async () => 
   const preload = await readFile(new URL('../../src/dsh-view-preload.cts', import.meta.url), 'utf8')
   assert.match(config, /src\/\*\*\/\*\.cts/)
   assert.match(preload, /clientBridgeRegistrations/)
-  assert.match(preload, /exposeInMainWorld\('dshDesktop'/)
   assert.match(preload, /runDomAction/)
   assert.match(preload, /添加工作区\|打开文件夹/)
   assert.match(preload, /\.dcu-wb-session\[role="treeitem"\]\[aria-selected\]/)

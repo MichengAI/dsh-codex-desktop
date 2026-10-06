@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { LOGIN_URL_COOLDOWN_MS, allowedLoginUrl, createAccountLoginSniffer, isLocalAccountSocket, loginUrlsFromPayload, platformLoginUrl } from '../src/account-login.js'
+import { allowedLoginUrl, createAccountLoginSniffer, isLocalAccountSocket, loginUrlsFromPayload, platformLoginUrl } from '../src/account-login.js'
 
 const LOGIN = 'https://platform.deepseek.com/login?x=1'
 
@@ -27,32 +27,25 @@ test('登录地址带上当前主题', () => {
   assert.equal(platformLoginUrl(LOGIN, true), `${LOGIN}&theme=dark`)
 })
 
-test('同一登录地址有冷却，换消息 id 也不会刷屏', async () => {
+test('同一登录地址在终态前只打开一次，不看帧间隔或消息 id', async () => {
   const opened: string[] = []
   let fail = false
-  let now = 1_000
   const sniffer = createAccountLoginSniffer(async url => {
     opened.push(url)
     if (fail) throw new Error('browser unavailable')
-  }, () => true, () => now, () => {})
-  for (let index = 0; index < 5; index += 1) {
-    now += 2_000
-    sniffer.handleFrame(`{"phase":"waiting-browser","id":"${'a'.repeat(8)}${index}","authorizeUrl":"${LOGIN}"}`)
-  }
-  assert.deepEqual(opened, [`${LOGIN}&theme=dark`])
-  now += LOGIN_URL_COOLDOWN_MS
-  sniffer.handleFrame(`{"phase":"waiting-browser","id":"${'b'.repeat(8)}","authorizeUrl":"${LOGIN}"}`)
-  assert.equal(opened.length, 2)
+  }, () => true, () => {})
   fail = true
-  now += LOGIN_URL_COOLDOWN_MS
   sniffer.handleFrame(`{"phase":"waiting-browser","authorizeUrl":"${LOGIN}"}`)
   await Promise.resolve()
   fail = false
   sniffer.handleFrame(`{"phase":"waiting-browser","authorizeUrl":"${LOGIN}"}`)
-  assert.equal(opened.length, 4)
+  for (let index = 0; index < 5; index += 1) {
+    sniffer.handleFrame(`{"phase":"waiting-browser","id":"${'a'.repeat(8)}${index}","authorizeUrl":"${LOGIN}"}`)
+  }
+  assert.equal(opened.length, 2)
   sniffer.handleFrame('{"phase":"cancelled"}')
   sniffer.handleFrame(`{"phase":"waiting-browser","authorizeUrl":"${LOGIN}"}`)
-  assert.equal(opened.length, 5)
+  assert.equal(opened.length, 3)
 })
 
 test('只把本机 DSH 连接当成登录通道', () => {

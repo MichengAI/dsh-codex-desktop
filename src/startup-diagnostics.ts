@@ -111,11 +111,13 @@ function parseDiagnostic(value: unknown): StartupDiagnostic | undefined {
 }
 
 /** 记下不阻断启动、但现场需要能查到的告警。没有进行中的诊断时不新建文件。 */
-export async function noteStartupDiagnostic(path: string, message: string): Promise<void> {
-  const current = await readStartupDiagnostic(path)
-  if (current === undefined || message.trim() === '') return
-  const warnings = [...current.warnings ?? [], message.trim().slice(0, 500)].slice(-8)
-  await writeStartupDiagnostic(path, { ...current, warnings })
+export function noteStartupDiagnostic(path: string, message: string): Promise<void> {
+  return enqueueDiagnostic(path, async () => {
+    const current = await readStartupDiagnostic(path)
+    if (current === undefined || message.trim() === '') return
+    const warnings = [...current.warnings ?? [], message.trim().slice(0, 500)].slice(-8)
+    await writeStartupDiagnostic(path, { ...current, warnings })
+  })
 }
 
 export async function readStartupDiagnostic(path: string): Promise<StartupDiagnostic | undefined> {
@@ -130,58 +132,77 @@ async function writeStartupDiagnostic(path: string, value: StartupDiagnostic): P
   await writeTextFileAtomic(path, `${JSON.stringify(value, undefined, 2)}\n`)
 }
 
+const diagnosticWrites = new Map<string, Promise<unknown>>()
+
+/** 同一诊断文件的读改写串起来，避免启动状态和登录告警互相覆盖。 */
+function enqueueDiagnostic<T>(path: string, work: () => Promise<T>): Promise<T> {
+  const previous = diagnosticWrites.get(path) ?? Promise.resolve()
+  const run = previous.then(work, work)
+  diagnosticWrites.set(path, run.then(() => {}, () => {}))
+  return run
+}
+
 /** 开始一轮诊断，保留上一轮已验证可用的启动时间作恢复证据。 */
-export async function beginStartupDiagnostic(path: string, stage: Exclude<StartupDiagnosticStage, 'healthy'>, options: BeginStartupDiagnosticOptions = {}): Promise<void> {
-  const previous = await readStartupDiagnostic(path)
-  await writeStartupDiagnostic(path, {
-    version: STARTUP_DIAGNOSTIC_VERSION,
-    mode: options.mode ?? 'normal',
-    startedAt: options.startedAt ?? new Date().toISOString(),
-    stage,
-    ...(previous?.lastHealthyAt === undefined ? {} : { lastHealthyAt: previous.lastHealthyAt }),
+export function beginStartupDiagnostic(path: string, stage: Exclude<StartupDiagnosticStage, 'healthy'>, options: BeginStartupDiagnosticOptions = {}): Promise<void> {
+  return enqueueDiagnostic(path, async () => {
+    const previous = await readStartupDiagnostic(path)
+    await writeStartupDiagnostic(path, {
+      version: STARTUP_DIAGNOSTIC_VERSION,
+      mode: options.mode ?? 'normal',
+      startedAt: options.startedAt ?? new Date().toISOString(),
+      stage,
+      ...(previous?.lastHealthyAt === undefined ? {} : { lastHealthyAt: previous.lastHealthyAt }),
+    })
   })
 }
 
-export async function advanceStartupDiagnostic(path: string, stage: Exclude<StartupDiagnosticStage, 'healthy'>): Promise<void> {
-  const current = await readStartupDiagnostic(path)
-  await writeStartupDiagnostic(path, {
-    version: STARTUP_DIAGNOSTIC_VERSION,
-    mode: current?.mode ?? 'normal',
-    startedAt: current?.startedAt ?? new Date().toISOString(),
-    stage,
-    ...(current?.lastHealthyAt === undefined ? {} : { lastHealthyAt: current.lastHealthyAt }),
-    ...(current?.warnings === undefined ? {} : { warnings: current.warnings }),
+export function advanceStartupDiagnostic(path: string, stage: Exclude<StartupDiagnosticStage, 'healthy'>): Promise<void> {
+  return enqueueDiagnostic(path, async () => {
+    const current = await readStartupDiagnostic(path)
+    await writeStartupDiagnostic(path, {
+      version: STARTUP_DIAGNOSTIC_VERSION,
+      mode: current?.mode ?? 'normal',
+      startedAt: current?.startedAt ?? new Date().toISOString(),
+      stage,
+      ...(current?.lastHealthyAt === undefined ? {} : { lastHealthyAt: current.lastHealthyAt }),
+      ...(current?.warnings === undefined ? {} : { warnings: current.warnings }),
+    })
   })
 }
 
-export async function failStartupDiagnostic(path: string, input: StartupDiagnosticFailureInput, occurredAt = new Date().toISOString()): Promise<void> {
-  const current = await readStartupDiagnostic(path)
-  await writeStartupDiagnostic(path, {
-    version: STARTUP_DIAGNOSTIC_VERSION,
-    mode: current?.mode ?? 'normal',
-    startedAt: current?.startedAt ?? occurredAt,
-    stage: input.stage,
-    ...(current?.lastHealthyAt === undefined ? {} : { lastHealthyAt: current.lastHealthyAt }),
-    failure: {
-      source: input.source,
-      message: input.message.slice(0, MAX_FAILURE_MESSAGE_LENGTH),
-      plugins: sanitizePlugins(input.plugins),
-      occurredAt,
-    },
+export function failStartupDiagnostic(path: string, input: StartupDiagnosticFailureInput, occurredAt = new Date().toISOString()): Promise<void> {
+  return enqueueDiagnostic(path, async () => {
+    const current = await readStartupDiagnostic(path)
+    await writeStartupDiagnostic(path, {
+      version: STARTUP_DIAGNOSTIC_VERSION,
+      mode: current?.mode ?? 'normal',
+      startedAt: current?.startedAt ?? occurredAt,
+      stage: input.stage,
+      ...(current?.lastHealthyAt === undefined ? {} : { lastHealthyAt: current.lastHealthyAt }),
+      ...(current?.warnings === undefined ? {} : { warnings: current.warnings }),
+      failure: {
+        source: input.source,
+        message: input.message.slice(0, MAX_FAILURE_MESSAGE_LENGTH),
+        plugins: sanitizePlugins(input.plugins),
+        occurredAt,
+      },
+    })
   })
 }
 
-export async function completeStartupDiagnostic(path: string, healthyAt = new Date().toISOString()): Promise<void> {
-  const current = await readStartupDiagnostic(path)
-  const mode = current?.mode ?? 'normal'
-  await writeStartupDiagnostic(path, {
-    version: STARTUP_DIAGNOSTIC_VERSION,
-    mode,
-    startedAt: current?.startedAt ?? healthyAt,
-    stage: 'healthy',
-    ...(mode === 'normal'
-      ? { lastHealthyAt: healthyAt }
-      : current?.lastHealthyAt === undefined ? {} : { lastHealthyAt: current.lastHealthyAt }),
-    ...(current?.warnings === undefined ? {} : { warnings: current.warnings }),
+export function completeStartupDiagnostic(path: string, healthyAt = new Date().toISOString()): Promise<void> {
+  return enqueueDiagnostic(path, async () => {
+    const current = await readStartupDiagnostic(path)
+    const mode = current?.mode ?? 'normal'
+    await writeStartupDiagnostic(path, {
+      version: STARTUP_DIAGNOSTIC_VERSION,
+      mode,
+      startedAt: current?.startedAt ?? healthyAt,
+      stage: 'healthy',
+      ...(mode === 'normal'
+        ? { lastHealthyAt: healthyAt }
+        : current?.lastHealthyAt === undefined ? {} : { lastHealthyAt: current.lastHealthyAt }),
+      ...(current?.warnings === undefined ? {} : { warnings: current.warnings }),
+    })
   })
 }
