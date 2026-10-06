@@ -4,13 +4,15 @@
 
 The five most recent published versions are listed below.
 
-## Unreleased
+## 1.0.80 — 2026-10-06
 
 **Host and bundled plugins**
 
 - The DSH page now exposes the official `dshDesktop` marker, so Desktop shows the official account sign-in control at the bottom of the sidebar. Sign-in still uses the official account service; this shell does not store credentials.
+- When sign-in is waiting for the browser, Desktop opens the official DeepSeek authorize page. The same page is not opened again until that attempt ends, the browser fails to open, or ten minutes pass.
+- A completed sign-in that opens `dsh://open` returns to this desktop instead of the installed official DeepSeek Harness.
 - Menu surfaces in the desktop window are more opaque, so sidebar text no longer shows through the account menu.
-- Bundled plugins are upgraded to their current latest versions: Codex UI 1.1.29, IM Connect 0.1.64, Automation 0.1.54, Skills Manager 1.1.10, Archive Manager 1.0.13, Agency Agents 1.0.9, Codex Pet 0.1.13, BTW 0.1.16, Simplify 0.1.14, Code Review 0.1.11, PUA 0.3.23, and dshmarket 1.66.9. Better Sidebar 0.24.1 and official DSH 0.2.0-rc.2 were already the latest versions and are unchanged. These are catalog pins only; the offline plugin store has not been restaged.
+- Bundled plugins are upgraded to their current latest versions: Codex UI 1.1.29, IM Connect 0.1.64, Automation 0.1.54, Skills Manager 1.1.10, Archive Manager 1.0.13, Agency Agents 1.0.9, Codex Pet 0.1.13, BTW 0.1.16, Simplify 0.1.14, Code Review 0.1.11, PUA 0.3.23, and dshmarket 1.66.9. Better Sidebar 0.24.1 and official DSH 0.2.0-rc.2 were already the latest versions and are unchanged. The packaged build stages these exact versions.
 
 ## 1.0.79 — 2026-10-01
 
