@@ -30,6 +30,7 @@ export interface StartupDiagnostic {
     plugins: string[]
     occurredAt: string
   }
+  warnings?: string[]
 }
 
 export interface StartupDiagnosticFailureInput {
@@ -105,7 +106,16 @@ function parseDiagnostic(value: unknown): StartupDiagnostic | undefined {
       || !Array.isArray(failure.plugins) || !failure.plugins.every(isPackageName)
       || !isTimestamp(failure.occurredAt)) return undefined
   }
+  if (diagnostic.warnings !== undefined && (!Array.isArray(diagnostic.warnings) || diagnostic.warnings.some(item => typeof item !== 'string'))) return undefined
   return diagnostic as StartupDiagnostic
+}
+
+/** 记下不阻断启动、但现场需要能查到的告警。没有进行中的诊断时不新建文件。 */
+export async function noteStartupDiagnostic(path: string, message: string): Promise<void> {
+  const current = await readStartupDiagnostic(path)
+  if (current === undefined || message.trim() === '') return
+  const warnings = [...current.warnings ?? [], message.trim().slice(0, 500)].slice(-8)
+  await writeStartupDiagnostic(path, { ...current, warnings })
 }
 
 export async function readStartupDiagnostic(path: string): Promise<StartupDiagnostic | undefined> {
@@ -140,6 +150,7 @@ export async function advanceStartupDiagnostic(path: string, stage: Exclude<Star
     startedAt: current?.startedAt ?? new Date().toISOString(),
     stage,
     ...(current?.lastHealthyAt === undefined ? {} : { lastHealthyAt: current.lastHealthyAt }),
+    ...(current?.warnings === undefined ? {} : { warnings: current.warnings }),
   })
 }
 
@@ -171,5 +182,6 @@ export async function completeStartupDiagnostic(path: string, healthyAt = new Da
     ...(mode === 'normal'
       ? { lastHealthyAt: healthyAt }
       : current?.lastHealthyAt === undefined ? {} : { lastHealthyAt: current.lastHealthyAt }),
+    ...(current?.warnings === undefined ? {} : { warnings: current.warnings }),
   })
 }

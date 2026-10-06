@@ -20,7 +20,7 @@ import { applyPendingProfileUpdates, resolvePnpmStoreDir, seedBundledPlugins, re
 import { parseUnresolvedBundleError, removeProfileBundle, startAfterPluginUpdates, startWithProfileSelfRepair } from './profile-repair.js'
 import { confirmRecoveryStartup, enterRecoveryMode, getRecoveryStatus, isRecoveryModeActive, leaveRecoveryMode, restoreRecoveryPlugin, tryAutoLeaveRecoveryMode, uninstallRecoveryPlugin } from './recovery-mode.js'
 import { findRecoveryCandidates, trimStartupLogForRecovery } from './recovery-diagnostics.js'
-import { advanceStartupDiagnostic, beginStartupDiagnostic, completeStartupDiagnostic, failStartupDiagnostic, parseRendererBootReport, readStartupDiagnostic, type StartupDiagnosticStage } from './startup-diagnostics.js'
+import { advanceStartupDiagnostic, beginStartupDiagnostic, completeStartupDiagnostic, failStartupDiagnostic, noteStartupDiagnostic, parseRendererBootReport, readStartupDiagnostic, type StartupDiagnosticStage } from './startup-diagnostics.js'
 import { captureProfileHealthCheckpoint, readProfileHealthCheckpoint, restoreProfileHealthCheckpoint } from './profile-health-checkpoint.js'
 import { resolveBundledPluginStore, resolvePluginBinDir } from './plugin-toolchain.js'
 import { resolveDshBootstrap, resolveDshRuntime, resolveNodeExecutable } from './runtime.js'
@@ -928,7 +928,11 @@ function createWindow(): BrowserWindow {
   window.on('unmaximize', () => { layoutDshView(window); layoutRecoveryView(window) })
   runMainTask(window.loadFile(resolveShellAsset('shell.html'), { query: { theme: activeDshColorScheme, backdrop: nativeBackdropEnabled ? 'mica' : 'none' } }))
 
-  installAccountLoginOpener(view.webContents, url => shell.openExternal(url), () => activeDshColorScheme === 'dark')
+  installAccountLoginOpener(view.webContents, url => shell.openExternal(url), () => activeDshColorScheme === 'dark', message => {
+    console.warn(message)
+    const profileDir = lastSeedOptions?.profileDir
+    if (profileDir !== undefined) void noteStartupDiagnostic(startupDiagnosticPath(profileDir), message).catch(() => {})
+  })
   view.webContents.setWindowOpenHandler(({ url }) => {
     if (isExternalOpenUrl(url, allowedOrigin)) runMainTask(shell.openExternal(url))
     return { action: 'deny' }

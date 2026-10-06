@@ -2,14 +2,13 @@ import type { WebContents } from 'electron'
 
 
 /** 登录页只接受 DeepSeek 官方账号域，避免页面里的任意 WebSocket 帧打开外部地址。 */
-export const ACCOUNT_LOGIN_HOSTS = ['platform.deepseek.com', 'api.deepseek.com'] as const
+const ACCOUNT_LOGIN_HOSTS = ['platform.deepseek.com', 'api.deepseek.com'] as const
 
 const WAITING_PHASE = /["\\]+phase["\\]+\s*:\s*["\\]+waiting-browser["\\]+/u
 const IDLE_PHASE = /["\\]+phase["\\]+\s*:\s*["\\]+(?:cancelled|failed|expired|succeeded)["\\]+/u
-const ATTEMPT_ID = /["\\]+id["\\]+\s*:\s*["\\]+([0-9a-f-]{8,})["\\]+/iu
 
-/** 同一等待阶段内不重复打开；离开 waiting-browser 或超过此时长后允许再开。 */
-export const LOGIN_OPEN_TTL_MS = 20_000
+/** 同一登录地址至少隔这么久才允许再开，避免消息级 id 变化时反复打开浏览器。 */
+export const LOGIN_URL_COOLDOWN_MS = 30_000
 
 export interface AccountLoginSniffer {
   handleFrame: (payload: string) => void
@@ -44,8 +43,7 @@ export function allowedLoginUrl(value: string): string | undefined {
   try {
     const url = new URL(unescapeJsonString(value))
     const host = url.hostname.toLowerCase()
-    const official = host === 'deepseek.com' || host.endsWith('.deepseek.com')
-    if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || !official) return undefined
+    if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') return undefined
     if (!ACCOUNT_LOGIN_HOSTS.some(name => host === name || host.endsWith(`.${name}`))) return undefined
     return url.href
   } catch {
@@ -65,11 +63,6 @@ export function loginUrlsFromPayload(payload: string): string[] {
   return found
 }
 
-/** 从账号状态消息里取出第一个合法登录地址。没有时返回 undefined。 */
-export function loginUrlFromPayload(payload: string): string | undefined {
-  return loginUrlsFromPayload(payload)[0]
-}
-
 /** 给登录地址加上当前主题，和官方桌面打开浏览器时一致。 */
 export function platformLoginUrl(authorizeUrl: string, dark: boolean): string {
   const url = new URL(authorizeUrl)
@@ -78,7 +71,8 @@ export function platformLoginUrl(authorizeUrl: string, dark: boolean): string {
 }
 
 /**
- * 同一等待阶段只打开一次。open 失败、阶段结束或超过 TTL 后，同一地址可以再开。
+ * 同一登录地址在冷却期内只打开一次，不看帧里的 id。
+ * open 失败或阶段结束后可以立刻再开。
  */
 export function createAccountLoginSniffer(
   open: (url: string) => Promise<void>,
@@ -92,14 +86,12 @@ export function createAccountLoginSniffer(
       const waiting = WAITING_PHASE.test(payload)
       if (!waiting && IDLE_PHASE.test(payload)) openedAt.clear()
       if (!waiting) return
-      const attempt = ATTEMPT_ID.exec(payloadVariants(payload).join('\n'))?.[1]
       for (const authorizeUrl of loginUrlsFromPayload(payload)) {
-        const key = attempt === undefined ? authorizeUrl : `${attempt}:${authorizeUrl}`
-        const opened = openedAt.get(key)
-        if (opened !== undefined && now() - opened < LOGIN_OPEN_TTL_MS) continue
-        openedAt.set(key, now())
+        const opened = openedAt.get(authorizeUrl)
+        if (opened !== undefined && now() - opened < LOGIN_URL_COOLDOWN_MS) continue
+        openedAt.set(authorizeUrl, now())
         void open(platformLoginUrl(authorizeUrl, dark())).catch(error => {
-          openedAt.delete(key)
+          openedAt.delete(authorizeUrl)
           warn(`未能打开登录页：${error instanceof Error ? error.message : '未知错误'}`)
         })
       }
@@ -156,6 +148,11 @@ export function installAccountLoginOpener(
       const requestId = frameRequestId(params)
       const url = socketUrl(params)
       if (requestId !== undefined && url !== undefined && isLocalAccountSocket(url)) localSockets.add(requestId)
+      return
+    }
+    if (method === 'Network.webSocketClosed') {
+      const requestId = frameRequestId(params)
+      if (requestId !== undefined) localSockets.delete(requestId)
       return
     }
     if (method !== 'Network.webSocketFrameReceived') return

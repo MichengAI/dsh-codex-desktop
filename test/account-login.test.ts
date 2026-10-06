@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { LOGIN_OPEN_TTL_MS, allowedLoginUrl, createAccountLoginSniffer, isLocalAccountSocket, loginUrlFromPayload, loginUrlsFromPayload, platformLoginUrl } from '../src/account-login.js'
+import { LOGIN_URL_COOLDOWN_MS, allowedLoginUrl, createAccountLoginSniffer, isLocalAccountSocket, loginUrlsFromPayload, platformLoginUrl } from '../src/account-login.js'
 
 const LOGIN = 'https://platform.deepseek.com/login?x=1'
 
@@ -14,9 +14,9 @@ test('只接受 DeepSeek 官方 https 登录地址', () => {
 })
 
 test('从普通和再编码的账号消息中提取登录地址', () => {
-  assert.equal(loginUrlFromPayload('phase waiting'), undefined)
-  assert.equal(loginUrlFromPayload(`{"authorizeUrl":"${LOGIN}"}`), LOGIN)
-  assert.equal(loginUrlFromPayload('{"authorizeUrl":"https:\\/\\/platform.deepseek.com\\/login"}'), 'https://platform.deepseek.com/login')
+  assert.deepEqual(loginUrlsFromPayload('phase waiting'), [])
+  assert.deepEqual(loginUrlsFromPayload(`{"authorizeUrl":"${LOGIN}"}`), [LOGIN])
+  assert.deepEqual(loginUrlsFromPayload('{"authorizeUrl":"https:\\/\\/platform.deepseek.com\\/login"}'), ['https://platform.deepseek.com/login'])
   assert.deepEqual(
     loginUrlsFromPayload(`{"data":"{\\"authorizeUrl\\":\\"${LOGIN}\\"}"}`),
     [LOGIN],
@@ -27,7 +27,7 @@ test('登录地址带上当前主题', () => {
   assert.equal(platformLoginUrl(LOGIN, true), `${LOGIN}&theme=dark`)
 })
 
-test('同一等待阶段不重复打开，失败或阶段结束后可以再开', async () => {
+test('同一登录地址有冷却，换消息 id 也不会刷屏', async () => {
   const opened: string[] = []
   let fail = false
   let now = 1_000
@@ -35,20 +35,24 @@ test('同一等待阶段不重复打开，失败或阶段结束后可以再开',
     opened.push(url)
     if (fail) throw new Error('browser unavailable')
   }, () => true, () => now, () => {})
-  const waiting = `{"phase":"waiting-browser","id":"attempt-1","authorizeUrl":"${LOGIN}"}`
-  sniffer.handleFrame(waiting)
-  sniffer.handleFrame(waiting)
+  for (let index = 0; index < 5; index += 1) {
+    now += 2_000
+    sniffer.handleFrame(`{"phase":"waiting-browser","id":"${'a'.repeat(8)}${index}","authorizeUrl":"${LOGIN}"}`)
+  }
   assert.deepEqual(opened, [`${LOGIN}&theme=dark`])
+  now += LOGIN_URL_COOLDOWN_MS
+  sniffer.handleFrame(`{"phase":"waiting-browser","id":"${'b'.repeat(8)}","authorizeUrl":"${LOGIN}"}`)
+  assert.equal(opened.length, 2)
   fail = true
-  now += LOGIN_OPEN_TTL_MS
-  sniffer.handleFrame(waiting)
+  now += LOGIN_URL_COOLDOWN_MS
+  sniffer.handleFrame(`{"phase":"waiting-browser","authorizeUrl":"${LOGIN}"}`)
   await Promise.resolve()
-  sniffer.handleFrame(waiting)
-  assert.equal(opened.length, 3)
-  sniffer.handleFrame('{"phase":"cancelled","id":"attempt-1"}')
   fail = false
-  sniffer.handleFrame(waiting)
+  sniffer.handleFrame(`{"phase":"waiting-browser","authorizeUrl":"${LOGIN}"}`)
   assert.equal(opened.length, 4)
+  sniffer.handleFrame('{"phase":"cancelled"}')
+  sniffer.handleFrame(`{"phase":"waiting-browser","authorizeUrl":"${LOGIN}"}`)
+  assert.equal(opened.length, 5)
 })
 
 test('只把本机 DSH 连接当成登录通道', () => {

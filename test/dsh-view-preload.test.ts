@@ -7,6 +7,7 @@ test('client bridge 卸载后重新启用 DOM fallback', async () => {
   const source = await readFile(new URL('../src/dsh-view-preload.cjs', import.meta.url), 'utf8')
   const listeners = new Map<string, Array<(...args: unknown[]) => void>>()
   let exposed: { onAction(listener: (id: string) => void): () => void; onOpenSession(listener: (id: string) => void): () => void; onNotificationReply(listener: (value: { sessionId: string; text: string }) => void): () => void; reportState(state: unknown): void; reportNotification(event: unknown): void; reportLocale(locale: unknown): void; reportTheme(colorScheme: unknown): void } | undefined
+  let desktopMarker: { protocolVersion?: number } | undefined
   let clicks = 0
   const button = {
     offsetParent: {},
@@ -27,7 +28,7 @@ test('client bridge 卸载后重新启用 DOM fallback', async () => {
     exports: {},
     module: { exports: {} },
     require: () => ({
-      contextBridge: { exposeInMainWorld: (name: string, api: typeof exposed) => { if (name === 'dshDesktopShell') exposed = api } },
+      contextBridge: { exposeInMainWorld: (name: string, api: typeof exposed) => { if (name === 'dshDesktopShell') exposed = api; if (name === 'dshDesktop') desktopMarker = api as { protocolVersion?: number } } },
       ipcRenderer,
     }),
     window: { addEventListener(): void {} },
@@ -36,6 +37,7 @@ test('client bridge 卸载后重新启用 DOM fallback', async () => {
     setTimeout: (callback: () => void) => { callback(); return 0 },
   })
   assert.ok(exposed)
+  assert.equal(desktopMarker?.protocolVersion, 1)
   const unregister = exposed.onAction(() => {})
   const unregisterOpen = exposed.onOpenSession(() => {})
   const unregisterReply = exposed.onNotificationReply(() => {})

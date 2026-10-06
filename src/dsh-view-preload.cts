@@ -174,7 +174,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // 官方窗口不透出背后文字；我们的窗口会透出侧栏，所以这里改成实底。
   const menuSurface = document.createElement('style')
   menuSurface.dataset.dshDesktopMenuSurface = 'solid'
-  menuSurface.textContent = 'body{--dsw-menu-surface-fill:#f8f9fa !important;--dsw-menu-backdrop-filter:none !important}body[data-ds-dark-theme]{--dsw-menu-surface-fill:#303136 !important;--dsw-menu-backdrop-filter:none !important}body[data-ds-dark-theme] [role="menu"]{background-color:#303136 !important;backdrop-filter:none !important}'
+  menuSurface.textContent = 'body{--dsw-menu-surface-fill:#f8f9fa !important;--dsw-menu-backdrop-filter:none !important}body[data-ds-dark-theme]{--dsw-menu-surface-fill:#303136 !important;--dsw-menu-backdrop-filter:none !important}'
   document.documentElement.append(menuSurface)
   document.addEventListener('click', scheduleTrackSelection, true)
   document.addEventListener('keydown', closeDshSettingsDialogOnEscape, true)
