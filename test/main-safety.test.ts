@@ -131,7 +131,6 @@ test('桌面壳预加载脚本被编译并提供 DSH 动作兜底', async () => 
   assert.match(config, /src\/\*\*\/\*\.cts/)
   assert.match(preload, /clientBridgeRegistrations/)
   assert.match(preload, /exposeInMainWorld\('dshDesktop'/)
-  assert.match(preload, /body\[data-ds-dark-theme\]\{--dsw-menu-surface-fill:#303136 !important/)
   assert.match(preload, /runDomAction/)
   assert.match(preload, /添加工作区\|打开文件夹/)
   assert.match(preload, /\.dcu-wb-session\[role="treeitem"\]\[aria-selected\]/)

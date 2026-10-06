@@ -27,7 +27,7 @@ test('client bridge 卸载后重新启用 DOM fallback', async () => {
     exports: {},
     module: { exports: {} },
     require: () => ({
-      contextBridge: { exposeInMainWorld: (_name: string, api: typeof exposed) => { exposed = api } },
+      contextBridge: { exposeInMainWorld: (name: string, api: typeof exposed) => { if (name === 'dshDesktopShell') exposed = api } },
       ipcRenderer,
     }),
     window: { addEventListener(): void {} },
@@ -67,8 +67,9 @@ test('DSH 设置对话框可由 Escape 关闭', async () => {
   }
   const document = {
     body: {},
-    documentElement: { lang: 'zh-CN', style: { colorScheme: 'light' } },
+    documentElement: { lang: 'zh-CN', style: { colorScheme: 'light' }, append(): void {} },
     activeElement: null,
+    createElement: () => ({ dataset: {}, textContent: '' }),
     addEventListener(type: string, listener: (...args: any[]) => void): void {
       listeners.set(type, [...listeners.get(type) ?? [], listener])
     },
@@ -105,7 +106,8 @@ test('Escape 不会拦截非设置对话框，也不会误点关闭会话', asyn
     querySelectorAll: () => [closeSession],
   }
   const document = {
-    body: {}, documentElement: { lang: 'zh-CN', style: { colorScheme: 'light' } }, activeElement: null,
+    body: {}, documentElement: { lang: 'zh-CN', style: { colorScheme: 'light' }, append(): void {} }, activeElement: null,
+    createElement: () => ({ dataset: {}, textContent: '' }),
     addEventListener(type: string, listener: (...args: any[]) => void): void { listeners.set(type, [...listeners.get(type) ?? [], listener]) },
     getElementById: (id: string) => id === 'confirm-title' ? { getAttribute: () => null, textContent: '确认删除' } : null,
     querySelectorAll: (selector: string) => selector.includes('[role="dialog"]') ? [dialog] : [],

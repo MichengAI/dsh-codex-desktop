@@ -1,18 +1,73 @@
 import type { WebContents } from 'electron'
 
-const AUTHORIZE_URL = /"authorizeUrl"\s*:\s*"((?:https?:)(?:\\\/|\/)[^"]+)"/u
 
-/** 从账号状态消息里取出登录地址。没有可用地址时返回 undefined。 */
-export function loginUrlFromPayload(payload: string): string | undefined {
-  const match = AUTHORIZE_URL.exec(payload)
-  if (match === null) return undefined
+/** 登录页只接受 DeepSeek 官方账号域，避免页面里的任意 WebSocket 帧打开外部地址。 */
+export const ACCOUNT_LOGIN_HOSTS = ['platform.deepseek.com', 'api.deepseek.com'] as const
+
+const WAITING_PHASE = /["\\]+phase["\\]+\s*:\s*["\\]+waiting-browser["\\]+/u
+const IDLE_PHASE = /["\\]+phase["\\]+\s*:\s*["\\]+(?:cancelled|failed|expired|succeeded)["\\]+/u
+const ATTEMPT_ID = /["\\]+id["\\]+\s*:\s*["\\]+([0-9a-f-]{8,})["\\]+/iu
+
+/** 同一等待阶段内不重复打开；离开 waiting-browser 或超过此时长后允许再开。 */
+export const LOGIN_OPEN_TTL_MS = 20_000
+
+export interface AccountLoginSniffer {
+  handleFrame: (payload: string) => void
+}
+
+function unescapeJsonString(value: string): string {
+  return value.replace(/\\u([0-9a-fA-F]{4})/gu, (_match, hex: string) => String.fromCharCode(Number.parseInt(hex, 16)))
+    .replace(/\\(["\\/bfnrt])/gu, (_match, char: string) => {
+      if (char === 'n') return '\n'
+      if (char === 'r') return '\r'
+      if (char === 't') return '\t'
+      if (char === 'b') return '\b'
+      if (char === 'f') return '\f'
+      return char
+    })
+}
+
+function payloadVariants(payload: string): string[] {
+  const variants = [payload]
+  let current = payload
+  for (let depth = 0; depth < 2; depth += 1) {
+    const next = unescapeJsonString(current)
+    if (next === current) break
+    variants.push(next)
+    current = next
+  }
+  return variants
+}
+
+/** 官方登录地址必须是 https，且主机名是 DeepSeek 账号域。 */
+export function allowedLoginUrl(value: string): string | undefined {
   try {
-    const url = new URL(match[1].replace(/\\\//gu, '/'))
-    if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined
+    const url = new URL(unescapeJsonString(value))
+    const host = url.hostname.toLowerCase()
+    const official = host === 'deepseek.com' || host.endsWith('.deepseek.com')
+    if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || !official) return undefined
+    if (!ACCOUNT_LOGIN_HOSTS.some(name => host === name || host.endsWith(`.${name}`))) return undefined
     return url.href
   } catch {
     return undefined
   }
+}
+
+/** 从普通 JSON 或再编码的账号消息里取出全部合法登录地址。 */
+export function loginUrlsFromPayload(payload: string): string[] {
+  const found: string[] = []
+  for (const text of payloadVariants(payload)) {
+    for (const match of text.matchAll(/"authorizeUrl"\s*:\s*"([^"]+)"/gu)) {
+      const url = allowedLoginUrl(match[1] ?? '')
+      if (url !== undefined && !found.includes(url)) found.push(url)
+    }
+  }
+  return found
+}
+
+/** 从账号状态消息里取出第一个合法登录地址。没有时返回 undefined。 */
+export function loginUrlFromPayload(payload: string): string | undefined {
+  return loginUrlsFromPayload(payload)[0]
 }
 
 /** 给登录地址加上当前主题，和官方桌面打开浏览器时一致。 */
@@ -23,35 +78,97 @@ export function platformLoginUrl(authorizeUrl: string, dark: boolean): string {
 }
 
 /**
+ * 同一等待阶段只打开一次。open 失败、阶段结束或超过 TTL 后，同一地址可以再开。
+ */
+export function createAccountLoginSniffer(
+  open: (url: string) => Promise<void>,
+  dark: () => boolean = () => false,
+  now: () => number = Date.now,
+  warn: (message: string) => void = message => console.warn(message),
+): AccountLoginSniffer {
+  const openedAt = new Map<string, number>()
+  return {
+    handleFrame(payload: string): void {
+      const waiting = WAITING_PHASE.test(payload)
+      if (!waiting && IDLE_PHASE.test(payload)) openedAt.clear()
+      if (!waiting) return
+      const attempt = ATTEMPT_ID.exec(payloadVariants(payload).join('\n'))?.[1]
+      for (const authorizeUrl of loginUrlsFromPayload(payload)) {
+        const key = attempt === undefined ? authorizeUrl : `${attempt}:${authorizeUrl}`
+        const opened = openedAt.get(key)
+        if (opened !== undefined && now() - opened < LOGIN_OPEN_TTL_MS) continue
+        openedAt.set(key, now())
+        void open(platformLoginUrl(authorizeUrl, dark())).catch(error => {
+          openedAt.delete(key)
+          warn(`未能打开登录页：${error instanceof Error ? error.message : '未知错误'}`)
+        })
+      }
+    },
+  }
+}
+
+function socketUrl(params: unknown): string | undefined {
+  const url = (params as { url?: unknown } | null)?.url
+  return typeof url === 'string' ? url : undefined
+}
+
+function frameRequestId(params: unknown): string | undefined {
+  const requestId = (params as { requestId?: unknown } | null)?.requestId
+  return typeof requestId === 'string' ? requestId : undefined
+}
+
+function framePayload(params: unknown): string | undefined {
+  const payload = (params as { response?: { payloadData?: unknown } } | null)?.response?.payloadData
+  return typeof payload === 'string' ? payload : undefined
+}
+
+/** 只处理连到本机 DSH 的 WebSocket，不扫描页面上的外部连接。 */
+export function isLocalAccountSocket(url: string): boolean {
+  try {
+    const target = new URL(url)
+    return (target.protocol === 'ws:' || target.protocol === 'wss:')
+      && (target.hostname === '127.0.0.1' || target.hostname === 'localhost' || target.hostname === '[::1]')
+  } catch {
+    return false
+  }
+}
+
+/**
  * 官方桌面会在登录进入 waiting-browser 时用系统浏览器打开授权页。
- * 页面本身不会弹窗，所以这里监听本机账号通道，发现授权地址就打开一次。
+ * 页面本身不会弹窗，所以这里只监听本机 DSH 通道里的授权地址。
  */
 export function installAccountLoginOpener(
   contents: WebContents,
   open: (url: string) => Promise<void>,
-  dark = () => false,
+  dark: () => boolean = () => false,
+  warn: (message: string) => void = message => console.warn(message),
 ): void {
-  const seen = new Set<string>()
-  const handle = (payload: string): void => {
-    const authorizeUrl = loginUrlFromPayload(payload)
-    if (authorizeUrl === undefined || seen.has(authorizeUrl)) return
-    seen.add(authorizeUrl)
-    void open(platformLoginUrl(authorizeUrl, dark())).catch(() => {
-      seen.delete(authorizeUrl)
-    })
-  }
+  const sniffer = createAccountLoginSniffer(open, dark, Date.now, warn)
+  const localSockets = new Set<string>()
   try {
     if (!contents.debugger.isAttached()) contents.debugger.attach('1.3')
-  } catch {
+  } catch (error) {
+    warn(`未能监听登录通道：${error instanceof Error ? error.message : '调试器不可用'}`)
     return
   }
   contents.debugger.on('message', (_event, method, params: unknown) => {
+    if (method === 'Network.webSocketCreated') {
+      const requestId = frameRequestId(params)
+      const url = socketUrl(params)
+      if (requestId !== undefined && url !== undefined && isLocalAccountSocket(url)) localSockets.add(requestId)
+      return
+    }
     if (method !== 'Network.webSocketFrameReceived') return
-    const payload = (params as { response?: { payloadData?: unknown } } | null)?.response?.payloadData
-    if (typeof payload === 'string') handle(payload)
+    const requestId = frameRequestId(params)
+    if (requestId === undefined || !localSockets.has(requestId)) return
+    const payload = framePayload(params)
+    if (payload !== undefined) sniffer.handleFrame(payload)
   })
-  void contents.debugger.sendCommand('Network.enable').catch(() => {})
+  void contents.debugger.sendCommand('Network.enable').catch(error => {
+    warn(`未能启用登录通道监听：${error instanceof Error ? error.message : 'Network.enable 失败'}`)
+  })
   contents.once('destroyed', () => {
     try { if (contents.debugger.isAttached()) contents.debugger.detach() } catch { /* 视图已关闭 */ }
   })
 }
+

@@ -12,7 +12,7 @@
 - 登录进入等待浏览器时，用系统浏览器打开授权页，不再只停在「等待登录」。
 - 登录完成页打开 `dsh://open` 时回到本桌面，不再交给已安装的官方桌面。
 - 桌面窗口里的菜单底色改为实底，避免侧栏文字透出账号菜单。
-- 内置插件升级到当前最新版：Codex UI 1.1.29、IM Connect 0.1.64、Automation 0.1.54、Skills Manager 1.1.10、Archive Manager 1.0.12、Agency Agents 1.0.9、Codex Pet 0.1.13、BTW 0.1.16、Simplify 0.1.14、Code Review 0.1.11、PUA 0.3.23、dshmarket 1.66.9。Better Sidebar 0.24.1 和官方 DSH 0.2.0-rc.2 已是当前最新版，本次不变。
+- 内置插件升级到当前最新版：Codex UI 1.1.29、IM Connect 0.1.64、Automation 0.1.54、Skills Manager 1.1.10、Archive Manager 1.0.13、Agency Agents 1.0.9、Codex Pet 0.1.13、BTW 0.1.16、Simplify 0.1.14、Code Review 0.1.11、PUA 0.3.23、dshmarket 1.66.9。Better Sidebar 0.24.1 和官方 DSH 0.2.0-rc.2 已是当前最新版，本次不变。这里只更新了版本清单，离线插件仓库还没有重新生成。
 
 ## 1.0.79 — 2026-10-01
 

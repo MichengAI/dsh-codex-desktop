@@ -54,7 +54,7 @@ test('每个内置插件都钉死精确版本', () => {
     '@michengai/dsh-im-connect': '0.1.64',
     '@michengai/dsh-automation': '0.1.54',
     '@michengai/dsh-skills-manager': '1.1.10',
-    '@michengai/dsh-archive-manager': '1.0.12',
+    '@michengai/dsh-archive-manager': '1.0.13',
     '@michengai/dsh-agency-agents': '1.0.9',
     '@michengai/dsh-codex-pet': '0.1.13',
     '@michengai/dsh-btw': '0.1.16',
