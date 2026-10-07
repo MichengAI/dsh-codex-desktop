@@ -4,6 +4,13 @@
 
 以下记录最近发布的五个版本。
 
+## 1.0.81 — 2026-10-07
+
+**适配与升级**
+
+- 内置插件升级到当前最新版：Codex UI 1.1.30、IM Connect 0.1.66、Automation 0.1.58、Skills Manager 1.1.13、Archive Manager 1.0.15、Agency Agents 1.0.11、Codex Pet 0.1.15、BTW 0.1.17、Code Review 0.1.12、PUA 0.3.24。Simplify 0.1.14、Better Sidebar 0.24.1、dshmarket 1.66.9 和官方 DSH 0.2.0-rc.2 已是当前最新版，本次不变。安装包会按这些精确版本装配离线插件。
+- 若从 1.0.77 之前的版本升级：新安装仍不附带 Context 和费用插件；桌面宠物空闲时会跟着光标转头；从更早版本升级时，离线也能装上配套插件，并保留原有插件配置；Windows 安装包首次启动不再缺少配套插件依赖；原先无法启动的平台安装包可以正常启动。
+
 ## 1.0.80 — 2026-10-06
 
 **适配与升级**
@@ -43,33 +50,6 @@
 **更新**
 
 - Windows 压缩包发现新版本时，不再下载或运行安装包。它会打开对应的 zip；请退出后替换当前文件夹。不要运行安装包，否则会在另一个位置再装一份。
-
-## 1.0.76 — 2026-09-25
-
-**适配与升级**
-
-- 内置 DSH 运行时由 0.1.7-rc.1 升级到 0.1.7-rc.2，并同步 scope、timeout、invariants 与启动依赖。
-- 内置插件升级到当前最新版：Codex UI 1.1.18、IM Connect 0.1.55、Automation 0.1.51、Skills Manager 1.1.4、Archive Manager 1.0.5、Agency Agents 1.0.5、Codex Pet 0.1.10、BTW 0.1.13、Simplify 0.1.10、Code Review 0.1.7、PUA 0.3.18、dshmarket 1.65.1；Better Sidebar 0.21.1 和 MCP Connector 0.2.58 已是当前最新版，本次不变。
-
-## 1.0.75 — 2026-09-24
-
-这一版是 1.0.66 之后的首次发布，包含这段时间的全部变更。
-
-**适配与升级**
-
-- 内置 DSH 运行时由 0.1.6-alpha.2 升级到 0.1.7-rc.1，并同步 scope、timeout、invariants 与启动依赖。
-- 14 项内置插件全部升级到当前最新版：Codex UI 1.1.17、IM Connect 0.1.54、Automation 0.1.50、Skills Manager 1.1.3、Archive Manager 1.0.4、Agency Agents 1.0.3、Codex Pet 0.1.9、BTW 0.1.12、Simplify 0.1.9、Code Review 0.1.5、PUA 0.3.17、Better Sidebar 0.21.1、MCP Connector 0.2.58、dshmarket 1.64.0。
-- 新安装不再随包 Context 和 Usage Billing 两项插件。
-
-**新功能**
-
-- 桌面宠物 v2：空闲时会跟着光标转头。
-
-**修复**
-
-- 修复从旧版本升级时配套插件装不上的问题，离线环境下也能完成升级；升级后会保留你原有的插件配置。
-- 修复 Windows 安装包首次启动补装配套插件时可能缺少依赖的问题。
-- 修复部分平台的安装包无法正常启动的问题。
 
 
 
