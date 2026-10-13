@@ -219,7 +219,6 @@ const OFFICIAL_LOCK_PACKAGES = [
   OFFICIAL_RUNTIME.packageName,
   '@deepseek-ai/dsh-attachment-local',
   '@deepseek-ai/dsh-host-apiproxy',
-  '@deepseek-ai/dsh-invariants',
 ] as const
 
 export function readInstalledPackageVersion(dir: string, packageName: string): string | undefined {
