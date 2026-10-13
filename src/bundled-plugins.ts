@@ -35,7 +35,7 @@ export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
   { packageName: '@michengai/dsh-btw', version: '0.1.20' },
   { packageName: '@michengai/dsh-simplify', version: '0.1.15' },
   { packageName: '@michengai/dsh-code-review', version: '0.1.14' },
-  { packageName: '@michengai/dsh-pua', version: '0.3.24' },
+  { packageName: '@michengai/dsh-pua', version: '0.3.27' },
   { packageName: 'dsh-better-sidebar', version: '0.26.0' },
   { packageName: 'dshmarket', version: '1.66.21' },
 ]

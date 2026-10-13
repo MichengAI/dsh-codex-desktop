@@ -60,7 +60,7 @@ test('每个内置插件都钉死精确版本', () => {
     '@michengai/dsh-btw': '0.1.20',
     '@michengai/dsh-simplify': '0.1.15',
     '@michengai/dsh-code-review': '0.1.14',
-    '@michengai/dsh-pua': '0.3.24',
+    '@michengai/dsh-pua': '0.3.27',
     'dsh-better-sidebar': '0.26.0',
     dshmarket: '1.66.21',
   })

@@ -4,12 +4,13 @@
 
 The five most recent published versions are listed below.
 
-## 1.0.82 — 2026-10-14
+## 1.0.83 — 2026-10-14
 
 **Host and bundled plugins**
 
+- This is the first release after 1.0.81.
 - The bundled DSH runtime moves from 0.2.0-rc.2 to 0.2.1-alpha.2, together with scope, timeout and the required launch dependencies.
-- Bundled plugins are upgraded to their current latest versions: Codex UI 1.1.37, IM Connect 0.1.75, Automation 0.1.64, Skills Manager 1.1.19, Archive Manager 1.0.18, Agency Agents 1.0.18, Codex Pet 0.1.18, BTW 0.1.20, Simplify 0.1.15, Code Review 0.1.14, Better Sidebar 0.26.0, and dshmarket 1.66.21. PUA stays at 0.3.24 because 0.3.27 cannot be installed into this official DSH. The packaged build stages these exact versions.
+- Bundled plugins are upgraded to their current latest versions: Codex UI 1.1.37, IM Connect 0.1.75, Automation 0.1.64, Skills Manager 1.1.19, Archive Manager 1.0.18, Agency Agents 1.0.18, Codex Pet 0.1.18, BTW 0.1.20, Simplify 0.1.15, Code Review 0.1.14, PUA 0.3.27, Better Sidebar 0.26.0, and dshmarket 1.66.21. The packaged build stages these exact versions.
 - If you are upgrading from a version before 1.0.77, new installs still omit the Context plugin, Usage Billing plugin, and MCP connector. A copy you already installed is kept. Official scheduling stays off unless you turn it on, and saved tasks are kept. The desktop pet follows the cursor while idle. Upgrades from older versions can install the bundled plugins offline and keep your existing plugin configuration. A Windows install no longer lacks bundled plugin dependencies the first time it starts. Installers on the affected platforms start normally. A Windows zip build opens the matching zip; quit and replace the current folder, and do not run the installer.
 
 ## 1.0.81 — 2026-10-07
