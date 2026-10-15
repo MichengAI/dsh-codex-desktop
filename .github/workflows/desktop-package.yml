@@ -298,7 +298,15 @@ jobs:
               }
               gh run download $env:GITHUB_RUN_ID --repo $env:GITHUB_REPOSITORY --name $name --dir $destination
               if ($LASTEXITCODE -eq 0) {
-                Get-ChildItem -LiteralPath $destination -File | Copy-Item -Destination release -Force
+                $files = @(Get-ChildItem -LiteralPath $destination -File)
+                if ($files.Count -eq 0) {
+                  $nested = Join-Path $destination 'release'
+                  if (Test-Path -LiteralPath $nested) {
+                    $files = @(Get-ChildItem -LiteralPath $nested -File)
+                  }
+                }
+                if ($files.Count -eq 0) { throw "制品 $name 里没有可发布文件。" }
+                $files | Copy-Item -Destination release -Force
                 $downloaded = $true
                 break
               }

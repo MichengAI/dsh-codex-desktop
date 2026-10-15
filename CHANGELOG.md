@@ -4,7 +4,7 @@
 
 The five most recent published versions are listed below.
 
-## 1.0.85 — 2026-10-15
+## 1.0.86 — 2026-10-15
 
 **Host and bundled plugins**
 
