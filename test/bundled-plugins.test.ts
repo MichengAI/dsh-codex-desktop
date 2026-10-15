@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { BUNDLED_PLUGINS, OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, STORE_PACKAGES, compareReleaseVersions, isDeepSeekOfficialPackage, isOfficialDshPackage, officialDshVersionOverrides, officialRuntimeDependencies, officialRuntimePnpmConfig, planOfficialRuntimeTarget, pnpmAllowBuildsManifest, pnpmWorkspaceYaml, SUITE_PACKAGE, bundledPluginNames, seededPackageNames } from '../src/bundled-plugins.js'
 
-test('内置目录包含十三个社区插件和市场组件', () => {
+test('内置目录包含十四个社区插件和市场组件', () => {
   assert.deepEqual(bundledPluginNames(), [
     '@michengai/dsh-codex-ui',
     '@michengai/dsh-im-connect',
@@ -18,14 +18,15 @@ test('内置目录包含十三个社区插件和市场组件', () => {
     '@michengai/dsh-pua',
     'dsh-better-sidebar',
     'dshmarket',
+    'dsh-context',
   ])
-  assert.equal(BUNDLED_PLUGINS.length, 13)
+  assert.equal(BUNDLED_PLUGINS.length, 14)
   assert.equal(SUITE_PACKAGE, '@michengai/dsh-codex-suite')
 })
 
-test('离线仓库不再打包已去掉的 Context、费用和 MCP 连接器插件', () => {
+test('离线仓库不再打包已去掉的费用和 MCP 连接器插件', () => {
   const names = STORE_PACKAGES.map(plugin => plugin.packageName)
-  assert.equal(names.includes('dsh-context'), false)
+  assert.equal(names.includes('dsh-context'), true)
   assert.equal(names.includes('@kenz1117/dsh-ui-usage-billing'), false)
   assert.equal(names.includes('dsh-mcp-connector'), false)
   assert.equal(names.includes('dsh-better-sidebar'), true)
@@ -44,35 +45,37 @@ test('每个内置插件都钉死精确版本', () => {
     assert.match(plugin.version, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/)
     assert.equal(
       plugin.packageName.startsWith('@michengai/')
-        || ['dsh-better-sidebar', 'dshmarket'].includes(plugin.packageName),
+        || ['dsh-better-sidebar', 'dshmarket', 'dsh-context'].includes(plugin.packageName),
       true,
     )
   }
-  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.66.21')
+  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.66.22')
+  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dsh-context')?.version, '0.72.0')
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
-    '@michengai/dsh-codex-ui': '1.1.37',
-    '@michengai/dsh-im-connect': '0.1.75',
-    '@michengai/dsh-automation': '0.1.64',
-    '@michengai/dsh-skills-manager': '1.1.19',
-    '@michengai/dsh-archive-manager': '1.0.18',
-    '@michengai/dsh-agency-agents': '1.0.18',
-    '@michengai/dsh-codex-pet': '0.1.18',
-    '@michengai/dsh-btw': '0.1.20',
-    '@michengai/dsh-simplify': '0.1.15',
-    '@michengai/dsh-code-review': '0.1.14',
-    '@michengai/dsh-pua': '0.3.27',
+    '@michengai/dsh-codex-ui': '1.1.40',
+    '@michengai/dsh-im-connect': '0.1.77',
+    '@michengai/dsh-automation': '0.1.66',
+    '@michengai/dsh-skills-manager': '1.1.21',
+    '@michengai/dsh-archive-manager': '1.0.19',
+    '@michengai/dsh-agency-agents': '1.0.19',
+    '@michengai/dsh-codex-pet': '0.1.19',
+    '@michengai/dsh-btw': '0.1.24',
+    '@michengai/dsh-simplify': '0.1.16',
+    '@michengai/dsh-code-review': '0.1.16',
+    '@michengai/dsh-pua': '0.3.28',
     'dsh-better-sidebar': '0.26.0',
-    dshmarket: '1.66.21',
+    dshmarket: '1.66.22',
+    'dsh-context': '0.72.0',
   })
 })
 
 test('官方 DSH 家族锁在同一个精确版本', () => {
   assert.equal(OFFICIAL_RUNTIME.packageName, '@deepseek-ai/dsh')
   assert.equal(OFFICIAL_RUNTIME.version, OFFICIAL_DSH_VERSION)
-  assert.equal(OFFICIAL_DSH_VERSION, '0.2.1-alpha.2')
+  assert.equal(OFFICIAL_DSH_VERSION, '0.2.1-alpha.3')
   assert.equal(seededPackageNames()[0], '@deepseek-ai/dsh')
   assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.packageName, '@deepseek-ai/cordis-plugin-group')
-  assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.version, '1.0.5-alpha.1')
+  assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.version, '1.0.5-alpha.2')
   assert.equal(officialRuntimeDependencies()['@deepseek-ai/dsh-invariants'], undefined)
   assert.equal(officialRuntimeDependencies()['@deepseek-ai/dsh-scope'], OFFICIAL_DSH_VERSION)
   assert.deepEqual(officialDshVersionOverrides(), {
