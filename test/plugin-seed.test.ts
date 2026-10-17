@@ -330,7 +330,7 @@ test('官方运行时已装但缺少启动 peer 时会补齐', async () => {
         }
       },
     })
-    const peerCall = calls.find(item => item.some(arg => arg.includes('@deepseek-ai/cordis-plugin-group@1.0.5-alpha.2')))
+    const peerCall = calls.find(item => item.some(arg => arg.includes('@deepseek-ai/cordis-plugin-group@1.0.5')) && !item.some(arg => arg.includes('@deepseek-ai/cordis-plugin-group@1.0.5-')))
     assert.equal(peerCall !== undefined, true)
     assert.equal(peerCall!.includes('--offline'), false)
     assert.equal(peerCall!.some(arg => arg.startsWith('--store-dir=')), false)

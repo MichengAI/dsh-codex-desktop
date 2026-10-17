@@ -70,10 +70,18 @@ export function assertPnpmStorePackagesPreserved(sourceStore: string, packagedSt
   throw new Error(`压缩包丢失了仓库索引：${names.join('、')}${missing.length > 5 ? ` 等 ${missing.length} 项` : ''}`)
 }
 
+function tarBinary(): string {
+  if (process.platform === 'win32') {
+    const systemTar = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe')
+    if (existsSync(systemTar)) return systemTar
+  }
+  return 'tar'
+}
+
 /** 把目录打成单个 tar.gz，避免安装器解压上万个小文件。 */
 export function packDirectoryToTarGz(sourceDir: string, archivePath: string): void {
   if (!existsSync(sourceDir)) throw new Error(`压缩源目录不存在：${sourceDir}`)
-  const result = spawnSync('tar', ['-czf', archivePath, '-C', sourceDir, '.'], { encoding: 'utf8', windowsHide: true })
+  const result = spawnSync(tarBinary(), ['-czf', archivePath, '-C', sourceDir, '.'], { encoding: 'utf8', windowsHide: true })
   if (result.status !== 0) {
     throw new Error(`压缩失败：${(result.stderr || result.stdout || archivePath).trim()}`)
   }
@@ -83,7 +91,7 @@ export function packDirectoryToTarGz(sourceDir: string, archivePath: string): vo
 export function extractTarGz(archivePath: string, destDir: string): void {
   readArchiveEntries(archivePath)
   mkdirSync(destDir, { recursive: true })
-  const result = spawnSync('tar', ['-xzf', archivePath, '-C', destDir], { encoding: 'utf8', windowsHide: true })
+  const result = spawnSync(tarBinary(), ['-xzf', archivePath, '-C', destDir], { encoding: 'utf8', windowsHide: true })
   if (result.status !== 0) {
     throw new Error(`解压失败：${(result.stderr || result.stdout || archivePath).trim()}`)
   }
@@ -91,7 +99,7 @@ export function extractTarGz(archivePath: string, destDir: string): void {
 
 function readArchiveEntries(archivePath: string): string[] {
   if (!existsSync(archivePath)) throw new Error(`压缩包不存在：${archivePath}`)
-  const listed = spawnSync('tar', ['-tzf', archivePath], {
+  const listed = spawnSync(tarBinary(), ['-tzf', archivePath], {
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
     windowsHide: true,
@@ -113,7 +121,7 @@ export async function extractTarGzWithProgress(archivePath: string, destDir: str
   mkdirSync(destDir, { recursive: true })
   onProgress(0, expected.size)
   await new Promise<void>((resolve, reject) => {
-    const child = spawn('tar', ['-xvzf', archivePath, '-C', destDir], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(tarBinary(), ['-xvzf', archivePath, '-C', destDir], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
     let output = '', lastReport = 0
     const consume = (line: string): void => {
       // BSD tar 在 stderr 前缀 x，GNU tar 在 stdout 输出路径。
