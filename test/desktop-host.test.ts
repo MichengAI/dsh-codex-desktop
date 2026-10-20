@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import { APPLY_PLUGIN_UPDATES_IPC, OFFICIAL_DSH_VERSION } from '../src/bundled-plugins.js'
-import { createDesktopHostServices, DESKTOP_BRIDGE_FILES, isDesktopBridgeCurrent, prepareDesktopBridge, officialPluginUpdateVersion, runBundledPnpm, shouldRecycleAfterPluginArgs, shouldRecycleAfterPluginResult } from '../src/desktop-host.js'
+import { createDesktopHostServices, DESKTOP_BRIDGE_FILES, isDesktopBridgeCurrent, prepareDesktopBridge, officialPluginUpdateVersion, runBundledPnpm, shouldRecycleAfterPluginResult } from '../src/desktop-host.js'
 import { removeDesktopBridgePatch } from '../src/desktop-bridge-migration.js'
 import { desktopPluginOperationsDir, isPluginOperationActive } from '../src/profile-quiet.js'
 import { pathToFileURL } from 'node:url'
@@ -16,12 +16,6 @@ async function waitFor(predicate: () => boolean | Promise<boolean>, timeoutMs = 
   const deadline = Date.now() + timeoutMs
   while (!(await predicate()) && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10))
 }
-
-test('市场安装和卸载后需要热更新 DSH', () => {
-  assert.equal(shouldRecycleAfterPluginArgs(['add', 'foo@1.0.0']), true)
-  assert.equal(shouldRecycleAfterPluginArgs(['remove', 'foo']), true)
-  assert.equal(shouldRecycleAfterPluginArgs(['list']), false)
-})
 
 test('包没落到磁盘时不能当成安装成功并热重启', () => {
   assert.equal(shouldRecycleAfterPluginResult(['add', 'dsh-file-upload'], () => false), false)

@@ -26,10 +26,6 @@ export interface DesktopHostOptions {
   isInstalled?: (packageName: string) => boolean
 }
 
-export function shouldRecycleAfterPluginArgs(args: readonly string[]): boolean {
-  return pluginCommandAction(args) !== 'other'
-}
-
 export function packageNameFromSpec(spec: string): string {
   if (spec.startsWith('@')) {
     const rest = spec.slice(1)

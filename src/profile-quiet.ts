@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { writeTextFileAtomicSync } from './atomic-file.js'
@@ -6,11 +6,6 @@ import { writeTextFileAtomicSync } from './atomic-file.js'
 /** core 插件管理器在 pnpm 运行期间写这条记录，bundle 校准结束后才删除。 */
 export function pluginRunRecordPath(profileDir: string): string {
   return join(profileDir, '.plugin-manager', 'run.json')
-}
-
-/** 桌面桥接在 pnpm 及其后的 bundle 校准期间写这条标记。 */
-export function desktopPluginOperationMarkerPath(profileDir: string): string {
-  return join(profileDir, '.desktop-plugin-operation.json')
 }
 
 /** 记录文件里的 pid；任何无法解析的内容都当作没有信号，绝不阻塞重启。 */
@@ -115,10 +110,9 @@ export function isPluginOperationActive(profileDir: string, options: PluginOpera
     const directory = desktopPluginOperationsDir(profileDir)
     if (readdirSync(directory).some(file => file.endsWith('.json') && activePidIn(join(directory, file)) !== undefined)) return true
   } catch {
-    // 目录尚不存在或不可读时继续检查旧版标记。
+    // 目录尚不存在或不可读时没有可识别的桌面操作信号。
   }
-  // 旧版共享标记仅兼容读取，不删除：检查后写入方可能已经替换了文件。
-  return activePidIn(desktopPluginOperationMarkerPath(profileDir)) !== undefined
+  return false
 }
 
 /** 每次操作拥有独立文件，清理令牌只能删除自己。 */
@@ -126,12 +120,48 @@ export function desktopPluginOperationsDir(profileDir: string): string {
   return join(profileDir, '.desktop-plugin-operations')
 }
 
+/** 仅写入侧回收自有、不可复用的 UUID 标记；任何不确定状态都保留。 */
+function reapDeadPluginOperations(directory: string, kill: NonNullable<PluginOperationProbeOptions['kill']>): void {
+  let files: string[]
+  try {
+    files = readdirSync(directory)
+  } catch {
+    return
+  }
+  for (const file of files) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.json$/i.test(file)) continue
+    const path = join(directory, file)
+    try {
+      const before = lstatSync(path)
+      if (!before.isFile()) continue
+      const content = readFileSync(path, 'utf8')
+      const pid = parsePluginOperationPid(content)
+      if (pid === undefined) continue
+      try {
+        kill(pid, 0)
+        continue
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ESRCH') continue
+      }
+      // 协议不替换/复用独立 UUID；仍在删除前核对内容和身份，跳过明显竞争。
+      const after = lstatSync(path)
+      if (!after.isFile() || before.dev !== after.dev || before.ino !== after.ino
+        || before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs) continue
+      if (readFileSync(path, 'utf8') !== content) continue
+      rmSync(path)
+    } catch {
+      // 单项读取、探测或删除失败不能阻断其他回收，更不能影响新标记写入。
+    }
+  }
+}
+
 /** 写入失败不挡住安装；返回幂等清理函数，调用方必须覆盖全部退出路径。 */
-export function markPluginOperation(profileDir: string): () => void {
+export function markPluginOperation(profileDir: string, options: Pick<PluginOperationProbeOptions, 'kill'> = {}): () => void {
   const directory = desktopPluginOperationsDir(profileDir)
   const path = join(directory, `${randomUUID()}.json`)
   try {
     mkdirSync(directory, { recursive: true })
+    reapDeadPluginOperations(directory, options.kill ?? process.kill)
     writeTextFileAtomicSync(path, `${JSON.stringify({ pid: process.pid })}\n`)
   } catch {
     // 标记只用于推迟热重载，失败时不能挡住安装。

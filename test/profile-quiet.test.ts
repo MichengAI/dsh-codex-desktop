@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { existsSync, renameSync, writeFileSync } from 'node:fs'
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
 import {
-  desktopPluginOperationMarkerPath,
+  desktopPluginOperationsDir,
+  markPluginOperation,
   isPluginOperationActive,
   parsePluginOperationPid,
   pluginRunRecordPath,
@@ -225,28 +226,142 @@ test('owner 已死但 pnpm 仍活时继续等待，即使锁已消失', async ()
   }
 })
 
-test('桌面桥接写下的操作标记同样表示安装后处理尚未结束', async () => {
+test('桌面独立标记保护安装后处理，读取方不删除死 PID 或损坏记录', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-quiet-marker-'))
   try {
-    await writeFile(desktopPluginOperationMarkerPath(root), `${JSON.stringify({ pid: process.pid })}\n`, 'utf8')
+    const directory = desktopPluginOperationsDir(root)
+    await mkdir(directory)
+    const path = join(directory, '12345678-1234-4234-8234-123456789abc.json')
+    await writeFile(path, JSON.stringify({ pid: process.pid }))
     assert.equal(isPluginOperationActive(root), true)
-    await writeFile(desktopPluginOperationMarkerPath(root), `${JSON.stringify({ pid: await deadPid() })}\n`, 'utf8')
-    assert.equal(isPluginOperationActive(root), false)
-    // 读取方不清理旧版共享文件，避免检查和删除之间写入方替换记录的竞争。
-    assert.equal(existsSync(desktopPluginOperationMarkerPath(root)), true)
+    for (const content of [JSON.stringify({ pid: await deadPid() }), '', '{', 'null', '{"pid":"bad"}']) {
+      await writeFile(path, content)
+      assert.equal(isPluginOperationActive(root), false)
+      assert.equal(await readFile(path, 'utf8'), content, '读取方必须保持文件原样')
+    }
   } finally {
     await rm(root, { recursive: true, force: true })
   }
 })
 
-test('读取空或非法旧标记不会删除写入方的文件', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-partial-marker-'))
+test('旧共享标记不再参与活动判定且不被删除', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-old-marker-'))
   try {
-    for (const content of ['', '{', 'null', '{"pid":"bad"}']) {
-      const path = desktopPluginOperationMarkerPath(root)
+    const path = join(root, '.desktop-plugin-operation.json')
+    await writeFile(path, JSON.stringify({ pid: process.pid }))
+    assert.equal(isPluginOperationActive(root), false)
+    assert.equal(existsSync(path), true)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('新操作写标记时回收同目录已退出宿主的独立 UUID 标记', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-reap-marker-'))
+  try {
+    const directory = desktopPluginOperationsDir(root)
+    await mkdir(directory)
+    const stale = join(directory, '12345678-1234-4234-8234-123456789abc.json')
+    await writeFile(stale, JSON.stringify({ pid: await deadPid() }))
+    const clear = markPluginOperation(root)
+    try {
+      assert.equal(existsSync(stale), false, '创建新标记时应回收死 PID 标记')
+      assert.equal(isPluginOperationActive(root), true, '回收不影响新操作标记写入')
+    } finally {
+      clear()
+    }
+    assert.equal(isPluginOperationActive(root), false)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('回收只删除 ESRCH 的合法 UUID 普通文件，逐项异常不影响新标记', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-reap-safe-'))
+  try {
+    const directory = desktopPluginOperationsDir(root)
+    await mkdir(directory)
+    let serial = 0
+    const marker = (): string => join(directory, `12345678-1234-4234-8234-${String(++serial).padStart(12, '0')}.json`)
+    const kept: string[] = []
+    const probed: number[] = []
+    for (const pid of [101, 102, 103, 104]) {
+      const path = marker()
+      await writeFile(path, JSON.stringify({ pid }))
+      kept.push(path)
+    }
+    for (const content of ['', '{', 'null', '{"pid":0}', '{"pid":-1}', '{"pid":1.5}', '{"pid":"105"}', '{"pid":2147483648}']) {
+      const path = marker()
       await writeFile(path, content)
-      assert.equal(isPluginOperationActive(root), false)
-      assert.equal(existsSync(path), true, '读取方不得把瞬态坏记录当陈旧文件删除')
+      kept.push(path)
+    }
+    for (const name of ['other.json', '12345678-1234-4234-8234-123456789abc.json.tmp', '00000000-0000-0000-0000-000000000000.json']) {
+      const path = join(directory, name)
+      await writeFile(path, '{"pid":105}')
+      kept.push(path)
+    }
+    const folder = marker()
+    await mkdir(folder)
+    const target = join(root, 'target')
+    await mkdir(target)
+    await writeFile(join(target, 'sentinel'), 'untouched')
+    const link = marker()
+    await symlink(target, link, process.platform === 'win32' ? 'junction' : 'dir')
+    kept.push(folder, link)
+    // core 及包文件不属于回收范围，即使记录里同样是已退出 PID。
+    await mkdir(join(root, '.plugin-manager'))
+    const protectedFiles = [pluginRunRecordPath(root), join(root, 'package.json.lock'), join(root, 'package.json')]
+    for (const path of protectedFiles) await writeFile(path, '{"pid":105}')
+    const dead = marker()
+    await writeFile(dead, '{"pid":105}')
+    const clear = markPluginOperation(root, { kill: (pid, signal) => {
+      assert.equal(signal, 0)
+      probed.push(pid)
+      if (pid === 101) return
+      const code = pid === 102 ? 'EPERM' : pid === 103 ? 'EIO' : pid === 104 ? undefined : 'ESRCH'
+      throw Object.assign(new Error('probe'), { code })
+    } })
+    try {
+      assert.equal(existsSync(dead), false)
+      assert.deepEqual(probed.sort((a, b) => a - b), [101, 102, 103, 104, 105])
+      for (const path of kept) assert.equal(existsSync(path), true, path)
+      for (const path of protectedFiles) assert.equal(await readFile(path, 'utf8'), '{"pid":105}')
+      assert.equal(await readFile(join(target, 'sentinel'), 'utf8'), 'untouched')
+      assert.equal((await readdir(directory)).length, kept.length + 1, '异常记录不妨碍新标记写入')
+    } finally {
+      clear()
+      clear()
+    }
+    assert.equal((await readdir(directory)).length, kept.length)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('删除前重读内容和身份，探测期间被改写或替换的标记保留', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-reap-race-'))
+  try {
+    const directory = desktopPluginOperationsDir(root)
+    await mkdir(directory)
+    for (const replace of [false, true]) {
+      const path = join(directory, '12345678-1234-4234-8234-123456789abc.json')
+      const original = '{"pid":105}'
+      await writeFile(path, original)
+      const clear = markPluginOperation(root, { kill: () => {
+        if (replace) {
+          renameSync(path, join(root, 'previous.json'))
+          writeFileSync(path, original)
+        } else {
+          writeFileSync(path, JSON.stringify({ pid: process.pid }))
+        }
+        throw Object.assign(new Error('gone'), { code: 'ESRCH' })
+      } })
+      try {
+        assert.equal(existsSync(path), true, replace ? '内容相同但身份已替换也必须保留' : '内容已改写必须保留')
+        assert.equal(isPluginOperationActive(root), true, '仍写入新操作标记')
+      } finally {
+        clear()
+      }
     }
   } finally {
     await rm(root, { recursive: true, force: true })
@@ -303,7 +418,7 @@ test('真实进程持有标记时等待不会结束，进程退出后才放行',
     mkdirSync(join(dir, '.plugin-manager'), { recursive: true })
     writeFileSync(join(dir, 'package.json.lock'), String(process.ppid) + '\\n')
     writeFileSync(join(dir, '.plugin-manager', 'run.json'), JSON.stringify({ pid: process.pid, grouped: false }) + '\\n')
-    writeFileSync(join(dir, '.desktop-plugin-operation.json'), JSON.stringify({ pid: process.pid }) + '\\n')
+
     setInterval(() => undefined, 1_000)
   `, root], { stdio: 'ignore' })
   try {
