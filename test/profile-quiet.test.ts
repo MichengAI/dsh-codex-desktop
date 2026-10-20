@@ -79,9 +79,10 @@ test('core 插件管理器写下的 run.json 记录进行中的 pnpm 操作', as
     await writeFile(pluginRunRecordPath(root), `${JSON.stringify({ pid: process.pid, grouped: true })}\n`, 'utf8')
     assert.equal(isPluginOperationActive(root), true)
     await writeFile(pluginRunRecordPath(root), `${JSON.stringify({ pid: await deadPid(), grouped: true })}\n`, 'utf8')
-    assert.equal(isPluginOperationActive(root), false)
-    // core 自己的记录不归桌面端清理，陈旧时只忽略。
+    assert.equal(isPluginOperationActive(root), true, 'pnpm 已退出但 core 仍可能在校准 bundle')
     assert.equal(existsSync(pluginRunRecordPath(root)), true)
+    await rm(pluginRunRecordPath(root))
+    assert.equal(isPluginOperationActive(root), false)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -94,8 +95,22 @@ test('桌面桥接写下的操作标记同样表示安装后处理尚未结束',
     assert.equal(isPluginOperationActive(root), true)
     await writeFile(desktopPluginOperationMarkerPath(root), `${JSON.stringify({ pid: await deadPid() })}\n`, 'utf8')
     assert.equal(isPluginOperationActive(root), false)
-    // 桌面端自己的标记在进程已退出后清掉，避免永久留在 profile 里。
-    assert.equal(existsSync(desktopPluginOperationMarkerPath(root)), false)
+    // 读取方不清理旧版共享文件，避免检查和删除之间写入方替换记录的竞争。
+    assert.equal(existsSync(desktopPluginOperationMarkerPath(root)), true)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('读取空或非法旧标记不会删除写入方的文件', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-partial-marker-'))
+  try {
+    for (const content of ['', '{', 'null', '{"pid":"bad"}']) {
+      const path = desktopPluginOperationMarkerPath(root)
+      await writeFile(path, content)
+      assert.equal(isPluginOperationActive(root), false)
+      assert.equal(existsSync(path), true, '读取方不得把瞬态坏记录当陈旧文件删除')
+    }
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -169,6 +184,10 @@ test('真实进程持有标记时等待不会结束，进程退出后才放行',
     await new Promise(resolve => setTimeout(resolve, 300))
     assert.equal(settled, undefined, '记录里的进程还活着时不能放行')
     child.kill()
+    // core 在 pnpm 退出后继续校准，完成后才由 core 自己删除记录。
+    await new Promise(resolve => setTimeout(resolve, 60))
+    assert.equal(settled, undefined, 'core 记录还在时仍不得放行')
+    await rm(pluginRunRecordPath(root))
     await waiting
     assert.equal(settled, true)
   } finally {

@@ -9,12 +9,12 @@
  * 用 `pnpm add <本地目录>` 时 packageNames 会把路径当包名，finalize 与 IPC 都不会发生。
  */
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 import { createDesktopHostServices, runBundledPnpm } from '../src/desktop-host.js'
-import { desktopPluginOperationMarkerPath, isPluginOperationActive } from '../src/profile-quiet.js'
+import { desktopPluginOperationsDir, isPluginOperationActive } from '../src/profile-quiet.js'
 import { watchProfileActivation } from '../src/profile-watch.js'
 
 const packageName = process.argv[2] ?? 'dsh-better-sidebar'
@@ -67,7 +67,9 @@ const manifest = JSON.parse(await (await import('node:fs/promises')).readFile(jo
   dsh?: { profile?: { bundles?: string[] } }
 }
 const bundles = manifest.dsh?.profile?.bundles ?? []
-const markerLeft = existsSync(desktopPluginOperationMarkerPath(profileDir))
+const markerDirectory = desktopPluginOperationsDir(profileDir)
+const markersLeft = existsSync(markerDirectory) ? readdirSync(markerDirectory).filter(file => file.endsWith('.json')) : []
+const markerLeft = markersLeft.length > 0
 
 console.log(JSON.stringify({
   packageName,

@@ -10,6 +10,12 @@ test('主进程安装全局异常兜底并复用统一退出清理', async () =>
   assert.equal((source.match(/quitDesktopApp\(/g) ?? []).length, 1)
 })
 
+test('插件操作等待超时后继续等待而不是强制重启', async () => {
+  const source = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
+  assert.match(source, /if \(!settled\) \{\s*console\.warn\([\s\S]*?profileActivationRecyclePending = true[\s\S]*?continue\s*\}/)
+  assert.doesNotMatch(source, /等待超时[^\n]*继续重载插件/)
+})
+
 test('缺少离线 store 时仍执行官方清理和补种入口', async () => {
   const source = await readFile(new URL('../../src/main.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /if \(pluginStoreDir !== undefined\) \{\s*try \{\s*const seeded = await seedBundledPlugins/)

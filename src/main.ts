@@ -743,7 +743,12 @@ async function recycleAfterPluginOperationsSettle(): Promise<void> {
         quietWindows: DSH_MARKET_BATCH_QUIET_WINDOWS,
       },
     )
-    if (!settled) console.warn(`插件操作静默等待超时（${DSH_MARKET_BATCH_MAX_WAIT_MS}ms），继续重载插件。`)
+    if (!settled) {
+      console.warn(`插件操作静默等待超时（${DSH_MARKET_BATCH_MAX_WAIT_MS}ms），保留待重载请求，等待安装与后处理结束。`)
+      // 超时不是安装已结束的证据；保留请求，下轮重新检查，不能杀掉仍在写文件的进程。
+      profileActivationRecyclePending = true
+      continue
+    }
     if (isQuitting || isRecycling) return
     // Another profile change or update-all IPC arrived during the quiet
     // check. Start the check over rather than restarting a just-continued

@@ -9,7 +9,7 @@ import test from 'node:test'
 import { APPLY_PLUGIN_UPDATES_IPC, OFFICIAL_DSH_VERSION } from '../src/bundled-plugins.js'
 import { createDesktopHostServices, DESKTOP_BRIDGE_FILES, isDesktopBridgeCurrent, prepareDesktopBridge, officialPluginUpdateVersion, runBundledPnpm, shouldRecycleAfterPluginArgs, shouldRecycleAfterPluginResult } from '../src/desktop-host.js'
 import { removeDesktopBridgePatch } from '../src/desktop-bridge-migration.js'
-import { desktopPluginOperationMarkerPath, isPluginOperationActive } from '../src/profile-quiet.js'
+import { desktopPluginOperationsDir, isPluginOperationActive } from '../src/profile-quiet.js'
 import { pathToFileURL } from 'node:url'
 
 async function waitFor(predicate: () => boolean | Promise<boolean>, timeoutMs = 1_000): Promise<void> {
@@ -84,11 +84,11 @@ test('安装期间在 profile 上留下操作标记，后处理结束才清除',
     })
     const handle = host.desktopPnpm.runPlugin(['add', 'demo@1.0.0'], root)
     // pnpm 运行期间就必须能被重载逻辑看到，而不是等 pnpm 退出才发现后处理还没做完。
-    assert.equal(existsSync(desktopPluginOperationMarkerPath(root)), true)
     assert.equal(isPluginOperationActive(root), true)
     release()
     await handle.done
-    await waitFor(() => !existsSync(desktopPluginOperationMarkerPath(root)))
+    assert.equal(isPluginOperationActive(root), true, 'pnpm 已退出但异步 bundle 校准尚未完成')
+    await waitFor(() => !isPluginOperationActive(root))
     assert.equal(isPluginOperationActive(root), false)
   } finally {
     await rm(root, { recursive: true, force: true })
@@ -442,6 +442,155 @@ test('市场 pnpm 超时后会结束子进程并返回超时退出码', async ()
   } finally {
     if (previous === undefined) delete process.env.DSH_PNPM_ENTRY
     else process.env.DSH_PNPM_ENTRY = previous
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('并发插件操作各自持有标记，先结束的操作不能清除另一个', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-concurrent-operation-'))
+  const releases: (() => void)[] = []
+  try {
+    const host = createDesktopHostServices({
+      profileName: 'web', profileDir: root,
+      runner: () => ({ ...successfulHandle(), done: new Promise(resolve => {
+        releases.push(() => resolve({ exitCode: 1, signal: null }))
+      }) }),
+    })
+    const first = host.desktopPnpm.run(['add', 'first'])
+    const second = host.desktopPnpm.run(['add', 'second'])
+    assert.equal(isPluginOperationActive(root), true)
+    releases[0]!()
+    await first.done
+    await new Promise(resolve => setTimeout(resolve, 20))
+    assert.equal(isPluginOperationActive(root), true, '第二个操作仍未结束')
+    releases[1]!()
+    await second.done
+    await waitFor(() => !isPluginOperationActive(root))
+    assert.equal(isPluginOperationActive(root), false)
+  } finally {
+    releases.forEach(release => release())
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('执行器同步抛错后清除本次操作标记并保留原异常', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-runner-throw-'))
+  const failure = new Error('同步启动失败')
+  try {
+    const host = createDesktopHostServices({
+      profileName: 'web', profileDir: root,
+      runner: () => {
+        assert.equal(isPluginOperationActive(root), true)
+        throw failure
+      },
+    })
+    assert.throws(() => host.desktopPnpm.run(['add', 'demo']), error => error === failure)
+    assert.equal(isPluginOperationActive(root), false)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('执行器 done 拒绝后清除操作标记且调用方仍收到异常', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-runner-reject-'))
+  const failure = new Error('异步启动失败')
+  const errors: unknown[][] = []
+  t.mock.method(console, 'error', (...args: unknown[]) => { errors.push(args) })
+  try {
+    const host = createDesktopHostServices({
+      profileName: 'web', profileDir: root,
+      runner: () => ({ ...successfulHandle(), done: Promise.reject(failure) }),
+    })
+    await assert.rejects(host.desktopPnpm.run(['add', 'demo']).done, error => error === failure)
+    await waitFor(() => !isPluginOperationActive(root), 100)
+    assert.equal(isPluginOperationActive(root), false)
+    assert.equal(errors.length, 1)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+for (const outcome of ['success', 'failure', 'throw', 'reject'] as const) {
+  test(`官方运行时更新同样持有闸门且清理所有退出路径：${outcome}`, async t => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-official-operation-'))
+    const failure = new Error('官方更新失败')
+    const errors: unknown[][] = []
+    t.mock.method(console, 'error', (...args: unknown[]) => { errors.push(args) })
+    let release!: () => void
+    let reject!: (error: Error) => void
+    const done = new Promise<{ exitCode: number; signal: null }>((resolve, rejectPromise) => {
+      release = () => resolve({ exitCode: outcome === 'failure' ? 1 : 0, signal: null })
+      reject = rejectPromise
+    })
+    // 同步失败场景不消费 done。
+    void done.catch(() => undefined)
+    try {
+      await mkdir(join(root, 'runtime'))
+      const host = createDesktopHostServices({
+        profileName: 'web', profileDir: root, desktopRuntimeDir: join(root, 'runtime'),
+        runner: (_args, cwd) => {
+          assert.equal(cwd, join(root, 'runtime'))
+          assert.equal(isPluginOperationActive(root), true, '官方 pnpm 启动前必须持标记')
+          if (outcome === 'throw') throw failure
+          return { ...successfulHandle(), done }
+        },
+      })
+      const start = () => host.desktopPnpm.run(['add', '@deepseek-ai/dsh'])
+      if (outcome === 'throw') {
+        assert.throws(start, error => error === failure)
+      } else {
+        const handle = start()
+        assert.equal(isPluginOperationActive(root), true)
+        if (outcome === 'reject') {
+          reject(failure)
+          await assert.rejects(handle.done, error => error === failure)
+        } else {
+          release()
+          assert.equal((await handle.done).exitCode, outcome === 'failure' ? 1 : 0)
+        }
+        await waitFor(() => !isPluginOperationActive(root), 100)
+      }
+      assert.equal(isPluginOperationActive(root), false)
+    } finally {
+      release()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+}
+
+test('只读命令运行期间不创建操作标记', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-readonly-operation-'))
+  try {
+    const host = createDesktopHostServices({
+      profileName: 'web', profileDir: root,
+      runner: () => {
+        assert.equal(isPluginOperationActive(root), false)
+        assert.equal(existsSync(desktopPluginOperationsDir(root)), false)
+        return successfulHandle()
+      },
+    })
+    for (const args of [['--version'], ['list']]) await host.desktopPnpm.run(args).done
+    assert.equal(existsSync(desktopPluginOperationsDir(root)), false)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('bundle 校准抛错也清除操作标记且不会发送重载', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-finalize-failure-'))
+  const errors: unknown[][] = []
+  t.mock.method(console, 'error', (...args: unknown[]) => { errors.push(args) })
+  try {
+    await writeFile(join(root, 'package.json'), '{')
+    const host = createDesktopHostServices({
+      profileName: 'web', profileDir: root, runner: successfulHandle,
+      send: () => assert.fail('失败的校准不能重载'),
+    })
+    await host.desktopPnpm.run(['add', 'demo']).done
+    await waitFor(() => errors.length > 0)
+    assert.equal(errors.length, 1)
+    assert.equal(isPluginOperationActive(root), false)
+  } finally {
     await rm(root, { recursive: true, force: true })
   }
 })

@@ -1,5 +1,7 @@
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
+import { writeTextFileAtomicSync } from './atomic-file.js'
 
 /** core 插件管理器在 pnpm 运行期间写这条记录，bundle 校准结束后才删除。 */
 export function pluginRunRecordPath(profileDir: string): string {
@@ -43,37 +45,43 @@ function activePidIn(path: string): number | undefined {
 
 /**
  * profile 上是否有插件安装/更新/卸载仍在进行。
- * 两个信号都按「记录里的进程是否还活着」判断：安装器崩溃留下的陈旧记录只忽略，
- * core 的记录不归桌面端清理，桌面端自己的标记则顺手删掉。
+ * core 记录存在即忙碌：pnpm pid 退出后仍可能在校准，只有 core 能删除记录。
+ * 桌面标记按宿主 pid 判断；读取方保持只读，避免误删写入方刚替换的记录。
  */
 export function isPluginOperationActive(profileDir: string): boolean {
-  if (activePidIn(pluginRunRecordPath(profileDir)) !== undefined) return true
-  const markerPath = desktopPluginOperationMarkerPath(profileDir)
-  if (!existsSync(markerPath)) return false
-  if (activePidIn(markerPath) !== undefined) return true
+  // core 记录的是 pnpm pid，但删除记录之前仍会校准 bundle；pid 退出不代表操作结束。
+  if (existsSync(pluginRunRecordPath(profileDir))) return true
   try {
-    rmSync(markerPath, { force: true })
+    const directory = desktopPluginOperationsDir(profileDir)
+    if (readdirSync(directory).some(file => file.endsWith('.json') && activePidIn(join(directory, file)) !== undefined)) return true
   } catch {
-    // 清理失败不影响判断：下一轮还会重新读取。
+    // 目录尚不存在或不可读时继续检查旧版标记。
   }
-  return false
+  // 旧版共享标记仅兼容读取，不删除：检查后写入方可能已经替换了文件。
+  return activePidIn(desktopPluginOperationMarkerPath(profileDir)) !== undefined
 }
 
-/** 桌面桥接开始一次 profile 变更时写标记；写不进去就退回原有行为，不影响安装本身。 */
-export function markPluginOperation(profileDir: string): void {
+/** 每次操作拥有独立文件，清理令牌只能删除自己。 */
+export function desktopPluginOperationsDir(profileDir: string): string {
+  return join(profileDir, '.desktop-plugin-operations')
+}
+
+/** 写入失败不挡住安装；返回幂等清理函数，调用方必须覆盖全部退出路径。 */
+export function markPluginOperation(profileDir: string): () => void {
+  const directory = desktopPluginOperationsDir(profileDir)
+  const path = join(directory, `${randomUUID()}.json`)
   try {
-    writeFileSync(desktopPluginOperationMarkerPath(profileDir), `${JSON.stringify({ pid: process.pid })}\n`, 'utf8')
+    mkdirSync(directory, { recursive: true })
+    writeTextFileAtomicSync(path, `${JSON.stringify({ pid: process.pid })}\n`)
   } catch {
     // 标记只用于推迟热重载，失败时不能挡住安装。
   }
-}
-
-/** 安装后处理（bundle 校准）结束时清除标记。 */
-export function clearPluginOperationMarker(profileDir: string): void {
-  try {
-    rmSync(desktopPluginOperationMarkerPath(profileDir), { force: true })
-  } catch {
-    // 清除失败时，陈旧标记会因进程已退出而被忽略。
+  return () => {
+    try {
+      rmSync(path, { force: true })
+    } catch {
+      // 清除失败不掩盖原始安装结果。
+    }
   }
 }
 
