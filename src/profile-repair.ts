@@ -9,7 +9,6 @@ import {
   ensureAutoInstallPeersDisabled,
   assertOfficialProfileBundlesAvailable,
   finalizeProfileBundlesAfterInstall,
-  stripOfficialProfileDependencies,
 } from './plugin-seed.js'
 
 export function parseUnresolvedBundleError(message: string): string | undefined {
@@ -52,7 +51,6 @@ export async function repairBrokenProfile(
   options: RepairBrokenProfileOptions = {},
 ): Promise<string[]> {
   if (!existsSync(join(profileDir, 'package.json'))) return []
-  await stripOfficialProfileDependencies(profileDir)
   ensureAutoInstallPeersDisabled(profileDir)
   migrateDesktopBridgeProfile(profileDir)
   if (options.reconcileBundles === false) return []

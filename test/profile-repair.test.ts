@@ -27,6 +27,40 @@ test('可跳过 bundle 对账，避免启动时重复扫描', async () => {
   }
 })
 
+test('启动前修复保留用户安装的官方 bundle、依赖声明和包文件', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-repair-keep-official-'))
+  const packageName = '@deepseek-ai/dsh-subagent-codex'
+  const packageDir = join(root, 'node_modules', ...packageName.split('/'))
+  try {
+    await mkdir(packageDir, { recursive: true })
+    await writeFile(join(packageDir, 'package.json'), JSON.stringify({
+      name: packageName,
+      dsh: { bundle: { patch: 'cordis.patch.yml' } },
+    }), 'utf8')
+    await writeFile(join(packageDir, 'cordis.patch.yml'), '[]\n', 'utf8')
+    const hoistedDependency = join(root, 'node_modules', '@deepseek-ai', 'schemastery', 'package.json')
+    await mkdir(join(root, 'node_modules', '@deepseek-ai', 'schemastery'), { recursive: true })
+    await writeFile(hoistedDependency, JSON.stringify({ name: '@deepseek-ai/schemastery' }), 'utf8')
+    await writeFile(join(root, 'package.json'), JSON.stringify({
+      dependencies: { [packageName]: '0.2.1-rc.2' },
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', packageName] } },
+    }), 'utf8')
+
+    await repairBrokenProfile(root)
+
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>
+      dsh?: { profile?: { bundles?: string[] } }
+    }
+    assert.equal(manifest.dependencies?.[packageName], '0.2.1-rc.2')
+    assert.deepEqual(manifest.dsh?.profile?.bundles, ['@deepseek-ai/dsh-base', packageName])
+    assert.equal(await readFile(join(packageDir, 'package.json'), 'utf8').then(() => true), true)
+    assert.equal(await readFile(hoistedDependency, 'utf8').then(() => true), true)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('自我修复会摘掉清单有、磁盘没有的社区插件', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-repair-'))
   try {

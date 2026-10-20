@@ -294,39 +294,7 @@ export async function applyOfficialRuntimeVersion(options: SeedOptions, version:
   return version
 }
 
-export async function stripOfficialProfileDependencies(profileDir: string): Promise<string[]> {
-  const manifestPath = join(profileDir, 'package.json')
-  if (!existsSync(manifestPath)) return []
-  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
-    dependencies?: Record<string, string>
-    dsh?: { profile?: { bundles?: string[] } }
-  }
-  const removed: string[] = []
-  const nextDependencies = { ...(manifest.dependencies ?? {}) }
-  for (const packageName of Object.keys(nextDependencies)) {
-    if (!isOfficialProfileDependency(packageName)) continue
-    delete nextDependencies[packageName]
-    removed.push(packageName)
-  }
-  const leftoverOfficialDeps = new Set(removed)
-  const nextBundles = [...(manifest.dsh?.profile?.bundles ?? [])].filter((name) => {
-    if (name === SUITE_PACKAGE) return false
-    return !leftoverOfficialDeps.has(name) || (OFFICIAL_PROFILE_BUNDLES as readonly string[]).includes(name)
-  })
-  const officialModules = join(profileDir, 'node_modules', '@deepseek-ai')
-  if (existsSync(officialModules)) {
-    for (const entry of await readdir(officialModules, { withFileTypes: true })) {
-      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
-      await rm(join(officialModules, entry.name), { recursive: true, force: true })
-    }
-    if (!removed.includes('@deepseek-ai')) removed.push('@deepseek-ai')
-  }
-  if (removed.length === 0 && nextBundles.join('\0') === (manifest.dsh?.profile?.bundles ?? []).join('\0')) return []
-  manifest.dependencies = nextDependencies
-  manifest.dsh = { ...manifest.dsh, profile: { ...manifest.dsh?.profile, bundles: nextBundles } }
-  await writeTextFileAtomic(manifestPath, `${JSON.stringify(manifest, undefined, 2)}\n`)
-  return removed
-}
+
 
 export async function applyPendingProfileUpdates(options: SeedOptions): Promise<readonly string[]> {
   const pendingPath = resolvePendingUpdatesPath(options.profileDir)
@@ -403,7 +371,6 @@ export async function seedBundledPlugins(options: SeedOptions): Promise<SeedResu
     const official = await seedOfficialRuntime(options)
     seeded.push(...official)
   }
-  await stripOfficialProfileDependencies(options.profileDir)
   const community = await seedCommunityPlugins(options)
   seeded.push(...community.seeded)
   const extraDirs = options.desktopRuntimeDir === undefined ? [] : [options.desktopRuntimeDir]

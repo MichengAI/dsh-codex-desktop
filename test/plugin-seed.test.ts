@@ -11,7 +11,7 @@ import { parse } from 'yaml'
 import { createServer } from 'node:http'
 
 import { OFFICIAL_DSH_VERSION, OFFICIAL_LAUNCH_PEERS, OFFICIAL_RUNTIME, SUITE_PACKAGE, officialDshVersionOverrides } from '../src/bundled-plugins.js'
-import { prepareBundledPluginStore, buildSeedRemoveArgs, applyPendingProfileUpdates, buildSeedPluginArgs, ensureAutoInstallPeersEnabled, isOfficialRuntimeLaunchable, missingOfficialLaunchPeers, officialRuntimeInstallArgs, planBundledPluginSeed, finalizeProfileBundlesAfterInstall, pruneMissingProfileBundles, reconcileProfileBundles, resolvePnpmStoreDir, seedBundledPlugins, stripOfficialProfileDependencies, writeOfficialRuntimeManifest } from '../src/plugin-seed.js'
+import { prepareBundledPluginStore, buildSeedRemoveArgs, applyPendingProfileUpdates, buildSeedPluginArgs, ensureAutoInstallPeersEnabled, isOfficialRuntimeLaunchable, missingOfficialLaunchPeers, officialRuntimeInstallArgs, planBundledPluginSeed, finalizeProfileBundlesAfterInstall, pruneMissingProfileBundles, reconcileProfileBundles, resolvePnpmStoreDir, seedBundledPlugins, writeOfficialRuntimeManifest } from '../src/plugin-seed.js'
 
 async function createBundledStore(store: string): Promise<void> {
   await mkdir(join(store, 'v11', 'files'), { recursive: true })
@@ -353,81 +353,43 @@ test('会把已有 workspace 的 autoInstallPeers 打开', async () => {
   }
 })
 
-test('会从 Web profile 依赖里清掉官方包', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-strip-'))
+test('冷启动补种保留用户安装的官方 bundle 和包文件', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-seed-keep-official-'))
+  const profile = join(root, 'profile')
+  const packageName = '@deepseek-ai/dsh-subagent-codex'
+  const packageDir = join(profile, 'node_modules', ...packageName.split('/'))
   try {
-    await writeFile(join(root, 'package.json'), JSON.stringify({
-      dependencies: {
-        '@deepseek-ai/dsh': '0.1.0-rc.7',
-        '@michengai/dsh-codex-ui': '0.2.58',
-      },
-      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@michengai/dsh-codex-suite'] } },
+    await mkdir(packageDir, { recursive: true })
+    await writeFile(join(packageDir, 'package.json'), JSON.stringify({
+      name: packageName,
+      dsh: { bundle: { patch: 'cordis.patch.yml' } },
     }), 'utf8')
-    const removed = await stripOfficialProfileDependencies(root)
-    assert.deepEqual(removed, ['@deepseek-ai/dsh'])
-    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as {
+    await writeFile(join(packageDir, 'cordis.patch.yml'), '[]\n', 'utf8')
+    await writeFile(join(profile, 'package.json'), JSON.stringify({
+      dependencies: { [packageName]: '0.2.1-rc.2' },
+      dsh: { profile: { bundles: [packageName] } },
+    }), 'utf8')
+
+    await seedBundledPlugins({
+      nodeExecutable: 'node',
+      profileDir: profile,
+      pluginStoreDir: join(root, 'store'),
+      catalog: [],
+      runner: async () => { throw new Error('空清单不应运行 pnpm') },
+    })
+
+    const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')) as {
       dependencies?: Record<string, string>
       dsh?: { profile?: { bundles?: string[] } }
     }
-    assert.equal(manifest.dependencies?.['@michengai/dsh-codex-ui'], '0.2.58')
-    assert.equal(manifest.dependencies?.['@deepseek-ai/dsh'], undefined)
-    assert.deepEqual(manifest.dsh?.profile?.bundles, ['@deepseek-ai/dsh-base'])
+    assert.equal(manifest.dependencies?.[packageName], '0.2.1-rc.2')
+    assert.deepEqual(manifest.dsh?.profile?.bundles, [packageName])
+    assert.equal(existsSync(join(packageDir, 'package.json')), true)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
 })
 
-test('清官方依赖时保留未写入依赖的官方层，并摘掉串进清单的残留运行时', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-strip-official-layers-'))
-  try {
-    await writeFile(join(root, 'package.json'), JSON.stringify({
-      dependencies: {
-        '@deepseek-ai/dsh': '0.1.0-rc.7',
-        '@michengai/dsh-codex-ui': '1.1.14',
-      },
-      dsh: { profile: { bundles: [
-        '@deepseek-ai/dsh-base',
-        '@deepseek-ai/dsh-web-app',
-        '@deepseek-ai/dsh',
-        '@deepseek-ai/dsh-experimental-future-layer',
-      ] } },
-    }), 'utf8')
-    assert.deepEqual(await stripOfficialProfileDependencies(root), ['@deepseek-ai/dsh'])
-    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as {
-      dependencies?: Record<string, string>
-      dsh?: { profile?: { bundles?: string[] } }
-    }
-    assert.equal(manifest.dependencies?.['@michengai/dsh-codex-ui'], '1.1.14')
-    assert.equal(manifest.dependencies?.['@deepseek-ai/dsh'], undefined)
-    assert.deepEqual(manifest.dsh?.profile?.bundles, [
-      '@deepseek-ai/dsh-base',
-      '@deepseek-ai/dsh-web-app',
-      '@deepseek-ai/dsh-experimental-future-layer',
-    ])
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-})
-
-test('会清掉 Web profile 里的官方 node_modules，避免盖掉运行时', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'dsh-strip-modules-'))
-  try {
-    const official = join(root, 'node_modules', '@deepseek-ai', 'dsh-client-ui-primitives')
-    await mkdir(official, { recursive: true })
-    await writeFile(join(official, 'package.json'), JSON.stringify({ name: '@deepseek-ai/dsh-client-ui-primitives' }), 'utf8')
-    await writeFile(join(root, 'node_modules', '@deepseek-ai', '.keep'), 'keep', 'utf8')
-    await writeFile(join(root, 'package.json'), JSON.stringify({
-      dependencies: { '@michengai/dsh-codex-ui': '0.2.61' },
-      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
-    }), 'utf8')
-    const removed = await stripOfficialProfileDependencies(root)
-    assert.equal(removed.includes('@deepseek-ai'), true)
-    assert.equal(existsSync(official), false)
-    assert.equal(existsSync(join(root, 'node_modules', '@deepseek-ai', '.keep')), true)
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-})
 
 test('没有待更新清单时不扫描已装插件版本', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-pending-skip-'))
