@@ -4,6 +4,7 @@ import { PassThrough } from 'node:stream'
 import { APPLY_PLUGIN_UPDATES_IPC, OFFICIAL_DSH_VERSION, isDeepSeekOfficialPackage, isOfficialDshPackage } from './bundled-plugins.js'
 import { desktopBridgeClientBundle } from './desktop-bridge-client-source.js'
 import { finalizeProfileBundlesAfterInstall, officialRuntimeInstallArgs, writeOfficialRuntimeManifest } from './plugin-seed.js'
+import { clearPluginOperationMarker, markPluginOperation } from './profile-quiet.js'
 import { terminateProcessTree } from './process-control.js'
 
 export const DESKTOP_BRIDGE_PACKAGE = 'dsh-desktop-bridge'
@@ -144,17 +145,26 @@ export function createDesktopHostServices(options: DesktopHostOptions) {
     }
     const packageNames = pluginCommandPackageNames(args)
     const beforeProfileState = packageNames.length === 0 ? undefined : profilePackageState(options.profileDir, packageNames)
+    // 从 pnpm 启动到 bundle 校准结束都算「操作在飞」：桌面端据此推迟热重载，
+    // 避免校准期间重启导致插件缺失或进入恢复页。只读查询（--version 等）不写标记，
+    // 否则市场的状态轮询会把静默窗口不断打断。
+    const marksProfile = pluginCommandAction(args) !== 'other'
+    if (marksProfile) markPluginOperation(options.profileDir)
     const handle = (options.runner ?? runBundledPnpm)(args, options.profileDir, signal)
     void handle.done.then(async (outcome) => {
-      if (outcome.exitCode !== 0 || pluginCommandAction(args) === 'other') return
-      const isInstalled = options.isInstalled ?? ((packageName) => existsSync(join(options.profileDir, 'node_modules', ...packageName.split('/'), 'package.json')))
-      await finalizeProfileBundlesAfterInstall(options.profileDir, [], packageNames.length === 0 ? undefined : packageNames)
-      const afterProfileState = packageNames.length === 0 ? undefined : profilePackageState(options.profileDir, packageNames)
-      if (!shouldRecycleAfterPluginResult(args, isInstalled, beforeProfileState, afterProfileState)) return
-      const delay = options.recycleDelayMs ?? 400
-      setTimeout(() => {
-        options.send?.(APPLY_PLUGIN_UPDATES_IPC)
-      }, delay).unref?.()
+      try {
+        if (outcome.exitCode !== 0 || pluginCommandAction(args) === 'other') return
+        const isInstalled = options.isInstalled ?? ((packageName) => existsSync(join(options.profileDir, 'node_modules', ...packageName.split('/'), 'package.json')))
+        await finalizeProfileBundlesAfterInstall(options.profileDir, [], packageNames.length === 0 ? undefined : packageNames)
+        const afterProfileState = packageNames.length === 0 ? undefined : profilePackageState(options.profileDir, packageNames)
+        if (!shouldRecycleAfterPluginResult(args, isInstalled, beforeProfileState, afterProfileState)) return
+        const delay = options.recycleDelayMs ?? 400
+        setTimeout(() => {
+          options.send?.(APPLY_PLUGIN_UPDATES_IPC)
+        }, delay).unref?.()
+      } finally {
+        if (marksProfile) clearPluginOperationMarker(options.profileDir)
+      }
     }).catch(error => { console.error('插件安装后处理失败。', error) })
     return handle
   }
@@ -260,6 +270,7 @@ export const DESKTOP_BRIDGE_FILES = [
   'plugin-seed.js',
   'plugin-toolchain.js',
   'profile-updates.js',
+  'profile-quiet.js',
   'recovery-mode.js',
   'process-control.js',
   'readiness.js',

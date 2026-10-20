@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { existsSync } from 'node:fs'
 import { PassThrough } from 'node:stream'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -8,6 +9,7 @@ import test from 'node:test'
 import { APPLY_PLUGIN_UPDATES_IPC, OFFICIAL_DSH_VERSION } from '../src/bundled-plugins.js'
 import { createDesktopHostServices, DESKTOP_BRIDGE_FILES, isDesktopBridgeCurrent, prepareDesktopBridge, officialPluginUpdateVersion, runBundledPnpm, shouldRecycleAfterPluginArgs, shouldRecycleAfterPluginResult } from '../src/desktop-host.js'
 import { removeDesktopBridgePatch } from '../src/desktop-bridge-migration.js'
+import { desktopPluginOperationMarkerPath, isPluginOperationActive } from '../src/profile-quiet.js'
 import { pathToFileURL } from 'node:url'
 
 async function waitFor(predicate: () => boolean | Promise<boolean>, timeoutMs = 1_000): Promise<void> {
@@ -55,6 +57,42 @@ test('desktopPnpm 安装成功后通知桌面端热更新', async () => {
   await host.desktopPnpm.runPlugin(['add', 'demo@1.0.0'], 'D:\\profile\\web').done
   await waitFor(() => sent.length === 1)
   assert.deepEqual(sent, [APPLY_PLUGIN_UPDATES_IPC])
+})
+
+test('安装期间在 profile 上留下操作标记，后处理结束才清除', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-plugin-marker-'))
+  try {
+    await writeFile(join(root, 'package.json'), JSON.stringify({ dependencies: {}, dsh: { profile: { bundles: [] } } }), 'utf8')
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const host = createDesktopHostServices({
+      profileName: 'web',
+      profileDir: root,
+      recycleDelayMs: 0,
+      send: () => undefined,
+      isInstalled: () => true,
+      runner: () => {
+        const stdout = new PassThrough()
+        const stderr = new PassThrough()
+        return {
+          stdout,
+          stderr,
+          done: gate.then(() => { stdout.end(); stderr.end(); return { exitCode: 0, signal: null } }),
+          cancel: () => undefined,
+        }
+      },
+    })
+    const handle = host.desktopPnpm.runPlugin(['add', 'demo@1.0.0'], root)
+    // pnpm 运行期间就必须能被重载逻辑看到，而不是等 pnpm 退出才发现后处理还没做完。
+    assert.equal(existsSync(desktopPluginOperationMarkerPath(root)), true)
+    assert.equal(isPluginOperationActive(root), true)
+    release()
+    await handle.done
+    await waitFor(() => !existsSync(desktopPluginOperationMarkerPath(root)))
+    assert.equal(isPluginOperationActive(root), false)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })
 
 test('pnpm 成功但插件版本未变化时不应重载 DSH', async () => {

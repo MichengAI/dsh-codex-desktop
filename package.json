@@ -168,6 +168,7 @@
           "plugin-seed.js",
           "plugin-toolchain.js",
           "profile-updates.js",
+          "profile-quiet.js",
           "recovery-mode.js",
           "process-control.js",
           "readiness.js",

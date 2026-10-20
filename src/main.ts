@@ -36,7 +36,8 @@ import { isChineseLocale, localizedShellActions, localizedShellMenus, normalizeS
 import { SHELL_BAR_HEIGHT, SHELL_IPC, type DshNavigationState, type DshShellActionId, type ShellBootstrap, type ShellMenuPopupRequest, type ShellState } from './shell-contract.js'
 import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayCloseDesktopSettings, mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshBoot, mayReportDshLocale, mayReportDshNotification, mayReportDshState, mayReportDshTheme, mayReportDshSettingsVisibility, type ShellRendererKind } from './shell-ipc-policy.js'
 import { DESKTOP_THEME_PALETTES, normalizeDesktopThemeSnapshot, supportsNativeBackdrop, type DesktopColorScheme, type DesktopThemePreference } from './desktop-theme.js'
-import { DSH_MARKET_STATUS_PATH, waitForDshMarketBatchToSettle } from './dshmarket-batch.js'
+import { DSH_MARKET_STATUS_PATH, isDshMarketOperationBusy } from './dshmarket-batch.js'
+import { isPluginOperationActive, waitForProfileQuiet } from './profile-quiet.js'
 import { DEFAULT_NOTIFICATION_PREFERENCES, buildWindowsReplyToastXml, loadNotificationPreferences, parseDesktopNotificationBridgeEvent, parseWindowsNotificationReplyActivation, saveNotificationPreferences, shouldShowDesktopNotification, windowsNotificationReplyArguments, type DesktopNotificationEvent, type DesktopNotificationPreferences } from './desktop-notifications.js'
 import { watchProfileActivation } from './profile-watch.js'
 import updater from 'electron-updater'
@@ -699,13 +700,15 @@ function handleDshIpc(message: unknown): void {
 
 const DSH_MARKET_BATCH_POLL_MS = 750
 const DSH_MARKET_BATCH_MAX_WAIT_MS = 10 * 60 * 1_000
+/** 全部信号静默后还要连续跨过的窗口数：安装后处理常紧随 pnpm 退出。 */
+const DSH_MARKET_BATCH_QUIET_WINDOWS = 2
 
 function scheduleProfileActivationRecycle(): void {
   if (isQuitting || isRecycling) return
   profileActivationRecyclePending = true
   profileActivationRecycleGeneration += 1
   if (profileActivationRecycleTask !== undefined) return
-  const task = recycleAfterDshMarketBatch()
+  const task = recycleAfterPluginOperationsSettle()
   profileActivationRecycleTask = task
   runMainTask(task.finally(() => { profileActivationRecycleTask = undefined }))
 }
@@ -724,16 +727,23 @@ async function dshMarketOperationStatus(): Promise<unknown> {
   }
 }
 
-async function recycleAfterDshMarketBatch(): Promise<void> {
+async function recycleAfterPluginOperationsSettle(): Promise<void> {
   while (profileActivationRecyclePending && !isQuitting && !isRecycling) {
     profileActivationRecyclePending = false
     const generation = profileActivationRecycleGeneration
-    const settled = await waitForDshMarketBatchToSettle(
-      dshMarketOperationStatus,
+    const settled = await waitForProfileQuiet(
+      {
+        marketBusy: async () => isDshMarketOperationBusy(await dshMarketOperationStatus()),
+        pluginOperationActive: () => lastSeedOptions !== undefined && isPluginOperationActive(lastSeedOptions.profileDir),
+      },
       () => new Promise(resolve => setTimeout(resolve, DSH_MARKET_BATCH_POLL_MS)),
-      { maxWaitMs: DSH_MARKET_BATCH_MAX_WAIT_MS, pollIntervalMs: DSH_MARKET_BATCH_POLL_MS },
+      {
+        maxWaitMs: DSH_MARKET_BATCH_MAX_WAIT_MS,
+        pollIntervalMs: DSH_MARKET_BATCH_POLL_MS,
+        quietWindows: DSH_MARKET_BATCH_QUIET_WINDOWS,
+      },
     )
-    if (!settled) console.warn(`dshmarket 批量更新等待超时（${DSH_MARKET_BATCH_MAX_WAIT_MS}ms），继续重载插件。`)
+    if (!settled) console.warn(`插件操作静默等待超时（${DSH_MARKET_BATCH_MAX_WAIT_MS}ms），继续重载插件。`)
     if (isQuitting || isRecycling) return
     // Another profile change or update-all IPC arrived during the quiet
     // check. Start the check over rather than restarting a just-continued
