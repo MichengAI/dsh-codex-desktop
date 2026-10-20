@@ -150,6 +150,8 @@ jobs:
 
           pnpm run prepare-runtime
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm run probe:gate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm exec electron-builder --publish never @buildArguments
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

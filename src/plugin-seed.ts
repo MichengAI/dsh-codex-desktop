@@ -294,8 +294,6 @@ export async function applyOfficialRuntimeVersion(options: SeedOptions, version:
   return version
 }
 
-
-
 export async function applyPendingProfileUpdates(options: SeedOptions): Promise<readonly string[]> {
   const pendingPath = resolvePendingUpdatesPath(options.profileDir)
   let pending: ProfilePackageUpdate[] = []

@@ -38,6 +38,7 @@ import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayCloseDesk
 import { DESKTOP_THEME_PALETTES, normalizeDesktopThemeSnapshot, supportsNativeBackdrop, type DesktopColorScheme, type DesktopThemePreference } from './desktop-theme.js'
 import { DSH_MARKET_STATUS_PATH, isDshMarketOperationBusy } from './dshmarket-batch.js'
 import { isPluginOperationActive, waitForProfileQuiet } from './profile-quiet.js'
+import { waitForPluginReloadReady } from './profile-reload.js'
 import { DEFAULT_NOTIFICATION_PREFERENCES, buildWindowsReplyToastXml, loadNotificationPreferences, parseDesktopNotificationBridgeEvent, parseWindowsNotificationReplyActivation, saveNotificationPreferences, shouldShowDesktopNotification, windowsNotificationReplyArguments, type DesktopNotificationEvent, type DesktopNotificationPreferences } from './desktop-notifications.js'
 import { watchProfileActivation } from './profile-watch.js'
 import updater from 'electron-updater'
@@ -698,10 +699,10 @@ function handleDshIpc(message: unknown): void {
   scheduleProfileActivationRecycle()
 }
 
-const DSH_MARKET_BATCH_POLL_MS = 750
-const DSH_MARKET_BATCH_MAX_WAIT_MS = 10 * 60 * 1_000
-/** 全部信号静默后还要连续跨过的窗口数：安装后处理常紧随 pnpm 退出。 */
-const DSH_MARKET_BATCH_QUIET_WINDOWS = 2
+const PROFILE_QUIET_POLL_MS = 750
+const PROFILE_QUIET_MAX_WAIT_MS = 10 * 60 * 1_000
+/** 两次静默采样之间保留一个轮询间隔，覆盖紧随 pnpm 退出的后处理。 */
+const PROFILE_QUIET_SAMPLES = 2
 
 function scheduleProfileActivationRecycle(): void {
   if (isQuitting || isRecycling) return
@@ -728,28 +729,38 @@ async function dshMarketOperationStatus(): Promise<unknown> {
 }
 
 async function recycleAfterPluginOperationsSettle(): Promise<void> {
+  const reportedRecords = new Set<string>()
   while (profileActivationRecyclePending && !isQuitting && !isRecycling) {
     profileActivationRecyclePending = false
     const generation = profileActivationRecycleGeneration
-    const settled = await waitForProfileQuiet(
-      {
-        marketBusy: async () => isDshMarketOperationBusy(await dshMarketOperationStatus()),
-        pluginOperationActive: () => lastSeedOptions !== undefined && isPluginOperationActive(lastSeedOptions.profileDir),
+    const settled = await waitForPluginReloadReady({
+      waitUntilQuiet: () => waitForProfileQuiet(
+        {
+          marketBusy: async () => isDshMarketOperationBusy(await dshMarketOperationStatus()),
+          pluginOperationActive: () => lastSeedOptions !== undefined && isPluginOperationActive(lastSeedOptions.profileDir, {
+            onDiagnostic: ({ reason, path }) => {
+              const key = `${reason}:${path}`
+              if (reportedRecords.has(key)) return
+              reportedRecords.add(key)
+              console.warn(reason === 'orphan-run'
+                ? '已忽略没有活动所属进程或子进程的插件操作记录，文件未删除：'
+                : '插件写锁内容持续损坏，已忽略此锁记录，仍检查子进程且不删除文件：', path)
+            },
+          }),
+        },
+        () => new Promise(resolve => setTimeout(resolve, PROFILE_QUIET_POLL_MS)),
+        {
+          maxWaitMs: PROFILE_QUIET_MAX_WAIT_MS,
+          pollIntervalMs: PROFILE_QUIET_POLL_MS,
+          quietWindows: PROFILE_QUIET_SAMPLES,
+        },
+      ),
+      shouldStop: () => isQuitting || isRecycling,
+      onTimeout: () => {
+        console.warn(`插件操作静默等待超时（${PROFILE_QUIET_MAX_WAIT_MS}ms），保留待重载请求，等待安装与后处理结束。`)
       },
-      () => new Promise(resolve => setTimeout(resolve, DSH_MARKET_BATCH_POLL_MS)),
-      {
-        maxWaitMs: DSH_MARKET_BATCH_MAX_WAIT_MS,
-        pollIntervalMs: DSH_MARKET_BATCH_POLL_MS,
-        quietWindows: DSH_MARKET_BATCH_QUIET_WINDOWS,
-      },
-    )
-    if (!settled) {
-      console.warn(`插件操作静默等待超时（${DSH_MARKET_BATCH_MAX_WAIT_MS}ms），保留待重载请求，等待安装与后处理结束。`)
-      // 超时不是安装已结束的证据；保留请求，下轮重新检查，不能杀掉仍在写文件的进程。
-      profileActivationRecyclePending = true
-      continue
-    }
-    if (isQuitting || isRecycling) return
+    })
+    if (!settled) return
     // Another profile change or update-all IPC arrived during the quiet
     // check. Start the check over rather than restarting a just-continued
     // batch from its first completion boundary.

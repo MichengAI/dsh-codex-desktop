@@ -194,6 +194,8 @@ DSH Codex Desktop 将 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 
 ## 开发
 
+交接文档：[技术架构基线摘要](docs/00-交接入口/05-技术架构基线.md) · [桌面启动器架构基线](docs/03-技术架构/00-桌面启动器架构基线.md)。
+
 Windows 打包任务在上传制品前执行 `pnpm smoke:upgrade <旧版 exe> <新版 exe>`。这项回归固定使用 Desktop 1.0.51（归档插件 0.1.34）和当前构建的 Windows x64 可执行文件，两者均须保留完整 resources 目录。脚本在隔离 Profile 中依次离线启动两个版本，检查插件版本、原仓库与用户配置保留情况。因为需要两份应用产物，它不属于默认 `pnpm test`。
 
 ### 内置 Code Review 与 PUA

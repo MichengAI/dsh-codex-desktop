@@ -13,8 +13,14 @@ coverage/
 artifacts/
 output/
 
-# 项目文档仅在本地维护，不纳入 Git 仓库。
-docs/
+# 文档默认仅在本地维护；只交付两份架构基线，不公开其他归档。
+/docs/*
+!/docs/00-交接入口/
+/docs/00-交接入口/*
+!/docs/00-交接入口/05-技术架构基线.md
+!/docs/03-技术架构/
+/docs/03-技术架构/*
+!/docs/03-技术架构/00-桌面启动器架构基线.md
 
 runtime-dsh/
 runtime-dsh.tgz

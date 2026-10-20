@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { writeTextFileAtomicSync } from './atomic-file.js'
@@ -18,7 +18,7 @@ export function parsePluginOperationPid(source: string): number | undefined {
   try {
     const value = JSON.parse(source) as { pid?: unknown }
     const pid = value.pid
-    return typeof pid === 'number' && Number.isSafeInteger(pid) && pid > 0 ? pid : undefined
+    return typeof pid === 'number' && Number.isSafeInteger(pid) && pid > 0 && pid <= 2147483647 ? pid : undefined
   } catch {
     return undefined
   }
@@ -43,14 +43,74 @@ function activePidIn(path: string): number | undefined {
   }
 }
 
+export interface PluginOperationProbeOptions {
+  readonly platform?: NodeJS.Platform
+  readonly kill?: (pid: number, signal: 0) => unknown
+  readonly now?: () => number
+  /** 被忽略的 core 记录；调用方可按 reason + path 去重记录告警。不会删除文件。 */
+  readonly onDiagnostic?: (diagnostic: { reason: 'orphan-run' | 'malformed-lock', path: string }) => void
+}
+
+// 只给无法辨认 owner 的锁短暂稳定宽限；绝不用文件年龄判断活 owner 已死。
+const malformedLocks = new Map<string, { fingerprint: string, since: number }>()
+const MALFORMED_LOCK_GRACE_MS = 2_000
+
+/** core 的 writer lock 覆盖 pnpm 退出后的校准；run 还保护失去 owner 的子进程。 */
+function corePluginOperationActive(profileDir: string, options: PluginOperationProbeOptions): boolean {
+  const alive = (pid: number): boolean => {
+    try {
+      ;(options.kill ?? process.kill)(pid, 0)
+      return true
+    } catch (error) {
+      return (error as NodeJS.ErrnoException).code !== 'ESRCH'
+    }
+  }
+  const lockPath = join(profileDir, 'package.json.lock')
+  try {
+    const record = readFileSync(lockPath, 'utf8')
+    const pid = /^\d+\n$/.test(record) ? Number(record.trim()) : 0
+    if (Number.isSafeInteger(pid) && pid > 0 && pid <= 2147483647) {
+      malformedLocks.delete(lockPath)
+      if (alive(pid)) return true
+    } else {
+      const stat = statSync(lockPath)
+      const fingerprint = JSON.stringify([record, stat.dev, stat.ino, stat.size, stat.mtimeMs, stat.ctimeMs])
+      const now = (options.now ?? Date.now)()
+      const previous = malformedLocks.get(lockPath)
+      if (previous?.fingerprint !== fingerprint) {
+        // 有界缓存只影响宽限起点，淘汰会更保守而非提前放行。
+        if (malformedLocks.size >= 256) malformedLocks.delete(malformedLocks.keys().next().value!)
+        malformedLocks.set(lockPath, { fingerprint, since: now })
+        return true
+      }
+      if (now - previous.since < MALFORMED_LOCK_GRACE_MS) return true
+      options.onDiagnostic?.({ reason: 'malformed-lock', path: lockPath })
+    }
+  } catch (error) {
+    malformedLocks.delete(lockPath)
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') return true
+  }
+  try {
+    const record = readFileSync(pluginRunRecordPath(profileDir), 'utf8')
+    const pid = parsePluginOperationPid(record)
+    if (pid !== undefined) {
+      const grouped = (JSON.parse(record) as { grouped?: unknown }).grouped === true
+      if (alive((options.platform ?? process.platform) !== 'win32' && grouped ? -pid : pid)) return true
+    }
+    options.onDiagnostic?.({ reason: 'orphan-run', path: pluginRunRecordPath(profileDir) })
+    return false
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code !== 'ENOENT'
+  }
+}
+
 /**
  * profile 上是否有插件安装/更新/卸载仍在进行。
- * core 记录存在即忙碌：pnpm pid 退出后仍可能在校准，只有 core 能删除记录。
+ * core 同时检查完整生命周期锁和 pnpm；孤儿记录只忽略，绝不删除。
  * 桌面标记按宿主 pid 判断；读取方保持只读，避免误删写入方刚替换的记录。
  */
-export function isPluginOperationActive(profileDir: string): boolean {
-  // core 记录的是 pnpm pid，但删除记录之前仍会校准 bundle；pid 退出不代表操作结束。
-  if (existsSync(pluginRunRecordPath(profileDir))) return true
+export function isPluginOperationActive(profileDir: string, options: PluginOperationProbeOptions = {}): boolean {
+  if (corePluginOperationActive(profileDir, options)) return true
   try {
     const directory = desktopPluginOperationsDir(profileDir)
     if (readdirSync(directory).some(file => file.endsWith('.json') && activePidIn(join(directory, file)) !== undefined)) return true
@@ -95,15 +155,16 @@ export interface ProfileQuietSignals {
 export interface ProfileQuietOptions {
   readonly maxWaitMs: number
   readonly pollIntervalMs: number
-  /** 需要连续多少次全部静默才算真正结束，默认 2：安装后处理常紧随 pnpm 退出。 */
+  /** 需要连续多少次全部静默采样才算真正结束，默认 2；两次采样间隔一次轮询。 */
   readonly quietWindows?: number
 }
 
 /**
  * 等所有插件操作真正结束再允许重启。市场忙碌、profile 上的安装记录、
- * 以及安装后处理都必须静默，并连续跨过 `quietWindows` 个安静窗口。
- * 等待有上限：信号卡住时只告警，不把重启永久挂住。
- * @returns 是否在等待上限内达到静默。
+ * 以及安装后处理都必须静默，并连续取得 `quietWindows` 次安静采样。
+ * maxWaitMs 仅限制本轮检查；超时返回 false，不证明操作已结束。
+ * 调用方应保留待重载请求并继续下一轮等待，不得因本轮超时强制重启。
+ * @returns 是否在本轮等待上限内达到静默。
  */
 export async function waitForProfileQuiet(
   signals: ProfileQuietSignals,

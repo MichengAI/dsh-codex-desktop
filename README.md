@@ -194,6 +194,8 @@ The desktop app also integrates [DSH Better Sidebar](https://github.com/omdsh-de
 
 ## Development
 
+交接文档：[技术架构基线摘要](docs/00-交接入口/05-技术架构基线.md) · [桌面启动器架构基线](docs/03-技术架构/00-桌面启动器架构基线.md)。
+
 The Windows packaging job also runs `pnpm smoke:upgrade <old-exe> <new-exe>` before uploading artifacts. This regression check requires the Windows x64 executable from Desktop 1.0.51 (archive plugin 0.1.34) and the current build executable, each with its complete resources directory. It launches both versions offline in an isolated profile and checks plugin versions, the original store, and preserved user configuration. It is separate from `pnpm test` because it requires both packaged applications.
 
 ### Bundled Code Review and PUA

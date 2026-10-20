@@ -44,7 +44,7 @@ export interface RepairBrokenProfileOptions {
   reconcileBundles?: boolean
 }
 
-/** 启动前把已知损坏修掉：官方包串进 profile、空 bundle、坏的 bridge patch。 */
+/** 启动前处理空 bundle 与旧 bridge patch；不按官方 scope 清理用户包。 */
 export async function repairBrokenProfile(
   profileDir: string,
   extraDirs: readonly string[] = [],
