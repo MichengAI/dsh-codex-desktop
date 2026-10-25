@@ -42,7 +42,7 @@ test('启动前修复保留用户安装的官方 bundle、依赖声明和包文�
     await mkdir(join(root, 'node_modules', '@deepseek-ai', 'schemastery'), { recursive: true })
     await writeFile(hoistedDependency, JSON.stringify({ name: '@deepseek-ai/schemastery' }), 'utf8')
     await writeFile(join(root, 'package.json'), JSON.stringify({
-      dependencies: { [packageName]: '0.2.1-rc.2' },
+      dependencies: { [packageName]: '0.2.1-rc.3' },
       dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', packageName] } },
     }), 'utf8')
 
@@ -52,7 +52,7 @@ test('启动前修复保留用户安装的官方 bundle、依赖声明和包文�
       dependencies?: Record<string, string>
       dsh?: { profile?: { bundles?: string[] } }
     }
-    assert.equal(manifest.dependencies?.[packageName], '0.2.1-rc.2')
+    assert.equal(manifest.dependencies?.[packageName], '0.2.1-rc.3')
     assert.deepEqual(manifest.dsh?.profile?.bundles, ['@deepseek-ai/dsh-base', packageName])
     assert.equal(await readFile(join(packageDir, 'package.json'), 'utf8').then(() => true), true)
     assert.equal(await readFile(hoistedDependency, 'utf8').then(() => true), true)

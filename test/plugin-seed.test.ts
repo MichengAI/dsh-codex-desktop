@@ -366,7 +366,7 @@ test('冷启动补种保留用户安装的官方 bundle 和包文件', async () 
     }), 'utf8')
     await writeFile(join(packageDir, 'cordis.patch.yml'), '[]\n', 'utf8')
     await writeFile(join(profile, 'package.json'), JSON.stringify({
-      dependencies: { [packageName]: '0.2.1-rc.2' },
+      dependencies: { [packageName]: '0.2.1-rc.3' },
       dsh: { profile: { bundles: [packageName] } },
     }), 'utf8')
 
@@ -382,7 +382,7 @@ test('冷启动补种保留用户安装的官方 bundle 和包文件', async () 
       dependencies?: Record<string, string>
       dsh?: { profile?: { bundles?: string[] } }
     }
-    assert.equal(manifest.dependencies?.[packageName], '0.2.1-rc.2')
+    assert.equal(manifest.dependencies?.[packageName], '0.2.1-rc.3')
     assert.deepEqual(manifest.dsh?.profile?.bundles, [packageName])
     assert.equal(existsSync(join(packageDir, 'package.json')), true)
   } finally {

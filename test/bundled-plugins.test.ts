@@ -52,17 +52,17 @@ test('每个内置插件都钉死精确版本', () => {
   assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.66.44')
   assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dsh-context')?.version, '0.73.3')
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
-    '@michengai/dsh-codex-ui': '1.1.45',
-    '@michengai/dsh-im-connect': '1.0.10',
-    '@michengai/dsh-automation': '1.0.5',
-    '@michengai/dsh-skills-manager': '1.2.8',
-    '@michengai/dsh-archive-manager': '1.1.6',
-    '@michengai/dsh-agency-agents': '1.2.8',
-    '@michengai/dsh-codex-pet': '1.0.2',
-    '@michengai/dsh-btw': '1.0.0',
-    '@michengai/dsh-simplify': '1.0.1',
-    '@michengai/dsh-code-review': '1.0.1',
-    '@michengai/dsh-pua': '1.0.1',
+    '@michengai/dsh-codex-ui': '1.1.49',
+    '@michengai/dsh-im-connect': '1.0.17',
+    '@michengai/dsh-automation': '1.0.10',
+    '@michengai/dsh-skills-manager': '1.2.18',
+    '@michengai/dsh-archive-manager': '1.1.12',
+    '@michengai/dsh-agency-agents': '1.2.13',
+    '@michengai/dsh-codex-pet': '1.0.6',
+    '@michengai/dsh-btw': '1.0.8',
+    '@michengai/dsh-simplify': '1.0.4',
+    '@michengai/dsh-code-review': '1.0.3',
+    '@michengai/dsh-pua': '1.0.3',
     'dsh-better-sidebar': '0.28.0',
     dshmarket: '1.66.44',
     'dsh-context': '0.73.3',
@@ -72,7 +72,7 @@ test('每个内置插件都钉死精确版本', () => {
 test('官方 DSH 家族锁在同一个精确版本', () => {
   assert.equal(OFFICIAL_RUNTIME.packageName, '@deepseek-ai/dsh')
   assert.equal(OFFICIAL_RUNTIME.version, OFFICIAL_DSH_VERSION)
-  assert.equal(OFFICIAL_DSH_VERSION, '0.2.1-rc.2')
+  assert.equal(OFFICIAL_DSH_VERSION, '0.2.1-rc.3')
   assert.equal(seededPackageNames()[0], '@deepseek-ai/dsh')
   assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.packageName, '@deepseek-ai/cordis-plugin-group')
   assert.equal(OFFICIAL_LAUNCH_PEERS[0]?.version, '1.0.5')

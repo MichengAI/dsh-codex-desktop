@@ -4,6 +4,13 @@
 
 The five most recent published versions are listed below.
 
+## 1.0.89 — 2026-10-25
+
+**Host and bundled plugins**
+
+- The bundled DSH runtime moves from 0.2.1-rc.2 to 0.2.1-rc.3, together with group, scope, timeout and the required launch dependencies.
+- Bundled plugins are upgraded to their current latest versions: Codex UI 1.1.49, IM Connect 1.0.17, Automation 1.0.10, Skills Manager 1.2.18, Archive Manager 1.1.12, Agency Agents 1.2.13, Codex Pet 1.0.6, BTW 1.0.8, Simplify 1.0.4, Code Review 1.0.3, and PUA 1.0.3. Better Sidebar 0.28.0, dshmarket 1.66.44, and Context 0.73.3 remain unchanged.
+
 ## 1.0.88 — 2026-10-21
 
 **Fixes**
