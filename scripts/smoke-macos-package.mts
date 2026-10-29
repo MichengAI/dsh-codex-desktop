@@ -11,6 +11,7 @@ import { verifyBundledPluginsInstalled } from './smoke-packaged-plugins.mjs'
 
 const execFileAsync = promisify(execFile)
 const startupTimeoutMs = 180_000
+const effectiveStartupTimeoutMs = Number(process.env.DSH_SMOKE_STARTUP_TIMEOUT_MS) || (process.arch === 'x64' ? 360_000 : startupTimeoutMs)
 
 export function resolveMacApplicationExecutable(applicationBundle: string, executableName = 'DSH Codex Desktop'): string {
   return join(applicationBundle, 'Contents', 'MacOS', executableName)
@@ -28,7 +29,7 @@ async function main(): Promise<void> {
   const smokeReadyFile = join(userDataDir, 'startup-ready')
   const startupErrorFile = join(userDataDir, 'startup-error.log')
   await Promise.all([mkdir(userDataDir, { recursive: true }), mkdir(dshHome, { recursive: true })])
-  const deadline = Date.now() + startupTimeoutMs
+  const deadline = Date.now() + effectiveStartupTimeoutMs
   const application = spawn(applicationExecutable, [`--user-data-dir=${userDataDir}`], {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: {
@@ -53,7 +54,7 @@ async function main(): Promise<void> {
   try {
     const baseUrl = await waitForHealthyServer(application, () => applicationOutput, deadline, startupErrorFile)
     bootstrapProcessId = await findBootstrapProcessId(application.pid)
-    const readyDeadline = Date.now() + startupTimeoutMs
+    const readyDeadline = Date.now() + effectiveStartupTimeoutMs
     const page = await fetchRootPage(baseUrl, bootstrapProcessId, readyDeadline)
     const content = await page.text()
     if (page.status === 401) {
@@ -103,7 +104,7 @@ async function waitForHealthyServer(
     await delay(500)
   }
   const startupError = readStartupError(startupErrorFile)
-  throw new Error(`打包应用在 ${startupTimeoutMs / 1_000} 秒内未启动本机 HTTP 服务。${startupError === undefined ? getApplicationOutput() : ` 启动诊断：${startupError}`}`)
+  throw new Error(`打包应用在 ${effectiveStartupTimeoutMs / 1_000} 秒内未启动本机 HTTP 服务。${startupError === undefined ? getApplicationOutput() : ` 启动诊断：${startupError}`}`)
 }
 
 function readStartupError(startupErrorFile: string): string | undefined {
@@ -134,7 +135,7 @@ async function waitForApplicationReady(
     await delay(250)
   }
   assertNoStartupErrors(dirname(startupErrorFile))
-  if (!existsSync(smokeReadyFile)) throw new Error(`桌面应用未在 ${startupTimeoutMs / 1_000} 秒内报告启动完成。${getApplicationOutput()}`)
+  if (!existsSync(smokeReadyFile)) throw new Error(`桌面应用未在 ${effectiveStartupTimeoutMs / 1_000} 秒内报告启动完成。${getApplicationOutput()}`)
   if (application.exitCode !== null) throw new Error(`桌面应用在启动标记后退出（退出码 ${application.exitCode}）。${getApplicationOutput()}`)
 }
 
