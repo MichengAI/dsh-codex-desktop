@@ -8,7 +8,7 @@ export interface BundledPlugin {
 }
 
 /** 官方 DSH 家族统一锁死的版本。打包和在线升级都按这一个号对齐。 */
-export const OFFICIAL_DSH_VERSION = '0.2.1-rc.3'
+export const OFFICIAL_DSH_VERSION = '0.2.2-alpha.2'
 export const APPLY_PLUGIN_UPDATES_IPC = 'apply-plugin-updates'
 
 /** 官方 DSH 运行时。从 npm 安装，不依赖本地 deepseek-harness 源码。 */
@@ -17,28 +17,28 @@ export const OFFICIAL_RUNTIME: BundledPlugin = {
   version: OFFICIAL_DSH_VERSION,
 }
 
-/** 官方运行时启动必需、但 DSH 只声明为 peer 的包。auto-install-peers=false 时不会自动装上。0.2.1-rc.3 的启动树仍 peer scope 与 timeout，不再 peer dsh-invariants。 */
+/** 官方运行时启动必需、但 DSH 只声明为 peer 的包。auto-install-peers=false 时不会自动装上。0.2.2-alpha.2 的启动树仍 peer scope 与 timeout，不再 peer dsh-invariants。 */
 export const OFFICIAL_LAUNCH_PEERS: readonly BundledPlugin[] = [
-  { packageName: '@deepseek-ai/cordis-plugin-group', version: '1.0.5' },
+  { packageName: '@deepseek-ai/cordis-plugin-group', version: '1.0.6-alpha.1' },
   { packageName: '@deepseek-ai/dsh-scope', version: OFFICIAL_DSH_VERSION },
   { packageName: '@deepseek-ai/dsh-timeout', version: OFFICIAL_DSH_VERSION },
 ]
 /** 随桌面端离线仓库分发的社区插件和插件市场组件。 */
 export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
-  { packageName: '@michengai/dsh-codex-ui', version: '1.1.49' },
-  { packageName: '@michengai/dsh-im-connect', version: '1.0.17' },
-  { packageName: '@michengai/dsh-automation', version: '1.0.10' },
-  { packageName: '@michengai/dsh-skills-manager', version: '1.2.18' },
-  { packageName: '@michengai/dsh-archive-manager', version: '1.1.12' },
-  { packageName: '@michengai/dsh-agency-agents', version: '1.2.13' },
-  { packageName: '@michengai/dsh-codex-pet', version: '1.0.6' },
-  { packageName: '@michengai/dsh-btw', version: '1.0.8' },
-  { packageName: '@michengai/dsh-simplify', version: '1.0.4' },
-  { packageName: '@michengai/dsh-code-review', version: '1.0.3' },
-  { packageName: '@michengai/dsh-pua', version: '1.0.3' },
-  { packageName: 'dsh-better-sidebar', version: '0.28.0' },
-  { packageName: 'dshmarket', version: '1.66.44' },
-  { packageName: 'dsh-context', version: '0.73.3' },
+  { packageName: '@michengai/dsh-codex-ui', version: '2.0.4' },
+  { packageName: '@michengai/dsh-im-connect', version: '1.0.20' },
+  { packageName: '@michengai/dsh-automation', version: '1.0.13' },
+  { packageName: '@michengai/dsh-skills-manager', version: '1.2.22' },
+  { packageName: '@michengai/dsh-archive-manager', version: '1.1.18' },
+  { packageName: '@michengai/dsh-agency-agents', version: '1.2.18' },
+  { packageName: '@michengai/dsh-codex-pet', version: '1.0.7' },
+  { packageName: '@michengai/dsh-btw', version: '1.3.0' },
+  { packageName: '@michengai/dsh-simplify', version: '1.0.5' },
+  { packageName: '@michengai/dsh-code-review', version: '1.0.5' },
+  { packageName: '@michengai/dsh-pua', version: '1.0.5' },
+  { packageName: 'dsh-better-sidebar', version: '0.28.2' },
+  { packageName: 'dshmarket', version: '1.73.3' },
+  { packageName: 'dsh-context', version: '0.78.0' },
 ]
 
 /** 离线 store 只放仍随包的社区插件，官方运行时单独预装。 */

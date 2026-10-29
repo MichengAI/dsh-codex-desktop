@@ -330,7 +330,7 @@ test('官方运行时已装但缺少启动 peer 时会补齐', async () => {
         }
       },
     })
-    const peerCall = calls.find(item => item.some(arg => arg.includes('@deepseek-ai/cordis-plugin-group@1.0.5')) && !item.some(arg => arg.includes('@deepseek-ai/cordis-plugin-group@1.0.5-')))
+    const peerCall = calls.find(item => item.some(arg => arg.includes('@deepseek-ai/cordis-plugin-group@1.0.6-alpha.1')))
     assert.equal(peerCall !== undefined, true)
     assert.equal(peerCall!.includes('--offline'), false)
     assert.equal(peerCall!.some(arg => arg.startsWith('--store-dir=')), false)
@@ -366,7 +366,7 @@ test('冷启动补种保留用户安装的官方 bundle 和包文件', async () 
     }), 'utf8')
     await writeFile(join(packageDir, 'cordis.patch.yml'), '[]\n', 'utf8')
     await writeFile(join(profile, 'package.json'), JSON.stringify({
-      dependencies: { [packageName]: '0.2.1-rc.3' },
+      dependencies: { [packageName]: '0.2.2-alpha.2' },
       dsh: { profile: { bundles: [packageName] } },
     }), 'utf8')
 
@@ -382,7 +382,7 @@ test('冷启动补种保留用户安装的官方 bundle 和包文件', async () 
       dependencies?: Record<string, string>
       dsh?: { profile?: { bundles?: string[] } }
     }
-    assert.equal(manifest.dependencies?.[packageName], '0.2.1-rc.3')
+    assert.equal(manifest.dependencies?.[packageName], '0.2.2-alpha.2')
     assert.deepEqual(manifest.dsh?.profile?.bundles, [packageName])
     assert.equal(existsSync(join(packageDir, 'package.json')), true)
   } finally {
