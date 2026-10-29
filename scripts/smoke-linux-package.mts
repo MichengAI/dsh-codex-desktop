@@ -49,18 +49,19 @@ async function main(): Promise<void> {
   try {
     const baseUrl = await waitForHealthyServer(application, () => applicationOutput, deadline, startupErrorFile)
     bootstrapProcessId = await findBootstrapProcessId(application.pid)
-    const page = await fetchRootPage(baseUrl, bootstrapProcessId, deadline)
+    const readyDeadline = Date.now() + startupTimeoutMs
+    const page = await fetchRootPage(baseUrl, bootstrapProcessId, readyDeadline)
     const content = await page.text()
     if (page.status === 401) {
       if (!content.includes('dsh web authentication required')) throw new Error('根页面返回了未知的 HTTP 401 响应。')
-      await waitForApplicationReady(application, smokeReadyFile, startupErrorFile, deadline, () => applicationOutput)
+      await waitForApplicationReady(application, smokeReadyFile, startupErrorFile, readyDeadline, () => applicationOutput)
     } else {
       if (page.status !== 200) throw new Error(`根页面返回 HTTP ${page.status}。`)
       const assetPath = /(?:src|href)=["'](?<path>\/[^"']+\.(?:js|css))/.exec(content)?.groups?.path
       if (!assetPath) throw new Error('根页面未找到可验证的前端资源。')
-      const asset = await fetchResource(baseUrl + assetPath, deadline)
+      const asset = await fetchResource(baseUrl + assetPath, readyDeadline)
       if (asset.status !== 200) throw new Error(`前端资源返回 HTTP ${asset.status}。`)
-      await waitForApplicationReady(application, smokeReadyFile, startupErrorFile, deadline, () => applicationOutput)
+      await waitForApplicationReady(application, smokeReadyFile, startupErrorFile, readyDeadline, () => applicationOutput)
     }
     await verifyBundledPluginsInstalled(dshHome)
   } finally {
