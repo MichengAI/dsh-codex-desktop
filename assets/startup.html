@@ -114,11 +114,33 @@
       en: 'Current step progress',
       ja: '現在のステップの進捗',
       es: 'Progreso del paso actual',
-      fr: 'Progression de l\'étape actuelle',
+      fr: "Progression de l'étape actuelle",
       de: 'Fortschritt des aktuellen Schritts',
       ru: 'Прогресс текущего шага',
       pt: 'Progresso da etapa atual',
     }))
+    const initialMessage = pickLocale({
+      zh: '正在启动',
+      en: 'Starting',
+      ja: '起動中',
+      es: 'Iniciando',
+      fr: 'Démarrage en cours',
+      de: 'Wird gestartet',
+      ru: 'Запуск',
+      pt: 'Iniciando',
+    })
+    const initialWorking = pickLocale({
+      zh: '正在处理',
+      en: 'Working',
+      ja: '処理中',
+      es: 'Procesando',
+      fr: 'Traitement en cours',
+      de: 'In Bearbeitung',
+      ru: 'Обработка',
+      pt: 'Processando',
+    })
+    document.getElementById('msg').textContent = initialMessage
+    document.getElementById('percentage').textContent = initialWorking
     window.updateStartupProgress = (state) => {
       document.getElementById('msg').textContent = state.message
       document.getElementById('detail').textContent = state.detail || ''
@@ -174,7 +196,7 @@
     }
     setInterval(updateElapsed, 1000)
     updateElapsed()
-    window.updateStartupProgress({ message: zh ? '正在启动' : 'Starting' })
+    window.updateStartupProgress({ message: initialMessage })
   </script>
 </body>
 </html>

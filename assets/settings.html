@@ -173,8 +173,6 @@
 
     function pickLocale(loc, map){const norm=(loc||'').toLowerCase().split('-')[0];return map[norm]||(norm.startsWith('zh')?map.zh:map.en)}
     function t(map){return pickLocale(locale, map)}
-    function text(zh,en,others){if(others){const norm=(locale||'').toLowerCase().split('-')[0];if(others[norm])return others[norm]}return isZh()?zh:en}
-    function isZh(){return locale.toLowerCase().startsWith('zh')}
     function setPage(section){
       const updates=section==='updates';
       notificationsPage.hidden=updates;updatesPage.hidden=!updates;
