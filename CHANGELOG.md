@@ -4,7 +4,7 @@
 
 The five most recent published versions are listed below.
 
-## 1.0.94 — 2026-11-10
+## 1.0.95 — 2026-11-10
 
 **Internationalization and multi-language support**
 

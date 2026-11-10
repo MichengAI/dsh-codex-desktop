@@ -31,7 +31,7 @@ jobs:
             buildArguments: --win --x64
           - name: macOS Apple Silicon
             platform: macos-arm64
-            runner: macos-14
+            runner: macos-15
             buildArguments: --mac --arm64
           - name: macOS Intel
             platform: macos-x64
