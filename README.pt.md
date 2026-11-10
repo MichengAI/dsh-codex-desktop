@@ -172,6 +172,7 @@ O aplicativo também integra o [DSH Better Sidebar](https://github.com/omdsh-dev
 
 - **Atualizações do desktop**: Verificadas automaticamente após a inicialização. Em Configurações → Atualizações você pode habilitar o download automático. A instalação sempre requer confirmação.
 - **Recarregamento do DSH**: Disponível no menu da bandeja para reiniciar o serviço local sem reinstalar o aplicativo.
+- **Atualização de plugins**: Gerenciadas nas configurações do DSH e no mercado de extensões.
 - **Modo de recuperação**: Isola com segurança plugins problemáticos se impedirem o carregamento normal.
 
 ## Requisitos do sistema (System requirements)

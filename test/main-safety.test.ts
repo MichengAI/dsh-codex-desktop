@@ -181,7 +181,7 @@ test('桌面通知和更新设置使用独立窗口并进入打包资源', async
   assert.match(main, /Notification\.handleActivation/)
   assert.match(main, /parseWindowsNotificationReplyActivation/)
   assert.match(main, /replyArguments: windowsNotificationReplyArguments\(event\.sessionId\)/)
-  assert.match(main, /replyLabel: zh \? '回复' : 'Reply'/)
+  assert.match(main, /replyLabel: replyLabelMap\[norm\]/)
   assert.match(main, /`\$\{status\} · \$\{event\.title\}`/)
   assert.match(main, /supportsReply && process\.platform !== 'win32'/)
   assert.match(main, /writeShortcutLink\(/)

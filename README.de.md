@@ -170,8 +170,9 @@ Die Anwendung bindet zudem [DSH Better Sidebar](https://github.com/omdsh-dev/DSH
 
 ## Updates und Wiederherstellung
 
-- **Desktop-Updates**: Werden automatisch beim Start geprüft und benachrichtigen Sie bei neuen Versionen. In Einstellungen → Updates kann der automatische Download gewählt werden.
-- **DSH neu laden**: Ermöglicht einen schnellen Neustart des DSH-Dienstes über das Tray-Menü.
+- **Desktop-Updates**: Werden automatisch beim Start geprüft und benachrichtigen Sie bei neuen Versionen. In Einstellungen → Updates kann der automatische Download gewählt werden. Die Installation erfordert stets eine Bestätigung.
+- **DSH neu laden**: Ermöglicht einen schnellen Neustart des DSH-Dienstes über das Tray-Menü ohne Neuinstallation der Desktop-App.
+- **Plugin-Updates**: Werden über die DSH-Einstellungen und den Plugin-Markt verwaltet.
 - **Wiederherstellungsmodus**: Isoliert fehlerhafte Plugins beim Start, sodass der Arbeitsbereich sicher gerettet werden kann.
 
 ## Systemanforderungen (System requirements)

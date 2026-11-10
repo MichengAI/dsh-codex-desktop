@@ -84,6 +84,8 @@
     document.getElementById('confirm-healthy-restore').textContent = t({ zh: '确认恢复', en: 'Confirm Restore', ja: '復元を実行', es: 'Confirmar restauración', fr: 'Confirmer la restauration', de: 'Wiederherstellung bestätigen', ru: 'Подтвердить восстановление', pt: 'Confirmar restauração' });
     document.getElementById('show-log').textContent = t({ zh: '显示完整启动日志', en: 'Show Full Startup Log', ja: '完全な起動ログを表示', es: 'Mostrar registro completo', fr: 'Afficher le journal complet', de: 'Vollständiges Startprotokoll anzeigen', ru: 'Показать полный журнал', pt: 'Exibir log completo' });
     document.getElementById('restore-healthy-config').textContent = t({ zh: '恢复最近正常配置', en: 'Restore Last Good Config', ja: '前回の正常な設定に戻す', es: 'Restaurar configuración válida', fr: 'Restaurer dernière bonne configuration', de: 'Letzte gute Konfig. wiederherstellen', ru: 'Восстановить рабочую конфигурацию', pt: 'Restaurar última boa configuração' });
+    document.querySelector('.summary span:first-child').textContent = t({ zh: '当前配置：web', en: 'Current profile: web', ja: '現在のプロファイル: web', es: 'Perfil actual: web', fr: 'Profil actuel : web', de: 'Aktuelles Profil: web', ru: 'Текущий профиль: web', pt: 'Perfil atual: web' });
+    document.querySelector('#confirm-healthy-dialog p').textContent = t({ zh: '这会覆盖当前 Profile 的插件清单和组合配置，不会删除会话、项目或插件文件。', en: 'This will overwrite plugin configurations in current profile without deleting sessions, projects, or plugin files.', ja: '現在のプロファイルのプラグイン構成を上書きします。セッション、プロジェクト、プラグインファイルは削除されません。', es: 'Esto sobrescribirá la lista de complementos del perfil sin borrar sesiones, proyectos o archivos.', fr: 'Cela écrasera la configuration du profil sans supprimer les sessions, projets ou fichiers.', de: 'Überschreibt die Plugin-Konfiguration im Profil, ohne Sitzungen, Projekte oder Dateien zu löschen.', ru: 'Это перезапишет конфигурацию плагинов без удаления сессий, проектов или файлов.', pt: 'Isso substituirá a configuração de plugins sem apagar sessões, projetos ou arquivos.' });
 
     const api = window.dshRecovery;
     const main = document.getElementById('main-content');
@@ -109,7 +111,7 @@
     let uninstallTarget;
     let startupLogVisible = false;
 
-    const escapeHtml = value => String(value ?? '').replace(/[&<'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+    const escapeHtml = value => String(value ?? '').replace(/[&<'">]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
     const setNotice = (message, error = false) => { notice.textContent = message; notice.setAttribute('role', error ? 'alert' : 'status'); };
     const setButtonLoading = (button, loadingText) => { const label = button.textContent; button.disabled = true; button.setAttribute('aria-busy', 'true'); button.textContent = loadingText; return label; };
     const resetButton = (button, label) => { button.disabled = false; button.removeAttribute('aria-busy'); button.textContent = label; };
@@ -119,8 +121,8 @@
         currentState = await api.getStatus();
         render(currentState);
       } catch (error) {
-        failureMessage.textContent = '无法读取恢复状态。请重新启动应用后再试。';
-        setNotice('无法读取恢复状态。', true);
+        failureMessage.textContent = t({ zh: '无法读取恢复状态。请重新启动应用后再试。', en: 'Failed to read recovery status. Please restart the app and try again.', ja: '復元ステータスを読み取れませんでした。アプリを再起動してお試しください。', es: 'No se pudo leer el estado de recuperación. Reinicia la aplicación.', fr: "Impossible de lire l'état de récupération. Veuillez redémarrer.", de: 'Wiederherstellungsstatus konnte nicht gelesen werden. Bitte App neu starten.', ru: 'Не удалось прочитать состояние восстановления. Перезапустите приложение.', pt: 'Não foi possível ler o estado de recuperação. Reinicie o aplicativo.' });
+        setNotice(t({ zh: '无法读取恢复状态。', en: 'Failed to read recovery status.', ja: '復元ステータスを読み取れません。', es: 'No se pudo leer el estado de recuperación.', fr: "Impossible de lire l'état de récupération.", de: 'Wiederherstellungsstatus konnte nicht gelesen werden.', ru: 'Не удалось прочитать состояние восстановления.', pt: 'Não foi possível ler o estado de recuperação.' }), true);
       }
     }
 
@@ -173,11 +175,47 @@
       const suspected = state.suspectedPlugin;
       pluginsDescription.textContent = state.active
         ? suspected && isolated.some(plugin => plugin.packageName === suspected)
-          ? t({ zh: `已定位到可能导致本次失败的插件：${suspected}。建议卸载后再进入工作台。`, en: `Located plugin likely causing this failure: ${suspected}. Recommended to uninstall before entering the workbench.` })
-          : t({ zh: `${isolated.length} 个可疑插件已隔离，当前不会加载。`, en: `${isolated.length} suspected plugins isolated; will not load.` })
+          ? t({
+              zh: `已定位到可能导致本次失败的插件：${suspected}。建议卸载后再进入工作台。`,
+              en: `Located plugin likely causing this failure: ${suspected}. Recommended to uninstall before entering the workbench.`,
+              ja: `今回の失敗の原因と思われるプラグインを特定しました: ${suspected}。ワークスペースを開く前にアンインストールを推奨します。`,
+              es: `Se identificó el complemento causante del error: ${suspected}. Se recomienda desinstalarlo antes de abrir la mesa de trabajo.`,
+              fr: `Extension probablement à l'origine de l'échec identifiée : ${suspected}. Désinstallation recommandée avant d'ouvrir l'espace de travail.`,
+              de: `Plugin identifiziert, das den Fehler verursacht: ${suspected}. Vor dem Öffnen des Arbeitsbereichs deinstallieren.`,
+              ru: `Обнаружен плагин, вызвавший сбой: ${suspected}. Рекомендуется удалить перед открытием рабочей области.`,
+              pt: `Plugin que causou a falha identificado: ${suspected}. Recomendado desinstalar antes de abrir a área de trabalho.`,
+            })
+          : t({
+              zh: `${isolated.length} 个可疑插件已隔离，当前不会加载。`,
+              en: `${isolated.length} suspected plugins isolated; will not load.`,
+              ja: `${isolated.length} 個の問題と思われるプラグインが隔離されました。読み込まれません。`,
+              es: `${isolated.length} complementos sospechosos aislados; no se cargarán.`,
+              fr: `${isolated.length} extensions suspectes isolées ; ne seront pas chargées.`,
+              de: `${isolated.length} verdächtige Plugins isoliert; werden nicht geladen.`,
+              ru: `${isolated.length} подозрительных плагинов изолировано; не будут загружены.`,
+              pt: `${isolated.length} plugins suspeitos isolados; não serão carregados.`,
+            })
         : suspected
-          ? t({ zh: `检测到可能导致本次失败的插件：${suspected}。启动恢复模式后可确认卸载。`, en: `Detected plugin that may cause failure: ${suspected}. Confirm uninstall after starting recovery.` })
-          : t({ zh: '尚未定位到具体插件，不会批量隔离第三方插件。', en: 'No specific plugin identified; will not isolate plugins in batch.' });
+          ? t({
+              zh: `检测到可能导致本次失败的插件：${suspected}。启动恢复模式后可确认卸载。`,
+              en: `Detected plugin that may cause failure: ${suspected}. Confirm uninstall after starting recovery.`,
+              ja: `起動失敗の原因と思われるプラグインを検出しました: ${suspected}。復元モードの開始後にアンインストールを確認できます。`,
+              es: `Se detectó el complemento sospechoso: ${suspected}. Podrás confirmar la desinstalación tras iniciar la recuperación.`,
+              fr: `Extension suspectée d'avoir causé l'échec : ${suspected}. Confirmez la désinstallation après démarrage de la récupération.`,
+              de: `Verdächtiges Plugin erkannt: ${suspected}. Nach Start der Wiederherstellung Deinstallation bestätigen.`,
+              ru: `Обнаружен подозрительный плагин: ${suspected}. Подтвердите удаление после запуска восстановления.`,
+              pt: `Plugin suspeito detectado: ${suspected}. Confirme a desinstalação após iniciar a recuperação.`,
+            })
+          : t({
+              zh: '尚未定位到具体插件，不会批量隔离第三方插件。',
+              en: 'No specific plugin identified; will not isolate plugins in batch.',
+              ja: '特定のプラグインを特定できませんでした。サードパーティ製プラグインの一括隔離は行いません。',
+              es: 'No se identificó ningún complemento específico; no se aislarán complementos por lotes.',
+              fr: "Aucune extension spécifique identifiée ; les extensions ne seront pas isolées par lot.",
+              de: 'Kein bestimmtes Plugin identifiziert; Plugins werden nicht stapelweise isoliert.',
+              ru: 'Конкретный плагин не определен; массовая изоляция плагинов не выполняется.',
+              pt: 'Nenhum plugin específico identificado; não haverá isolamento em lote.',
+            });
       pluginList.innerHTML = state.active ? pluginRows(isolated, suspected) : pluginRows(state.candidates || [], suspected, false);
       bindPluginActions();
     }
@@ -189,26 +227,39 @@
         if (button.dataset.action === 'restore') void restorePlugin(name, button);
         if (button.dataset.action === 'uninstall') {
           uninstallTarget = name;
-          confirmMessage.textContent = t({ zh: `“${name}”将从当前配置中移除。卸载后需要重新安装才能恢复。`, en: `"${name}" will be removed from configuration. Reinstallation required to restore.` });
+          confirmMessage.textContent = t({
+            zh: `“${name}”将从当前配置中移除。卸载后需要重新安装才能恢复。`,
+            en: `"${name}" will be removed from configuration. Reinstallation required to restore.`,
+            ja: `「${name}」は現在の構成から削除されます。復元するには再インストールが必要です。`,
+            es: `"${name}" se eliminará de la configuración. Se requerirá reinstalación para restaurarlo.`,
+            fr: `"${name}" sera supprimé de la configuration. Une réinstallation sera nécessaire pour le restaurer.`,
+            de: `"${name}" wird aus der Konfiguration entfernt. Eine Neuinstallation ist erforderlich.`,
+            ru: `«${name}» будет удален из конфигурации. Для восстановления потребуется переустановка.`,
+            pt: `"${name}" será removido da configuração. Será necessário reinstalar para restaurar.`,
+          });
           dialog.showModal();
         }
       }));
     }
 
     async function startOrEnterWorkbench() {
-      const label = setButtonLoading(primaryAction, currentState?.active && currentState?.running ? '正在打开工作台…' : '正在启动…');
+      const label = setButtonLoading(primaryAction, currentState?.active && currentState?.running
+        ? t({ zh: '正在打开工作台…', en: 'Opening workbench…', ja: 'ワークスペースを開いています…', es: 'Abriendo mesa de trabajo…', fr: "Ouverture de l'espace de travail…", de: 'Arbeitsbereich wird geöffnet…', ru: 'Открытие рабочей области…', pt: 'Abrindo área de trabalho…' })
+        : t({ zh: '正在启动…', en: 'Starting…', ja: '起動中…', es: 'Iniciando…', fr: 'Démarrage…', de: 'Starten…', ru: 'Запуск…', pt: 'Iniciando…' }));
       try {
         if (currentState?.active && currentState?.running) {
-          setNotice('正在打开工作台…');
+          setNotice(t({ zh: '正在打开工作台…', en: 'Opening workbench…', ja: 'ワークスペースを開いています…', es: 'Abriendo mesa de trabajo…', fr: "Ouverture de l'espace de travail…", de: 'Arbeitsbereich wird geöffnet…', ru: 'Открытие рабочей области…', pt: 'Abrindo área de trabalho…' }));
           await api.returnToWorkbench();
           return;
         }
-        setNotice('正在重新启动 DSH，最长等待 120 秒。');
+        setNotice(t({ zh: '正在重新启动 DSH，最长等待 120 秒。', en: 'Restarting DSH, waiting up to 120 seconds.', ja: 'DSH を再起動しています。最大 120 秒お待ちください。', es: 'Reiniciando DSH, esperando hasta 120 segundos.', fr: "Redémarrage de DSH, attente jusqu'à 120 secondes.", de: 'DSH wird neu gestartet, Wartezeit bis zu 120 Sekunden.', ru: 'Перезапуск DSH, ожидание до 120 секунд.', pt: 'Reiniciando DSH, aguarde até 120 segundos.' }));
         await api.activate();
         await refresh();
-        setNotice(currentState?.running ? 'DSH 已启动。' : 'DSH 尚未完成启动。');
+        setNotice(currentState?.running
+          ? t({ zh: 'DSH 已启动。', en: 'DSH has started.', ja: 'DSH が起動しました。', es: 'DSH ha iniciado.', fr: 'DSH a démarré.', de: 'DSH wurde gestartet.', ru: 'DSH запущен.', pt: 'O DSH foi iniciado.' })
+          : t({ zh: 'DSH 尚未完成启动。', en: 'DSH has not finished starting.', ja: 'DSH の起動がまだ完了していません。', es: 'DSH aún no ha terminado de iniciar.', fr: "DSH n'a pas encore terminé son démarrage.", de: 'DSH-Start noch nicht abgeschlossen.', ru: 'Запуск DSH еще не завершен.', pt: 'O DSH ainda não concluiu a inicialização.' }));
       } catch (error) {
-        setNotice(error instanceof Error ? error.message : '操作失败，请查看启动日志。', true);
+        setNotice(error instanceof Error ? error.message : t({ zh: '操作失败，请查看启动日志。', en: 'Operation failed, please check startup logs.', ja: '操作に失敗しました。起動ログをご確認ください。', es: 'Operación fallida, revisa los registros de inicio.', fr: "L'opération a échoué, veuillez consulter le journal.", de: 'Vorgang fehlgeschlagen, bitte Startprotokoll prüfen.', ru: 'Сбой операции, проверьте журнал запуска.', pt: 'Falha na operação, verifique o log de inicialização.' }), true);
         await refresh();
       } finally {
         if (currentState) render(currentState);
@@ -217,12 +268,12 @@
     }
 
     async function restorePlugin(name, button) {
-      const label = setButtonLoading(button, '正在恢复…');
+      const label = setButtonLoading(button, t({ zh: '正在恢复…', en: 'Restoring…', ja: '復元中…', es: 'Restaurando…', fr: 'Restauration…', de: 'Wiederherstellen…', ru: 'Восстановление…', pt: 'Restaurando…' }));
       try {
         await api.restore(name);
         await refresh();
       } catch (error) {
-        setNotice(error instanceof Error ? error.message : '恢复插件失败，请查看启动日志。', true);
+        setNotice(error instanceof Error ? error.message : t({ zh: '恢复插件失败，请查看启动日志。', en: 'Failed to restore plugin, check startup logs.', ja: 'プラグインの復元に失敗しました。起動ログをご確認ください。', es: 'Error al restaurar complemento, revisa registros.', fr: "Échec de la restauration de l'extension, consultez le journal.", de: 'Fehler beim Wiederherstellen des Plugins, Protokoll prüfen.', ru: 'Сбой восстановления плагина, проверьте журнал.', pt: 'Falha ao restaurar plugin, verifique o log.' }), true);
         await refresh();
       } finally {
         resetButton(button, label);
@@ -231,27 +282,27 @@
 
     async function uninstallPlugin() {
       if (!uninstallTarget) return;
-      const label = setButtonLoading(confirmUninstall, '正在卸载…');
+      const label = setButtonLoading(confirmUninstall, t({ zh: '正在卸载…', en: 'Uninstalling…', ja: 'アンインストール中…', es: 'Desinstalando…', fr: 'Désinstallation…', de: 'Deinstallieren…', ru: 'Удаление…', pt: 'Desinstalando…' }));
       try {
         await api.uninstall(uninstallTarget);
         uninstallTarget = undefined;
         dialog.close();
         await refresh();
       } catch (error) {
-        setNotice(error instanceof Error ? error.message : '卸载插件失败，请查看启动日志。', true);
+        setNotice(error instanceof Error ? error.message : t({ zh: '卸载插件失败，请查看启动日志。', en: 'Failed to uninstall plugin, check startup logs.', ja: 'プラグインの削除に失敗しました。起動ログをご確認ください。', es: 'Error al desinstalar complemento, revisa registros.', fr: "Échec de la désinstallation de l'extension, consultez le journal.", de: 'Fehler beim Deinstallieren des Plugins, Protokoll prüfen.', ru: 'Сбой удаления плагина, проверьте журнал.', pt: 'Falha ao desinstalar plugin, verifique o log.' }), true);
       } finally {
         resetButton(confirmUninstall, label);
       }
     }
 
     async function restoreHealthyConfig() {
-      const label = setButtonLoading(confirmHealthyRestore, '正在恢复…');
+      const label = setButtonLoading(confirmHealthyRestore, t({ zh: '正在恢复…', en: 'Restoring…', ja: '復元中…', es: 'Restaurando…', fr: 'Restauration…', de: 'Wiederherstellen…', ru: 'Восстановление…', pt: 'Restaurando…' }));
       try {
         await api.restoreHealthyConfig();
         healthyDialog.close();
         await refresh();
       } catch (error) {
-        setNotice(error instanceof Error ? error.message : '恢复最近正常配置失败，请查看启动日志。', true);
+        setNotice(error instanceof Error ? error.message : t({ zh: '恢复最近正常配置失败，请查看启动日志。', en: 'Failed to restore last good config, check startup logs.', ja: '正常な設定への復元に失敗しました。起動ログをご確認ください。', es: 'Error al restaurar configuración válida, revisa registros.', fr: 'Échec de la restauration de la configuration, consultez le journal.', de: 'Fehler beim Wiederherstellen der Konfiguration, Protokoll prüfen.', ru: 'Сбой восстановления конфигурации, проверьте журнал.', pt: 'Falha ao restaurar configuração válida, verifique o log.' }), true);
       } finally {
         resetButton(confirmHealthyRestore, label);
       }
@@ -262,16 +313,16 @@
       if (startupLogVisible) {
         startupLog.hidden = true;
         startupLogVisible = false;
-        showLog.textContent = '显示完整启动日志';
+        showLog.textContent = t({ zh: '显示完整启动日志', en: 'Show Full Startup Log', ja: '完全な起動ログを表示', es: 'Mostrar registro completo', fr: 'Afficher le journal complet', de: 'Vollständiges Startprotokoll anzeigen', ru: 'Показать полный журнал', pt: 'Exibir log completo' });
         return;
       }
-      const label = setButtonLoading(showLog, '正在读取…');
+      const label = setButtonLoading(showLog, t({ zh: '正在读取…', en: 'Loading…', ja: '読み込み中…', es: 'Cargando…', fr: 'Chargement…', de: 'Wird gelesen…', ru: 'Чтение…', pt: 'Lendo…' }));
       try {
         const content = await api.getStartupLog();
-        startupLog.textContent = content || '启动日志暂时为空。';
+        startupLog.textContent = content || t({ zh: '启动日志暂时为空。', en: 'Startup log is currently empty.', ja: '起動ログは現在空です。', es: 'El registro de inicio está vacío.', fr: 'Le journal de démarrage est vide.', de: 'Startprotokoll ist derzeit leer.', ru: 'Журнал запуска пуст.', pt: 'O log de inicialização está vazio.' });
         startupLog.hidden = false;
         startupLogVisible = true;
-      } catch (error) { setNotice(error instanceof Error ? error.message : '无法读取启动日志。', true); } finally { resetButton(showLog, startupLogVisible ? '隐藏完整启动日志' : label); }
+      } catch (error) { setNotice(error instanceof Error ? error.message : t({ zh: '无法读取启动日志。', en: 'Failed to read startup log.', ja: '起動ログを読み取れませんでした。', es: 'No se pudo leer el registro de inicio.', fr: 'Impossible de lire le journal.', de: 'Startprotokoll konnte nicht gelesen werden.', ru: 'Не удалось прочитать журнал запуска.', pt: 'Não foi possível ler o log de inicialização.' }), true); } finally { resetButton(showLog, startupLogVisible ? t({ zh: '隐藏完整启动日志', en: 'Hide Full Startup Log', ja: '起動ログを隠す', es: 'Ocultar registro completo', fr: 'Masquer le journal complet', de: 'Vollständiges Startprotokoll ausblenden', ru: 'Скрыть полный журнал', pt: 'Ocultar log completo' }) : label); }
     });
     cancelUninstall.addEventListener('click', () => dialog.close());
     confirmUninstall.addEventListener('click', () => { void uninstallPlugin(); });

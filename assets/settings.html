@@ -234,11 +234,52 @@
     }
     async function saveUpdatePolicy(){
       const value=await api.updateUpdatePreferences({policy:currentPolicy});currentPolicy=policySelect.set(value.policy);
-      updateFeedback.className='update-feedback';updateFeedback.textContent=text('更新策略已保存。','Update policy saved.');
+      updateFeedback.className='update-feedback';updateFeedback.textContent=t({
+        zh:'更新策略已保存。',
+        en:'Update policy saved.',
+        ja:'更新ポリシーを保存しました。',
+        es:'Política de actualización guardada.',
+        fr:'Politique de mise à jour enregistrée.',
+        de:'Update-Richtlinie gespeichert.',
+        ru:'Политика обновлений сохранена.',
+        pt:'Política de atualização salva.'
+      });
     }
     function formatChecked(value){
-      if(!value)return text('尚未检查','Not checked yet');
-      try{const formatted=new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));return text('上次检查：'+formatted,'Last checked: '+formatted)}catch{return text('已检查','Checked')}
+      if(!value)return t({
+        zh:'尚未检查',
+        en:'Not checked yet',
+        ja:'未確認',
+        es:'Aún no comprobado',
+        fr:'Pas encore vérifié',
+        de:'Noch nicht geprüft',
+        ru:'Еще не проверялось',
+        pt:'Ainda não verificado'
+      });
+      try{
+        const formatted=new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
+        return t({
+          zh:'上次检查：'+formatted,
+          en:'Last checked: '+formatted,
+          ja:'最終確認：'+formatted,
+          es:'Última comprobación: '+formatted,
+          fr:'Dernière vérification : '+formatted,
+          de:'Zuletzt geprüft: '+formatted,
+          ru:'Последняя проверка: '+formatted,
+          pt:'Última verificação: '+formatted
+        });
+      }catch{
+        return t({
+          zh:'已检查',
+          en:'Checked',
+          ja:'確認済み',
+          es:'Comprobado',
+          fr:'Vérifié',
+          de:'Geprüft',
+          ru:'Проверено',
+          pt:'Verificado'
+        });
+      }
     }
     function renderUpdateState(value){
       if(!value||!value.status)return;updateState=value;const status=value.status,kind=status.kind;

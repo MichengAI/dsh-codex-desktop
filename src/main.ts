@@ -109,6 +109,10 @@ function desktopLocale(): string {
   return activeDshLocale ?? app.getLocale()
 }
 
+function activeShellLocale(): SupportedShellLocale {
+  return normalizeShellLocale(desktopLocale()) ?? (isChineseLocale(desktopLocale()) ? 'zh' : 'en')
+}
+
 const DESKTOP_COMMON_TEXT: Record<string, Partial<Record<SupportedShellLocale, string>>> = {
   '桌面端设置': { ja: 'デスクトップ設定', es: 'Configuración de escritorio', fr: 'Paramètres du bureau', de: 'Desktop-Einstellungen', ru: 'Настройки приложения', pt: 'Configurações do aplicativo' },
   '键盘快捷键': { ja: 'キーボードショートカット', es: 'Atajos de teclado', fr: 'Raccourcis clavier', de: 'Tastaturkurzbefehle', ru: 'Сочетания клавиш', pt: 'Atalhos de teclado' },
@@ -124,6 +128,38 @@ const DESKTOP_COMMON_TEXT: Record<string, Partial<Record<SupportedShellLocale, s
   '启动失败：': { ja: '起動に失敗しました：', es: 'Error de inicio: ', fr: 'Échec du démarrage : ', de: 'Start fehlgeschlagen: ', ru: 'Сбой запуска: ', pt: 'Falha na inicialização: ' },
   '\n日志：': { ja: '\nログ：', es: '\nRegistro: ', fr: '\nJournal : ', de: '\nProtokoll: ', ru: '\nЖурнал: ', pt: '\nLog: ' },
   '当前已是最新桌面端版本。': { ja: '現在最新のデスクトップ版を使用しています。', es: 'Ya tienes la versión más reciente.', fr: 'Vous disposez déjà de la version la plus récente.', de: 'Sie verwenden bereits die neueste Version.', ru: 'У вас установлена последняя версия.', pt: 'Você já possui a versão mais recente.' },
+  '开发态不能检查安装包更新，请使用发布的安装包。': {
+    ja: '開発環境ではインストーラー更新の確認は利用できません。リリース版をご利用ください。',
+    es: 'La búsqueda de actualizaciones no está disponible en versiones de desarrollo. Usa un instalador publicado.',
+    fr: 'Les vérifications de mise à jour ne sont pas disponibles en développement. Utilisez un programme d\'installation publié.',
+    de: 'Update-Prüfungen sind in Entwicklungsversionen nicht verfügbar. Bitte ein veröffentlichtes Installationsprogramm verwenden.',
+    ru: 'Проверка обновлений недоступна в сборках для разработки. Используйте официальный установщик.',
+    pt: 'A verificação de atualizações não está disponível em versões de desenvolvimento. Use um instalador lançado.',
+  },
+  '正在校验并解压 DSH 运行环境…': {
+    ja: 'DSH 実行環境を検証および展開中…',
+    es: 'Verificando y extrayendo el entorno de ejecución de DSH…',
+    fr: 'Vérification et extraction de l\'environnement d\'exécution DSH…',
+    de: 'DSH-Laufzeitumgebung wird überprüft und entpackt…',
+    ru: 'Проверка и распаковка среды выполнения DSH…',
+    pt: 'Verificando e extraindo o ambiente de execução do DSH…',
+  },
+  '正在准备内置插件仓库…': {
+    ja: '内蔵プラグインストアを準備中…',
+    es: 'Preparando el almacén de complementos integrado…',
+    fr: 'Préparation du magasin d\'extensions intégré…',
+    de: 'Integriertes Plugin-Repository wird vorbereitet…',
+    ru: 'Подготовка встроенного хранилища плагинов…',
+    pt: 'Preparando o repositório de extensões integrado…',
+  },
+  '\n首次启动可能需要 1–3 分钟，请勿关闭应用。': {
+    ja: '\n初回起動には 1〜3 分かかる場合があります。アプリを閉じないでください。',
+    es: '\nEl primer inicio puede tardar entre 1 y 3 minutos. No cierres la aplicación.',
+    fr: '\nLe premier lancement peut prendre 1 à 3 minutes. Veuillez ne pas fermer l\'application.',
+    de: '\nDer erste Start kann 1–3 Minuten dauern. Bitte schließen Sie die Anwendung nicht.',
+    ru: '\nПервый запуск может занять 1–3 минуты. Пожалуйста, не закрывайте приложение.',
+    pt: '\nA primeira inicialização pode levar de 1 a 3 minutos. Por favor, não feche o aplicativo.',
+  },
   '正在检查配套插件': { ja: '付属プラグインを確認中', es: 'Comprobando complementos incluidos', fr: 'Vérification des extensions incluses', de: 'Enthaltene Plugins werden geprüft', ru: 'Проверка встроенных плагинов', pt: 'Verificando extensões incluídas' },
   '正在检查待应用的插件更新': { ja: '保留中のプラグイン更新を確認中', es: 'Comprobando actualizaciones pendientes', fr: 'Vérification des mises à jour en attente', de: 'Ausstehende Plugin-Updates werden geprüft', ru: 'Проверка ожидающих обновлений', pt: 'Verificando atualizações pendentes' },
   'DSH 已停止运行。请重新启动应用。': { ja: 'DSH が停止しました。アプリを再起動してください。', es: 'DSH se ha detenido. Reinicia la aplicación.', fr: "DSH s'est arrêté. Veuillez redémarrer l'application.", de: 'DSH wurde angehalten. Bitte die App neu starten.', ru: 'DSH остановлен. Перезапустите приложение.', pt: 'O DSH parou de funcionar. Reinicie o aplicativo.' },
@@ -142,9 +178,9 @@ const DESKTOP_COMMON_TEXT: Record<string, Partial<Record<SupportedShellLocale, s
 }
 
 function desktopText(zh: string, en: string, others?: Partial<Record<SupportedShellLocale, string>>): string {
-  const norm = normalizeShellLocale(desktopLocale())
-  if (norm === 'zh' || isChineseLocale(desktopLocale())) return zh
-  if (norm === 'en' || norm === undefined) return en
+  const norm = activeShellLocale()
+  if (norm === 'zh') return zh
+  if (norm === 'en') return en
   if (others?.[norm] !== undefined) return others[norm]!
   if (DESKTOP_COMMON_TEXT[zh]?.[norm] !== undefined) return DESKTOP_COMMON_TEXT[zh]![norm]!
   if (zh.startsWith('关于 ')) {
@@ -273,6 +309,14 @@ async function startApplication(): Promise<void> {
         await updateStartupMessage(desktopText(
           '正在初始化插件和工作区…\n首次启动可能需要 1–3 分钟，请勿关闭应用。',
           'Initializing plugins and workspace…\nThe first launch may take 1–3 minutes. Please keep the app open.',
+          {
+            ja: 'プラグインとワークスペースを初期化中…\n初回起動には 1〜3 分かかる場合があります。アプリを閉じないでください。',
+            es: 'Inicializando complementos y espacio de trabajo…\nEl primer inicio puede tardar entre 1 y 3 minutos. No cierres la aplicación.',
+            fr: "Initialisation des extensions et de l'espace de travail…\nLe premier lancement peut prendre 1 à 3 minutes. Veuillez ne pas fermer l'application.",
+            de: 'Plugins und Arbeitsbereich werden initialisiert…\nDer erste Start kann 1–3 Minuten dauern. Bitte schließen Sie die Anwendung nicht.',
+            ru: 'Инициализация плагинов и рабочей области…\nПервый запуск может занять 1–3 минуты. Пожалуйста, не закрывайте приложение.',
+            pt: 'Inicializando plugins e área de trabalho…\nA primeira inicialização pode levar de 1 a 3 minutos. Por favor, não feche o aplicativo.',
+          },
         ))
       }
     }
@@ -440,7 +484,7 @@ async function showStartupWindow(message: string, failed = false): Promise<void>
   if (html !== undefined) {
     await windowNavigation.navigate(
       view,
-      () => view.webContents.loadFile(html, { query: { theme: activeDshColorScheme, lang: isChineseLocale(desktopLocale()) ? 'zh' : 'en' } }),
+      () => view.webContents.loadFile(html, { query: { theme: activeDshColorScheme, lang: activeShellLocale() } }),
       () => view.webContents.executeJavaScript('window.updateStartupProgress?.(' + JSON.stringify({ message, failed }) + ')'),
     )
     return
@@ -460,7 +504,7 @@ async function updateStartupMessage(message: string, progress: { detail?: string
 }
 
 function reportStartupProgress(progress: StartupProgress): void {
-  const state = formatStartupProgress(progress, isChineseLocale(desktopLocale()))
+  const state = formatStartupProgress(progress, activeShellLocale())
   void updateStartupMessage(state.message, state)
 }
 
@@ -468,6 +512,14 @@ function firstInitializationMessage(): string {
   return desktopText(
     '首次启动，正在准备运行环境…\n可能需要 1–3 分钟，请勿关闭应用。',
     'Preparing the runtime for the first launch…\nThis may take 1–3 minutes. Please keep the app open.',
+    {
+      ja: '初回起動、実行環境を準備中…\n1〜3 分かかる場合があります。アプリを閉じないでください。',
+      es: 'Primer inicio, preparando el entorno de ejecución…\nPuede tardar de 1 a 3 minutos. No cierres la aplicación.',
+      fr: "Premier lancement, préparation de l'environnement d'exécution…\nCela peut prendre 1 à 3 minutes. Veuillez ne pas fermer l'application.",
+      de: 'Erster Start, Laufzeitumgebung wird vorbereitet…\nKann 1–3 Minuten dauern. Bitte schließen Sie die Anwendung nicht.',
+      ru: 'Первый запуск, подготовка среды выполнения…\nМожет занять 1–3 минуты. Пожалуйста, не закрывайте приложение.',
+      pt: 'Primeira inicialização, preparando o ambiente de execução…\nPode levar de 1 a 3 minutos. Por favor, não feche o aplicativo.',
+    },
   )
 }
 
@@ -670,7 +722,7 @@ async function showRecoveryWindow(profileDir: string, failure?: { failureMessage
   showRecoveryContentView()
   const html = resolveRecoveryHtml()
   if (html === undefined) throw new Error('恢复页面资源缺失。')
-  await windowNavigation.navigate(view, () => view.webContents.loadFile(html))
+  await windowNavigation.navigate(view, () => view.webContents.loadFile(html, { query: { theme: activeDshColorScheme, lang: activeShellLocale() } }))
 }
 
 async function startupRecoveryCandidates(profileDir: string, message: string, plugins: readonly string[] = []): Promise<string[]> {
@@ -1653,12 +1705,13 @@ function notificationCopy(event: DesktopNotificationEvent): { title: string; bod
   if (event.body !== undefined) {
     return { title, body: event.body }
   }
+  const joiner = (norm === 'zh' || norm === 'ja') ? '' : ' '
   const task = event.title === undefined
     ? t.taskDefault
-    : (norm === 'zh' ? `“${event.title}”` : `"${event.title}"`)
-  if (event.kind === 'approval') return { title, body: `${task} ${t.approvalSuffix}` }
-  if (event.kind === 'question') return { title, body: `${task} ${t.questionSuffix}` }
-  return { title, body: `${task} ${t.completeSuffix}` }
+    : (norm === 'zh' ? `“${event.title}”` : norm === 'ja' ? `「${event.title}」` : `"${event.title}"`)
+  if (event.kind === 'approval') return { title, body: `${task}${joiner}${t.approvalSuffix}` }
+  if (event.kind === 'question') return { title, body: `${task}${joiner}${t.questionSuffix}` }
+  return { title, body: `${task}${joiner}${t.completeSuffix}` }
 }
 
 function updateUnreadCompletionBadge(count: number): void {
@@ -1809,9 +1862,9 @@ function showDesktopNotification(event: DesktopNotificationEvent): void {
         id: toastId,
         persistent: event.kind !== 'turn-complete',
         placeholder: replyPlaceholder,
-        replyLabel: zh ? '回复' : 'Reply',
+        replyLabel: replyLabelMap[norm] ?? replyLabelMap.en,
         replyArguments: windowsNotificationReplyArguments(event.sessionId),
-        closeLabel: zh ? '关闭' : 'Close',
+        closeLabel: closeLabelMap[norm] ?? closeLabelMap.en,
       }),
     } : {}),
     ...(event.kind === 'turn-complete' ? {} : { timeoutType: 'never' }),
@@ -2189,8 +2242,30 @@ function showDesktopUpdateNotification(kind: 'available' | 'ready', version: str
   const notification = new Notification({
     title: DESKTOP_APP_NAME,
     body: kind === 'ready'
-      ? desktopText(`桌面端 ${version} 已下载，点击选择安装时间。`, `Desktop ${version} is ready. Click to choose when to install.`)
-      : desktopText(`发现桌面端 ${version}，点击查看更新。`, `Desktop ${version} is available. Click to review the update.`),
+      ? desktopText(
+          `桌面端 ${version} 已下载，点击选择安装时间。`,
+          `Desktop ${version} is ready. Click to choose when to install.`,
+          {
+            ja: `デスクトップ ${version} のダウンロードが完了しました。クリックしてインストール時期を選択してください。`,
+            es: `DSH Codex Desktop ${version} descargado. Haz clic para elegir cuándo instalar.`,
+            fr: `DSH Codex Desktop ${version} est téléchargé. Cliquez pour choisir le moment d'installer.`,
+            de: `Desktop ${version} heruntergeladen. Klicken, um Installationszeitpunkt zu wählen.`,
+            ru: `Версия ${version} загружена. Нажмите, чтобы выбрать время установки.`,
+            pt: `DSH Codex Desktop ${version} baixado. Clique para escolher quando instalar.`,
+          },
+        )
+      : desktopText(
+          `发现桌面端 ${version}，点击查看更新。`,
+          `Desktop ${version} is available. Click to review the update.`,
+          {
+            ja: `デスクトップ ${version} が見つかりました。クリックして更新内容を確認してください。`,
+            es: `DSH Codex Desktop ${version} disponible. Haz clic para ver la actualización.`,
+            fr: `DSH Codex Desktop ${version} disponible. Cliquez pour voir la mise à jour.`,
+            de: `Desktop ${version} verfügbar. Klicken, um das Update anzuzeigen.`,
+            ru: `Доступна версия ${version}. Нажмите, чтобы посмотреть обновление.`,
+            pt: `DSH Codex Desktop ${version} disponível. Clique para ver a atualização.`,
+          },
+        ),
     ...(icon === undefined ? {} : { icon }),
   })
   activeNotifications.set(DESKTOP_UPDATE_NOTIFICATION_ID, notification)
