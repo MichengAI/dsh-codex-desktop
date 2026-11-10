@@ -65,6 +65,26 @@
     applyColorScheme();
     colorScheme.addEventListener('change', applyColorScheme);
 
+    const loc = new URLSearchParams(location.search).get('locale') || new URLSearchParams(location.search).get('lang') || navigator.language;
+    const norm = (loc || '').toLowerCase().split('-')[0];
+    function t(map) { return map[norm] || (norm.startsWith('zh') ? map.zh : map.en); }
+    document.documentElement.lang = loc;
+
+    document.title = t({ zh: 'DSH Codex Desktop 恢复', en: 'DSH Codex Desktop Recovery', ja: 'DSH Codex Desktop 復元', es: 'Recuperación de DSH Codex Desktop', fr: 'Récupération de DSH Codex Desktop', de: 'DSH Codex Desktop Wiederherstellung', ru: 'Восстановление DSH Codex Desktop', pt: 'Recuperação do DSH Codex Desktop' });
+    document.querySelector('h1').textContent = document.title;
+    document.querySelector('.page-header p').textContent = t({ zh: 'DSH 未能完成加载。下方列出与本次加载失败相关的可疑插件。', en: 'DSH failed to complete loading. Suspected plugins related to this failure are listed below.', ja: 'DSH の読み込みに失敗しました。以下に問題と思われるプラグインを一覧表示します。', es: 'DSH no pudo completar la carga. A continuación se listan los complementos sospechosos.', fr: "DSH n'a pas pu terminer son chargement. Les extensions suspectes sont listées ci-dessous.", de: 'DSH konnte nicht vollständig geladen werden. Nachfolgend sind verdächtige Plugins aufgeführt.', ru: 'DSH не удалось загрузить. Ниже перечислены подозрительные плагины.', pt: 'O DSH não concluiu o carregamento. Os plugins suspeitos estão listados abaixo.' });
+    document.getElementById('error-heading').textContent = t({ zh: '启动错误', en: 'Startup Error', ja: '起動エラー', es: 'Error de inicio', fr: 'Erreur de démarrage', de: 'Startfehler', ru: 'Ошибка запуска', pt: 'Erro de inicialização' });
+    document.getElementById('recovery-heading').textContent = t({ zh: '恢复操作', en: 'Recovery Actions', ja: '復元操作', es: 'Acciones de recuperación', fr: 'Actions de récupération', de: 'Wiederherstellungsaktionen', ru: 'Действия по восстановлению', pt: 'Ações de recuperação' });
+    document.getElementById('plugins-heading').textContent = t({ zh: '可能影响加载的插件', en: 'Plugins That May Affect Loading', ja: '読み込みに影響する可能性のあるプラグイン', es: 'Complementos que pueden afectar la carga', fr: 'Extensions pouvant affecter le chargement', de: 'Plugins, die das Laden beeinträchtigen können', ru: 'Плагины, влияющие на загрузку', pt: 'Plugins que podem afetar o carregamento' });
+    document.getElementById('confirm-title').textContent = t({ zh: '卸载此插件？', en: 'Uninstall this plugin?', ja: 'このプラグインをアンインストールしますか？', es: '¿Desinstalar este complemento?', fr: 'Désinstaller cette extension ?', de: 'Dieses Plugin deinstallieren?', ru: 'Удалить этот плагин?', pt: 'Desinstalar este plugin?' });
+    document.getElementById('confirm-healthy-title').textContent = t({ zh: '恢复最近正常配置？', en: 'Restore last known good configuration?', ja: '前回の正常な設定に戻しますか？', es: '¿Restaurar la última configuración válida?', fr: 'Restaurer la dernière configuration fonctionnelle ?', de: 'Letzte funktionierende Konfiguration wiederherstellen?', ru: 'Восстановить последнюю рабочую конфигурацию?', pt: 'Restaurar última configuração válida?' });
+    document.getElementById('cancel-uninstall').textContent = t({ zh: '取消', en: 'Cancel', ja: 'キャンセル', es: 'Cancelar', fr: 'Annuler', de: 'Abbrechen', ru: 'Отмена', pt: 'Cancelar' });
+    document.getElementById('cancel-healthy-restore').textContent = t({ zh: '取消', en: 'Cancel', ja: 'キャンセル', es: 'Cancelar', fr: 'Annuler', de: 'Abbrechen', ru: 'Отмена', pt: 'Cancelar' });
+    document.getElementById('confirm-uninstall').textContent = t({ zh: '确认卸载', en: 'Confirm Uninstall', ja: 'アンインストールを実行', es: 'Confirmar desinstalación', fr: 'Confirmer la désinstallation', de: 'Deinstallation bestätigen', ru: 'Подтвердить удаление', pt: 'Confirmar desinstalação' });
+    document.getElementById('confirm-healthy-restore').textContent = t({ zh: '确认恢复', en: 'Confirm Restore', ja: '復元を実行', es: 'Confirmar restauración', fr: 'Confirmer la restauration', de: 'Wiederherstellung bestätigen', ru: 'Подтвердить восстановление', pt: 'Confirmar restauração' });
+    document.getElementById('show-log').textContent = t({ zh: '显示完整启动日志', en: 'Show Full Startup Log', ja: '完全な起動ログを表示', es: 'Mostrar registro completo', fr: 'Afficher le journal complet', de: 'Vollständiges Startprotokoll anzeigen', ru: 'Показать полный журнал', pt: 'Exibir log completo' });
+    document.getElementById('restore-healthy-config').textContent = t({ zh: '恢复最近正常配置', en: 'Restore Last Good Config', ja: '前回の正常な設定に戻す', es: 'Restaurar configuración válida', fr: 'Restaurer dernière bonne configuration', de: 'Letzte gute Konfig. wiederherstellen', ru: 'Восстановить рабочую конфигурацию', pt: 'Restaurar última boa configuração' });
+
     const api = window.dshRecovery;
     const main = document.getElementById('main-content');
     const status = document.getElementById('status');
@@ -105,12 +125,18 @@
     }
 
     function pluginRows(plugins, suspectedPlugin, isolated = true) {
-      if (plugins.length === 0) return '<div class="empty">未定位到需要隔离的插件。</div>';
+      if (plugins.length === 0) return `<div class="empty">${t({ zh: '未定位到需要隔离的插件。', en: 'No plugins found that require isolation.', ja: '隔離が必要なプラグインは見つかりませんでした。', es: 'No se encontraron complementos que requieran aislamiento.', fr: "Aucune extension nécessitant un isolement n'a été trouvée.", de: 'Keine Plugins gefunden, die isoliert werden müssen.', ru: 'Не найдено плагинов, требующих изоляции.', pt: 'Nenhum plugin requer isolamento.' })}</div>`;
       return plugins.map(plugin => {
         const suspected = plugin.packageName === suspectedPlugin;
         const name = escapeHtml(plugin.packageName);
-        if (!isolated) return `<article class="plugin-row"><div><div class="plugin-name">${name}</div><div class="plugin-meta">可能影响本次加载，尚未隔离</div></div></article>`;
-        return `<article class="plugin-row${suspected ? ' suspected' : ''}"><div><div class="plugin-name">${name}</div><div class="plugin-meta">${escapeHtml(plugin.version || '未知版本')} · 已隔离，未加载</div>${suspected ? '<div class="suspected-note">检测到可能导致启动失败的插件，建议卸载。</div>' : ''}</div><div class="row-actions">${suspected ? `<button class="remove" data-action="uninstall" data-name="${name}">卸载此插件</button><button class="restore" data-action="restore" data-name="${name}">仍要恢复</button>` : `<button class="restore" data-action="restore" data-name="${name}">恢复并重启</button><button class="remove" data-action="uninstall" data-name="${name}">卸载</button>`}</div></article>`;
+        if (!isolated) return `<article class="plugin-row"><div><div class="plugin-name">${name}</div><div class="plugin-meta">${t({ zh: '可能影响本次加载，尚未隔离', en: 'May affect this load, not isolated yet', ja: '今回の読み込みに影響する可能性があります（未隔離）', es: 'Puede afectar la carga actual, aún no aislado', fr: 'Peut affecter ce chargement, non isolé pour le moment', de: 'Kann diesen Ladevorgang beeinträchtigen, noch nicht isoliert', ru: 'Может влиять на загрузку, еще не изолирован', pt: 'Pode afetar este carregamento, ainda não isolado' })}</div></div></article>`;
+        const isolatedMeta = t({ zh: '已隔离，未加载', en: 'Isolated, not loaded', ja: '隔離済み、未読み込み', es: 'Aislado, no cargado', fr: 'Isolé, non chargé', de: 'Isoliert, nicht geladen', ru: 'Изолирован, не загружен', pt: 'Isolado, não carregado' });
+        const suspectedNote = t({ zh: '检测到可能导致启动失败的插件，建议卸载。', en: 'Suspected plugin causing startup failure detected. Recommended to uninstall.', ja: '起動失敗の原因と思われるプラグインが検出されました。アンインストールを推奨します。', es: 'Se detectó un complemento sospechoso de causar el fallo. Se recomienda desinstalar.', fr: 'Extension suspectée d\'avoir causé l\'échec détectée. Désinstallation recommandée.', de: 'Verdächtiges Plugin erkannt, das den Startfehler verursacht. Deinstallation empfohlen.', ru: 'Обнаружен плагин, вызвавший сбой запуска. Рекомендуется удалить.', pt: 'Plugin suspeito de causar falha detectado. Recomenda-se desinstalar.' });
+        const btnUninstallThis = t({ zh: '卸载此插件', en: 'Uninstall plugin', ja: 'このプラグインを削除', es: 'Desinstalar complemento', fr: "Désinstaller l'extension", de: 'Plugin deinstallieren', ru: 'Удалить этот плагин', pt: 'Desinstalar plugin' });
+        const btnRestoreAnyway = t({ zh: '仍要恢复', en: 'Restore anyway', ja: 'それでも復元', es: 'Restaurar de todos modos', fr: 'Restaurer quand même', de: 'Trotzdem wiederherstellen', ru: 'Все равно восстановить', pt: 'Restaurar mesmo assim' });
+        const btnRestoreRestart = t({ zh: '恢复并重启', en: 'Restore & Restart', ja: '復元して再起動', es: 'Restaurar y reiniciar', fr: 'Restaurer et redémarrer', de: 'Wiederherstellen & Neustart', ru: 'Восстановить и перезапустить', pt: 'Restaurar e reiniciar' });
+        const btnUninstall = t({ zh: '卸载', en: 'Uninstall', ja: 'アンインストール', es: 'Desinstalar', fr: 'Désinstaller', de: 'Deinstallieren', ru: 'Удалить', pt: 'Desinstalar' });
+        return `<article class="plugin-row${suspected ? ' suspected' : ''}"><div><div class="plugin-name">${name}</div><div class="plugin-meta">${escapeHtml(plugin.version || t({ zh: '未知版本', en: 'unknown version', ja: '不明なバージョン', es: 'versión desconocida', fr: 'version inconnue', de: 'unbekannte Version', ru: 'неизвестная версия', pt: 'versão desconhecida' }))} · ${isolatedMeta}</div>${suspected ? `<div class="suspected-note">${suspectedNote}</div>` : ''}</div><div class="row-actions">${suspected ? `<button class="remove" data-action="uninstall" data-name="${name}">${btnUninstallThis}</button><button class="restore" data-action="restore" data-name="${name}">${btnRestoreAnyway}</button>` : `<button class="restore" data-action="restore" data-name="${name}">${btnRestoreRestart}</button><button class="remove" data-action="uninstall" data-name="${name}">${btnUninstall}</button>`}</div></article>`;
       }).join('');
     }
 
@@ -120,7 +146,9 @@
       const canEnterWorkbench = state.active && state.running;
       const needsRetry = state.active && !state.running;
       const hasFailure = typeof state.failureMessage === 'string' && state.failureMessage.trim() !== '';
-      status.textContent = canEnterWorkbench ? '恢复模式已就绪' : needsRetry ? '恢复模式未就绪' : '启动失败';
+      status.textContent = canEnterWorkbench ? t({ zh: '恢复模式已就绪', en: 'Recovery ready', ja: '復元準備完了', es: 'Recuperación lista', fr: 'Récupération prête', de: 'Wiederherstellung bereit', ru: 'Готов к работе', pt: 'Recuperação pronta' })
+        : needsRetry ? t({ zh: '恢复模式未就绪', en: 'Recovery not ready', ja: '復元未完了', es: 'Recuperación no lista', fr: 'Récupération non prête', de: 'Wiederherstellung nicht bereit', ru: 'Восстановление не готово', pt: 'Recuperação não pronta' })
+        : t({ zh: '启动失败', en: 'Startup failed', ja: '起動失敗', es: 'Inicio fallido', fr: 'Échec du démarrage', de: 'Start fehlgeschlagen', ru: 'Сбой запуска', pt: 'Falha na inicialização' });
       status.classList.toggle('active', canEnterWorkbench);
       startupErrorSection.hidden = !hasFailure;
       showLog.hidden = !hasFailure;
@@ -132,24 +160,24 @@
       }
       restoreHealthyConfigButton.hidden = !state.checkpoint;
       if (canEnterWorkbench) {
-        recoveryDescription.textContent = 'DSH 已启动，列表中的可疑插件仍处于隔离状态。';
-        primaryAction.textContent = '进入工作台';
+        recoveryDescription.textContent = t({ zh: 'DSH 已启动，列表中的可疑插件仍处于隔离状态。', en: 'DSH has started; suspected plugins remain isolated.', ja: 'DSH は起動しましたが、一覧の問題プラグインは隔離されたままです。', es: 'DSH ha iniciado; los complementos sospechosos permanecen aislados.', fr: 'DSH a démarré ; les extensions suspectes restent isolées.', de: 'DSH wurde gestartet; verdächtige Plugins bleiben isoliert.', ru: 'DSH запущен; подозрительные плагины остаются изолированными.', pt: 'O DSH foi iniciado; os plugins suspeitos continuam isolados.' });
+        primaryAction.textContent = t({ zh: '进入工作台', en: 'Open Workbench', ja: 'ワークスペースを開く', es: 'Abrir mesa de trabajo', fr: "Ouvrir l'espace de travail", de: 'Arbeitsbereich öffnen', ru: 'Открыть рабочую область', pt: 'Abrir área de trabalho' });
       } else if (needsRetry) {
-        recoveryDescription.textContent = '列表中的可疑插件已隔离，DSH 服务尚未就绪。';
-        primaryAction.textContent = '重试恢复模式';
+        recoveryDescription.textContent = t({ zh: '列表中的可疑插件已隔离，DSH 服务尚未就绪。', en: 'Suspected plugins are isolated, but DSH is not ready yet.', ja: '問題のプラグインは隔離されましたが、DSH サービスはまだ準備できていません。', es: 'Los complementos sospechosos están aislados, pero DSH aún no está listo.', fr: 'Les extensions suspectes sont isolées, mais DSH n\'est pas encore prêt.', de: 'Verdächtige Plugins sind isoliert, DSH ist jedoch noch nicht bereit.', ru: 'Подозрительные плагины изолированы, но DSH еще не готов.', pt: 'Os plugins suspeitos estão isolados, mas o DSH ainda não está pronto.' });
+        primaryAction.textContent = t({ zh: '重试恢复模式', en: 'Retry Recovery', ja: '復元を再試行', es: 'Reintentar recuperación', fr: 'Réessayer la récupération', de: 'Wiederherstellung wiederholen', ru: 'Повторить восстановление', pt: 'Tentar recuperação novamente' });
       } else {
-        recoveryDescription.textContent = '恢复启动将仅隔离下方列出的可疑插件，保留其他插件和用户数据。';
-        primaryAction.textContent = '启动恢复模式';
+        recoveryDescription.textContent = t({ zh: '恢复启动将仅隔离下方列出的可疑插件，保留其他插件和用户数据。', en: 'Recovery startup only isolates suspected plugins listed below, preserving other plugins and data.', ja: '復元起動では、下記の問題と思われるプラグインのみを隔離し、その他のデータは保持します。', es: 'El inicio de recuperación solo aislará los complementos sospechosos, conservando tus datos.', fr: 'Le démarrage de récupération isole uniquement les extensions suspectes ci-dessous, en préservant vos données.', de: 'Beim Wiederherstellungsstart werden nur die unten aufgeführten verdächtigen Plugins isoliert.', ru: 'При восстановлении изолируются только указанные ниже плагины, остальные данные сохраняются.', pt: 'A recuperação isolará apenas os plugins suspeitos abaixo, preservando outros dados.' });
+        primaryAction.textContent = t({ zh: '启动恢复模式', en: 'Start Recovery Mode', ja: '復元モードを開始', es: 'Iniciar modo de recuperación', fr: 'Démarrer la récupération', de: 'Wiederherstellung starten', ru: 'Запустить восстановление', pt: 'Iniciar modo de recuperação' });
       }
       const isolated = state.isolated || [];
       const suspected = state.suspectedPlugin;
       pluginsDescription.textContent = state.active
         ? suspected && isolated.some(plugin => plugin.packageName === suspected)
-          ? `已定位到可能导致本次失败的插件：${suspected}。建议卸载后再进入工作台。`
-          : `${isolated.length} 个可疑插件已隔离，当前不会加载。`
+          ? t({ zh: `已定位到可能导致本次失败的插件：${suspected}。建议卸载后再进入工作台。`, en: `Located plugin likely causing this failure: ${suspected}. Recommended to uninstall before entering the workbench.` })
+          : t({ zh: `${isolated.length} 个可疑插件已隔离，当前不会加载。`, en: `${isolated.length} suspected plugins isolated; will not load.` })
         : suspected
-          ? `检测到可能导致本次失败的插件：${suspected}。启动恢复模式后可确认卸载。`
-          : '尚未定位到具体插件，不会批量隔离第三方插件。';
+          ? t({ zh: `检测到可能导致本次失败的插件：${suspected}。启动恢复模式后可确认卸载。`, en: `Detected plugin that may cause failure: ${suspected}. Confirm uninstall after starting recovery.` })
+          : t({ zh: '尚未定位到具体插件，不会批量隔离第三方插件。', en: 'No specific plugin identified; will not isolate plugins in batch.' });
       pluginList.innerHTML = state.active ? pluginRows(isolated, suspected) : pluginRows(state.candidates || [], suspected, false);
       bindPluginActions();
     }
@@ -161,7 +189,7 @@
         if (button.dataset.action === 'restore') void restorePlugin(name, button);
         if (button.dataset.action === 'uninstall') {
           uninstallTarget = name;
-          confirmMessage.textContent = `“${name}”将从当前配置中移除。卸载后需要重新安装才能恢复。`;
+          confirmMessage.textContent = t({ zh: `“${name}”将从当前配置中移除。卸载后需要重新安装才能恢复。`, en: `"${name}" will be removed from configuration. Reinstallation required to restore.` });
           dialog.showModal();
         }
       }));

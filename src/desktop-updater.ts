@@ -40,6 +40,16 @@ export type DesktopTrayItem = {
 
 export const DESKTOP_UPDATE_WARNING = '下载完成后将重启并替换当前桌面应用，请先保存正在进行的工作。'
 export const DESKTOP_UPDATE_WARNING_EN = 'The app will restart and replace the current desktop build after download. Save your work first.'
+export const DESKTOP_UPDATE_WARNING_MAP: Record<SupportedShellLocale, string> = {
+  zh: '下载完成后将重启并替换当前桌面应用，请先保存正在进行的工作。',
+  en: 'The app will restart and replace the current desktop build after download. Save your work first.',
+  ja: 'ダウンロード完了後にアプリを再起動して現在のデスクトップ版を置き換えます。作業内容を保存してください。',
+  es: 'La aplicación se reiniciará y reemplazará la versión actual tras la descarga. Guarda tu trabajo primero.',
+  fr: "L'application redémarrera et remplacera la version actuelle après le téléchargement. Enregistrez votre travail.",
+  de: 'Die App wird nach dem Download neu gestartet und ersetzt die aktuelle Desktop-Version. Speichern Sie zuerst Ihre Arbeit.',
+  ru: 'После загрузки приложение перезапустится и обновит текущую версию. Сначала сохраните свою работу.',
+  pt: 'O aplicativo será reiniciado e substituirá a versão atual após o download. Salve seu trabalho primeiro.',
+}
 
 export function sanitizeUpdatePreferences(value: unknown): DesktopUpdatePreferences {
   if (typeof value !== 'object' || value === null) return DEFAULT_UPDATE_PREFERENCES
@@ -91,10 +101,16 @@ export function desktopArchiveDownloadUrl(version: string, arch: string): string
 }
 
 export function desktopArchiveUpdatePrompt(version: string, locale = 'zh'): string {
-  const zh = locale.toLowerCase().startsWith('zh')
-  return zh
-    ? `发现桌面端 ${version}。当前是压缩包，不能原地安装。请下载新的 zip，退出后替换当前文件夹。不要运行安装包，否则会在另一个位置再装一份。`
-    : `Desktop ${version} is available. This is a zip build and cannot install in place. Download the new zip, quit, and replace this folder. Do not run the installer, or it will install a second copy elsewhere.`
+  return trayText(locale, {
+    zh: `发现桌面端 ${version}。当前是压缩包，不能原地安装。请下载新的 zip，退出后替换当前文件夹。不要运行安装包，否则会在另一个位置再装一份。`,
+    en: `Desktop ${version} is available. This is a zip build and cannot install in place. Download the new zip, quit, and replace this folder. Do not run the installer, or it will install a second copy elsewhere.`,
+    ja: `デスクトップ ${version} が見つかりました。この Zip 版は上書きインストールできません。新しい zip をダウンロードし、アプリ終了後にフォルダーを置き換えてください。`,
+    es: `DSH Codex Desktop ${version} está disponible. Esta versión comprimida no se puede instalar directamente. Descarga el nuevo zip, cierra la app y reemplaza la carpeta actual.`,
+    fr: `DSH Codex Desktop ${version} est disponible. Cette archive zip ne peut pas être installée sur place. Téléchargez le nouveau zip, quittez l'app et remplacez ce dossier.`,
+    de: `Desktop ${version} ist verfügbar. Dies ist ein Zip-Build und kann nicht direkt installiert werden. Bitte das neue Zip herunterladen, beenden und diesen Ordner ersetzen.`,
+    ru: `Доступна версия ${version}. Эта zip-сборка не поддерживает установку поверх. Скачайте новый zip, закройте приложение и замените текущую папку.`,
+    pt: `DSH Codex Desktop ${version} está disponível. Esta versão zip não pode ser instalada no local. Baixe o novo zip, feche o app e substitua esta pasta.`,
+  })
 }
 
 export function desktopUpdateChannel(platform = process.platform, arch = process.arch): string | undefined {
@@ -105,22 +121,79 @@ export function desktopUpdateChannel(platform = process.platform, arch = process
 /** 去掉路径和底层堆栈，避免把本机目录回给对话框。 */
 export function publicDesktopUpdateError(error: unknown, locale = 'zh'): string {
   const detail = error instanceof Error ? error.message : String(error)
-  const zh = locale.toLowerCase().startsWith('zh')
-  if (/ENOTFOUND|ECONN|ETIMEDOUT|net::|404|403/i.test(detail)) return zh ? '无法检查桌面端更新，请稍后重试。' : 'Unable to check for desktop updates. Try again later.'
-  if (/download|sha512|blockmap|differential/i.test(detail)) return zh ? '无法下载桌面端更新，请稍后重试。' : 'Unable to download the desktop update. Try again later.'
-  if (/[A-Za-z]:\\|\//.test(detail)) return zh ? '桌面端更新失败，请查看桌面日志。' : 'The desktop update failed. Check the desktop logs.'
-  return zh ? '桌面端更新失败，请稍后重试。' : 'The desktop update failed. Try again later.'
+  if (/ENOTFOUND|ECONN|ETIMEDOUT|net::|404|403/i.test(detail)) {
+    return trayText(locale, {
+      zh: '无法检查桌面端更新，请稍后重试。',
+      en: 'Unable to check for desktop updates. Try again later.',
+      ja: 'デスクトップのアップデートを確認できません。後でもう一度お試しください。',
+      es: 'No se pudieron buscar actualizaciones. Inténtalo de nuevo más tarde.',
+      fr: 'Impossible de vérifier les mises à jour. Veuillez réessayer ultérieurement.',
+      de: 'Desktop-Updates konnten nicht gesucht werden. Bitte später erneut versuchen.',
+      ru: 'Не удалось проверить обновления. Повторите попытку позже.',
+      pt: 'Não foi possível verificar atualizações. Tente novamente mais tarde.',
+    })
+  }
+  if (/download|sha512|blockmap|differential/i.test(detail)) {
+    return trayText(locale, {
+      zh: '无法下载桌面端更新，请稍后重试。',
+      en: 'Unable to download the desktop update. Try again later.',
+      ja: 'アップデートをダウンロードできません。後でもう一度お試しください。',
+      es: 'No se pudo descargar la actualización. Inténtalo de nuevo más tarde.',
+      fr: 'Impossible de télécharger la mise à jour. Veuillez réessayer ultérieurement.',
+      de: 'Desktop-Update konnte nicht heruntergeladen werden. Bitte später erneut versuchen.',
+      ru: 'Не удалось загрузить обновление. Повторите попытку позже.',
+      pt: 'Não foi possível baixar a atualização. Tente novamente mais tarde.',
+    })
+  }
+  if (/[A-Za-z]:\\|\//.test(detail)) {
+    return trayText(locale, {
+      zh: '桌面端更新失败，请查看桌面日志。',
+      en: 'The desktop update failed. Check the desktop logs.',
+      ja: 'アップデートに失敗しました。デスクトップログをご確認ください。',
+      es: 'Falló la actualización. Revisa los registros de la aplicación.',
+      fr: 'Échec de la mise à jour. Consultez les journaux de l’application.',
+      de: 'Desktop-Update fehlgeschlagen. Bitte Desktop-Logs prüfen.',
+      ru: 'Ошибка обновления. Проверьте журналы приложения.',
+      pt: 'Falha na atualização. Verifique os logs do aplicativo.',
+    })
+  }
+  return trayText(locale, {
+    zh: '桌面端更新失败，请稍后重试。',
+    en: 'The desktop update failed. Try again later.',
+    ja: 'アップデートに失敗しました。後でもう一度お試しください。',
+    es: 'Falló la actualización. Inténtalo de nuevo más tarde.',
+    fr: 'Échec de la mise à jour. Veuillez réessayer ultérieurement.',
+    de: 'Desktop-Update fehlgeschlagen. Bitte später erneut versuchen.',
+    ru: 'Ошибка обновления. Повторите попытку позже.',
+    pt: 'Falha na atualização. Tente novamente mais tarde.',
+  })
 }
 
 export function desktopUpdatePrompt(status: Extract<DesktopUpdateStatus, { kind: 'available' | 'ready' }>, locale = 'zh'): string {
-  const zh = locale.toLowerCase().startsWith('zh')
   if (status.kind === 'ready') {
-    return zh ? `桌面端 ${status.version} 已下载。关闭应用后安装新版本。` : `Desktop ${status.version} is ready. Close the app to install it.`
+    return trayText(locale, {
+      zh: `桌面端 ${status.version} 已下载。关闭应用后安装新版本。`,
+      en: `Desktop ${status.version} is ready. Close the app to install it.`,
+      ja: `デスクトップ ${status.version} のダウンロードが完了しました。アプリを閉じてインストールしてください。`,
+      es: `DSH Codex Desktop ${status.version} descargado. Cierra la aplicación para instalarlo.`,
+      fr: `DSH Codex Desktop ${status.version} est téléchargé. Fermez l'application pour l'installer.`,
+      de: `Desktop ${status.version} ist bereit. Schließen Sie die App zur Installation.`,
+      ru: `Версия ${status.version} загружена. Закройте приложение для установки.`,
+      pt: `DSH Codex Desktop ${status.version} baixado. Feche o aplicativo para instalar.`,
+    })
   }
   const notes = status.releaseNotes === undefined || status.releaseNotes.trim() === '' ? '' : `\n\n${status.releaseNotes.trim()}`
-  return zh
-    ? `发现桌面端 ${status.version}。\n\n${DESKTOP_UPDATE_WARNING}${notes}`
-    : `Desktop ${status.version} is available.\n\n${DESKTOP_UPDATE_WARNING_EN}${notes}`
+  const warning = trayText(locale, DESKTOP_UPDATE_WARNING_MAP)
+  return trayText(locale, {
+    zh: `发现桌面端 ${status.version}。\n\n${warning}${notes}`,
+    en: `Desktop ${status.version} is available.\n\n${warning}${notes}`,
+    ja: `デスクトップ ${status.version} が見つかりました。\n\n${warning}${notes}`,
+    es: `DSH Codex Desktop ${status.version} disponible.\n\n${warning}${notes}`,
+    fr: `DSH Codex Desktop ${status.version} est disponible.\n\n${warning}${notes}`,
+    de: `Desktop ${status.version} ist verfügbar.\n\n${warning}${notes}`,
+    ru: `Доступна версия ${status.version}.\n\n${warning}${notes}`,
+    pt: `DSH Codex Desktop ${status.version} disponível.\n\n${warning}${notes}`,
+  })
 }
 
 /** 原生系统对话框不渲染 HTML 或 Markdown，发布说明统一转为可读文本。 */

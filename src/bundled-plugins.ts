@@ -38,7 +38,7 @@ export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
   { packageName: '@michengai/dsh-pua', version: '1.0.10' },
   { packageName: 'dsh-better-sidebar', version: '0.30.1' },
   { packageName: 'dshmarket', version: '1.73.17' },
-  { packageName: 'dsh-context', version: '0.83.0' },
+  { packageName: 'dsh-context', version: '0.83.1' },
 ]
 
 /** 离线 store 只放仍随包的社区插件，官方运行时单独预装。 */

@@ -109,8 +109,52 @@ function desktopLocale(): string {
   return activeDshLocale ?? app.getLocale()
 }
 
-function desktopText(zh: string, en: string): string {
-  return isChineseLocale(desktopLocale()) ? zh : en
+const DESKTOP_COMMON_TEXT: Record<string, Partial<Record<SupportedShellLocale, string>>> = {
+  '桌面端设置': { ja: 'デスクトップ設定', es: 'Configuración de escritorio', fr: 'Paramètres du bureau', de: 'Desktop-Einstellungen', ru: 'Настройки приложения', pt: 'Configurações do aplicativo' },
+  '键盘快捷键': { ja: 'キーボードショートカット', es: 'Atajos de teclado', fr: 'Raccourcis clavier', de: 'Tastaturkurzbefehle', ru: 'Сочетания клавиш', pt: 'Atalhos de teclado' },
+  '正在启动': { ja: '起動中', es: 'Iniciando', fr: 'Démarrage en cours', de: 'Wird gestartet', ru: 'Запуск', pt: 'Iniciando' },
+  '加载中': { ja: '読み込み中', es: 'Cargando', fr: 'Chargement en cours', de: 'Wird geladen', ru: 'Загрузка', pt: 'Carregando' },
+  '取消': { ja: 'キャンセル', es: 'Cancelar', fr: 'Annuler', de: 'Abbrechen', ru: 'Отмена', pt: 'Cancelar' },
+  '现在安装': { ja: '今すぐインストール', es: 'Instalar ahora', fr: 'Installer maintenant', de: 'Jetzt installieren', ru: 'Установить сейчас', pt: 'Instalar agora' },
+  '稍后': { ja: '後で', es: 'Más tarde', fr: 'Plus tard', de: 'Später', ru: 'Позже', pt: 'Mais tarde' },
+  '下载压缩包': { ja: 'Zip をダウンロード', es: 'Descargar zip', fr: 'Télécharger le zip', de: 'Zip herunterladen', ru: 'Скачать zip', pt: 'Baixar zip' },
+  '下载并安装': { ja: 'ダウンロードしてインストール', es: 'Descargar e instalar', fr: 'Télécharger et installer', de: 'Herunterladen und installieren', ru: 'Скачать и установить', pt: 'Baixar e instalar' },
+  '继续启动': { ja: '起動を続行', es: 'Continuar inicio', fr: 'Poursuivre le démarrage', de: 'Start fortsetzen', ru: 'Продолжить запуск', pt: 'Continuar inicialização' },
+  'DSH 加载失败：': { ja: 'DSH の読み込みに失敗しました：', es: 'Error al cargar DSH: ', fr: 'Échec du chargement de DSH : ', de: 'DSH konnte nicht geladen werden: ', ru: 'Не удалось загрузить DSH: ', pt: 'Falha ao carregar DSH: ' },
+  '启动失败：': { ja: '起動に失敗しました：', es: 'Error de inicio: ', fr: 'Échec du démarrage : ', de: 'Start fehlgeschlagen: ', ru: 'Сбой запуска: ', pt: 'Falha na inicialização: ' },
+  '\n日志：': { ja: '\nログ：', es: '\nRegistro: ', fr: '\nJournal : ', de: '\nProtokoll: ', ru: '\nЖурнал: ', pt: '\nLog: ' },
+  '当前已是最新桌面端版本。': { ja: '現在最新のデスクトップ版を使用しています。', es: 'Ya tienes la versión más reciente.', fr: 'Vous disposez déjà de la version la plus récente.', de: 'Sie verwenden bereits die neueste Version.', ru: 'У вас установлена последняя версия.', pt: 'Você já possui a versão mais recente.' },
+  '正在检查配套插件': { ja: '付属プラグインを確認中', es: 'Comprobando complementos incluidos', fr: 'Vérification des extensions incluses', de: 'Enthaltene Plugins werden geprüft', ru: 'Проверка встроенных плагинов', pt: 'Verificando extensões incluídas' },
+  '正在检查待应用的插件更新': { ja: '保留中のプラグイン更新を確認中', es: 'Comprobando actualizaciones pendientes', fr: 'Vérification des mises à jour en attente', de: 'Ausstehende Plugin-Updates werden geprüft', ru: 'Проверка ожидающих обновлений', pt: 'Verificando atualizações pendentes' },
+  'DSH 已停止运行。请重新启动应用。': { ja: 'DSH が停止しました。アプリを再起動してください。', es: 'DSH se ha detenido. Reinicia la aplicación.', fr: "DSH s'est arrêté. Veuillez redémarrer l'application.", de: 'DSH wurde angehalten. Bitte die App neu starten.', ru: 'DSH остановлен. Перезапустите приложение.', pt: 'O DSH parou de funcionar. Reinicie o aplicativo.' },
+  '内置插件更新未完成': { ja: '内蔵プラグインの更新が未完了です', es: 'Actualización de complementos incompletos', fr: 'Mise à jour des extensions intégrées incomplète', de: 'Aktualisierung der integrierten Plugins unvollständig', ru: 'Обновление встроенных плагинов не завершено', pt: 'Atualização de extensões integradas incompleta' },
+  '插件更新未完成': { ja: 'プラグインの更新が未完了です', es: 'Actualización de complementos incompleta', fr: 'Mise à jour des extensions incomplète', de: 'Plugin-Aktualisierung unvollständig', ru: 'Обновление плагинов не завершено', pt: 'Atualização de extensões incompleta' },
+  '未能安装此桌面版本配套的插件。': { ja: 'このデスクトップ版に付属するプラグインをインストールできませんでした。', es: 'No se pudieron instalar los complementos incluidos con esta versión.', fr: 'Impossible d\'installer les extensions fournies avec cette version.', de: 'Die mit dieser Version gebündelten Plugins konnten nicht installiert werden.', ru: 'Не удалось установить плагины из комплекта этой версии.', pt: 'Não foi possível instalar as extensões incluídas nesta versão.' },
+  '未能应用等待安装的插件更新。': { ja: '保留中のプラグイン更新を適用できませんでした。', es: 'No se pudieron aplicar las actualizaciones de complementos pendientes.', fr: 'Impossible d\'appliquer les mises à jour d\'extensions en attente.', de: 'Ausstehende Plugin-Updates konnten nicht angewendet werden.', ru: 'Не удалось применить ожидающие обновления плагинов.', pt: 'Não foi possível aplicar as atualizações de extensões pendentes.' },
+  '将尝试使用现有插件启动。请检查网络后重新启动；若仍失败，可在恢复页面处理相关插件或重新安装完整安装包。': {
+    ja: '既存のプラグインで起動を試みます。ネットワークを確認して再起動してください。解決しない場合は、復元ページでプラグインを管理するか、完全版を再インストールしてください。',
+    es: 'Se intentará iniciar con los complementos actuales. Revisa tu red y reinicia; si persiste el error, gestiona los complementos en la página de recuperación o reinstala la app completa.',
+    fr: 'Le démarrage va se poursuivre avec les extensions existantes. Vérifiez votre réseau et redémarrez; si le problème persiste, gérez les extensions sur la page de récupération ou réinstallez.',
+    de: 'Der Start wird mit den vorhandenen Plugins fortgesetzt. Bitte Netzwerk prüfen und neu starten. Falls das Problem weiterhin besteht, Plugins auf der Wiederherstellungsseite verwalten.',
+    ru: 'Запуск будет продолжен с текущими плагинами. Проверьте сеть и перезапустите; если проблема сохраняется, управляйте плагинами на странице восстановления.',
+    pt: 'A inicialização continuará com as extensões existentes. Verifique sua rede e reinicie; se persistir, gerencie as extensões na página de recuperação ou reinstale o pacote completo.',
+  },
+}
+
+function desktopText(zh: string, en: string, others?: Partial<Record<SupportedShellLocale, string>>): string {
+  const norm = normalizeShellLocale(desktopLocale())
+  if (norm === 'zh' || isChineseLocale(desktopLocale())) return zh
+  if (norm === 'en' || norm === undefined) return en
+  if (others?.[norm] !== undefined) return others[norm]!
+  if (DESKTOP_COMMON_TEXT[zh]?.[norm] !== undefined) return DESKTOP_COMMON_TEXT[zh]![norm]!
+  if (zh.startsWith('关于 ')) {
+    const name = zh.slice(3)
+    const aboutMap: Record<SupportedShellLocale, string> = {
+      zh, en, ja: `${name} について`, es: `Acerca de ${name}`, fr: `À propos de ${name}`, de: `Über ${name}`, ru: `О программе ${name}`, pt: `Sobre o ${name}`
+    }
+    return aboutMap[norm] ?? en
+  }
+  return en
 }
 
 process.on('uncaughtException', handleUnexpectedMainError)
@@ -1672,12 +1716,32 @@ function openNotificationSession(sessionId: string): void {
 
 function showNotificationReplyError(sessionId: string): void {
   if (!Notification.isSupported()) return
-  const zh = isChineseLocale(desktopLocale())
+  const norm = normalizeShellLocale(desktopLocale()) ?? (isChineseLocale(desktopLocale()) ? 'zh' : 'en')
+  const titleMap: Record<SupportedShellLocale, string> = {
+    zh: '回复发送失败',
+    en: 'Reply not sent',
+    ja: '返信の送信に失敗しました',
+    es: 'Error al enviar respuesta',
+    fr: "Échec de l'envoi de la réponse",
+    de: 'Antwort nicht gesendet',
+    ru: 'Ответ не отправлен',
+    pt: 'Resposta não enviada',
+  }
+  const bodyMap: Record<SupportedShellLocale, string> = {
+    zh: '未能将回复发送到这个任务。请打开任务后重试。',
+    en: 'The reply could not be sent to this task. Open it and try again.',
+    ja: 'このタスクに返信を送信できませんでした。タスクを開いてやり直してください。',
+    es: 'No se pudo enviar la respuesta a esta tarea. Ábrela e inténtalo de nuevo.',
+    fr: "Impossible d'envoyer la réponse à cette tâche. Ouvrez-la et réessayez.",
+    de: 'Die Antwort konnte nicht an diese Aufgabe gesendet werden. Öffnen Sie sie und versuchen Sie es erneut.',
+    ru: 'Не удалось отправить ответ на эту задачу. Откройте её и повторите попытку.',
+    pt: 'Não foi possível enviar a resposta para esta tarefa. Abra-a e tente novamente.',
+  }
   const id = `reply-error:${sessionId}`
   activeNotifications.get(id)?.close()
   const notification = new Notification({
-    title: zh ? '回复发送失败' : 'Reply not sent',
-    body: zh ? '未能将回复发送到这个任务。请打开任务后重试。' : 'The reply could not be sent to this task. Open it and try again.',
+    title: titleMap[norm] ?? titleMap.en,
+    body: bodyMap[norm] ?? bodyMap.en,
     timeoutType: 'never',
   })
   activeNotifications.set(id, notification)
@@ -1699,7 +1763,38 @@ function showDesktopNotification(event: DesktopNotificationEvent): void {
   const copy = notificationCopy(event)
   const supportsReply = event.kind !== 'approval' && (process.platform === 'win32' || process.platform === 'darwin')
   const zh = isChineseLocale(desktopLocale())
-  const replyPlaceholder = zh ? `回复 ${DESKTOP_APP_NAME}` : `Reply to ${DESKTOP_APP_NAME}`
+  const norm = normalizeShellLocale(desktopLocale()) ?? (zh ? 'zh' : 'en')
+  const placeholderMap: Record<SupportedShellLocale, string> = {
+    zh: `回复 ${DESKTOP_APP_NAME}`,
+    en: `Reply to ${DESKTOP_APP_NAME}`,
+    ja: `${DESKTOP_APP_NAME} に返信`,
+    es: `Responder a ${DESKTOP_APP_NAME}`,
+    fr: `Répondre à ${DESKTOP_APP_NAME}`,
+    de: `Antworten an ${DESKTOP_APP_NAME}`,
+    ru: `Ответить в ${DESKTOP_APP_NAME}`,
+    pt: `Responder a ${DESKTOP_APP_NAME}`,
+  }
+  const replyLabelMap: Record<SupportedShellLocale, string> = {
+    zh: '回复',
+    en: 'Reply',
+    ja: '返信',
+    es: 'Responder',
+    fr: 'Répondre',
+    de: 'Antworten',
+    ru: 'Ответить',
+    pt: 'Responder',
+  }
+  const closeLabelMap: Record<SupportedShellLocale, string> = {
+    zh: '关闭',
+    en: 'Close',
+    ja: '閉じる',
+    es: 'Cerrar',
+    fr: 'Fermer',
+    de: 'Schließen',
+    ru: 'Закрыть',
+    pt: 'Fechar',
+  }
+  const replyPlaceholder = placeholderMap[norm] ?? placeholderMap.en
   const toastId = `dsh-${createHash('sha256').update(id).digest('hex').slice(0, 40)}`
   const notification = new Notification({
     ...copy,
@@ -1901,9 +1996,18 @@ function createTray(): void {
 
 function refreshTrayMenu(): void {
   if (tray === undefined) return
-  const badgeSuffix = unreadCompletionCount > 0
-    ? (isChineseLocale(desktopLocale()) ? ` · ${unreadCompletionCount} 个已完成任务` : ` · ${unreadCompletionCount} completed tasks`)
-    : ''
+  const norm = normalizeShellLocale(desktopLocale()) ?? (isChineseLocale(desktopLocale()) ? 'zh' : 'en')
+  const badgeMap: Record<SupportedShellLocale, string> = {
+    zh: ` · ${unreadCompletionCount} 个已完成任务`,
+    en: ` · ${unreadCompletionCount} completed tasks`,
+    ja: ` · 完了したタスク: ${unreadCompletionCount}件`,
+    es: ` · ${unreadCompletionCount} tareas completadas`,
+    fr: ` · ${unreadCompletionCount} tâches terminées`,
+    de: ` · ${unreadCompletionCount} abgeschlossene Aufgaben`,
+    ru: ` · Выполнено задач: ${unreadCompletionCount}`,
+    pt: ` · ${unreadCompletionCount} tarefas concluídas`,
+  }
+  const badgeSuffix = unreadCompletionCount > 0 ? (badgeMap[norm] ?? badgeMap.en) : ''
   tray.setToolTip(DESKTOP_APP_NAME + badgeSuffix)
   const items = buildDesktopTrayItems({
     status: updateStatus,

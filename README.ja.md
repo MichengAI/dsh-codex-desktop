@@ -146,12 +146,68 @@ DSH Codex Desktop は [DeepSeek Harness](https://github.com/deepseek-ai/deepseek
 | 独立 Agent コードレビュー | [`@michengai/dsh-code-review`](https://github.com/MichengAI/dsh-code-review) |
 | プラグインマーケット | [`dshmarket`](https://www.npmjs.com/package/dshmarket) |
 
+追加のプラグインはプラグインマーケットから後から管理できます。デスクトップアプリは独自のランタイムをプロファイルにインストールされたコミュニティプラグインから分離して保持するため、プラグインの変更によってアプリのランタイムが上書きされることはありません。
+
+デスクトップブリッジはアプリに付属し、デスクトップが DSH を起動するときにのみ注入されます。共有 Web プロファイルにインストールする必要はありません。手動で `dsh web` を実行すると、Web 独自のプラグイン管理パスが使用されます。
+
+## DSH プロダクトエコシステム
+
+デスクトップワークベンチをご利用の場合は、[DSH Codex Desktop](https://github.com/MichengAI/dsh-codex-desktop/releases) をダウンロードしてください。既存の [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) のインストール環境では、各プロジェクトの README に従って必要に応じてプラグインを追加できます。以下は 11 の公式コミュニティプラグインです：
+
+| プラグイン | できること |
+| --- | --- |
+| [Codex UI](https://github.com/MichengAI/dsh-codex-ui) | プロジェクトと対話の整理、タスク検索、チャットターンのナビゲーション |
+| [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | タスクに適した専門家ロールの選択と召喚 |
+| [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) | ローカルスキルの検索、有効化、作成、インポート |
+| [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) | アーカイブされた対話の検索、復元、クリーンアップ |
+| [IM Connect](https://github.com/MichengAI/dsh-im-connect) | メッセージングプラットフォーム経由でのタスク送信と返信の受信 |
+| [Automation](https://github.com/MichengAI/dsh-automation) | タスクのスケジュール設定と実行履歴の確認 |
+| [BTW](https://github.com/MichengAI/dsh-btw) | メインタスクを中断せずにサイド質問を行う |
+| [Simplify](https://github.com/MichengAI/dsh-simplify) | `/simplify` を使用して Git の変更範囲内のコードを簡素化 |
+| [PUA](https://github.com/MichengAI/dsh-pua) | 失敗後に Agent に別のアプローチを促し、原因を調査して完了前に結果を検証 |
+| [Code Review](https://github.com/MichengAI/dsh-code-review) | `/review` で独立した Agent コードレビューを要求し、チャット内でレポートを受信 |
+| [Codex Pet](https://github.com/MichengAI/dsh-codex-pet) | デスクトップペットを通じて対話の通知を確認し、ツールの承認や質問に応答 |
+
+デスクトップアプリは、ファイルナビゲーションやプラグインの発見・インストールのために [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) および [App Market](https://www.npmjs.com/package/dshmarket) もサードパーティプラグインとして統合しています。
+
 ## アップデートと復元
 
-- **デスクトップアプリアップデート**：起動後に自動で更新を確認し、新バージョンがある場合に通知します。設定 → アップデートから自動ダウンロードや手動確認のみに変更できます。
-- **DSH 再読み込み**：トレイメニューからローカル DSH サービスを即座に再起動できます。
-- **プラグイン復元モード**：万一プラグインの不具合で DSH が起動に失敗した場合、隔離と復元の専用画面が起動し、安全に復旧できます。
+- **デスクトップアプリアップデート**：起動後に自動で更新を確認し、新バージョンがある場合に通知します。設定 → アップデートから自動ダウンロードや手動確認のみに変更できます。インストールと再起動には必ず明示的なアクションが必要です。Zip ビルドは新バージョンの確認のみを行い、インストーラーをダウンロードしません。Releases から新しい zip をダウンロードし、終了後に現在のフォルダーを置き換えてください。
+- **DSH 再読み込み**：プラグインやプロファイル構成を変更した後、トレイメニューからローカル DSH サービスを即座に再起動できます。デスクトップアプリを再インストールする必要はありません。
+- **プラグインアップデート**：DSH の設定とプラグインマーケットから行えます。インストールの失敗したプラグインは実行中バンドルとしてアクティブ化されません。
+- **起動復元モード**：インストールされたパッケージが存在しない古いコミュニティプラグインの登録を削除し、ローカル DSH の起動を安全に再試行します。
 
-## ライセンス
+## システム要件 (System requirements)
+
+| 項目 | 要件 |
+| --- | --- |
+| オペレーティングシステム | Windows 10/11、macOS、Linux |
+| CPU アーキテクチャ | Windows x64、macOS arm64/x64、Linux x64/arm64 |
+| Node.js | エンドユーザーには不要（アプリに同梱） |
+| ネットワーク | 使用するモデルプロバイダー、プラグインのダウンロード、各種ツールでのみ必要 |
+
+## プライバシーとセキュリティ (Privacy and security)
+
+- DSH の設定、セッション、資格情報は現在のユーザーの DSH ディレクトリ内に保持されます。デスクトップアプリをアンインストールしてもこれらは削除されません。
+- ランチャーは、組み込みウィンドウ用に検証済みの `127.0.0.1` ローカル HTTP アドレスのみを受け入れます。
+- 外部の HTTP(S) リンクはシステムブラウザで開きます。ファイル、JavaScript、データ URL はブロックされます。
+- Electron はコンテキスト分離とサンドボックス化を使用し、DSH ページでは Node.js 統合が無効化されています。
+- 設定したモデルプロバイダーや DSH ツールは独自のネットワークリクエストを行う場合があります。使用前にそれぞれの設定とプライバシーポリシーをご確認ください。
+
+## 開発 (Development)
+
+引継ぎドキュメント：[技術アーキテクチャベースライン要約](docs/00-交接入口/05-技术架构基线.md) · [デスクトップランチャーアーキテクチャベースライン](docs/03-技术架构/00-桌面启动器架构基线.md)。
+
+Windows パッケージングジョブは、成果物のアップロード前に `pnpm smoke:upgrade <old-exe> <new-exe>` を実行します。開発には Windows、Node.js `24.21.0`、pnpm `11.26.0` が必要です。
+
+```powershell
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+pnpm install --frozen-lockfile
+pnpm test
+pnpm run dist
+```
+
+## ライセンス (License)
 
 本プロジェクトは [Apache License 2.0](LICENSE) の下で公開されています。

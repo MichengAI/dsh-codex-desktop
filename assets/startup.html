@@ -102,12 +102,23 @@
     </div>
   </main>
   <script>
-    const zh = new URLSearchParams(location.search).get('lang') !== 'en'
-    document.documentElement.lang = zh ? 'zh-CN' : 'en'
+    const rawLang = new URLSearchParams(location.search).get('lang') || navigator.language
+    const norm = (rawLang || '').toLowerCase().split('-')[0]
+    function pickLocale(map) { return map[norm] || (norm.startsWith('zh') ? map.zh : map.en) }
+    document.documentElement.lang = rawLang
     const started = Date.now()
     let stoppedAt
     const bar = document.getElementById('progress')
-    bar.setAttribute('aria-label', zh ? '当前步骤进度' : 'Current step progress')
+    bar.setAttribute('aria-label', pickLocale({
+      zh: '当前步骤进度',
+      en: 'Current step progress',
+      ja: '現在のステップの進捗',
+      es: 'Progreso del paso actual',
+      fr: 'Progression de l\'étape actuelle',
+      de: 'Fortschritt des aktuellen Schritts',
+      ru: 'Прогресс текущего шага',
+      pt: 'Progresso da etapa atual',
+    }))
     window.updateStartupProgress = (state) => {
       document.getElementById('msg').textContent = state.message
       document.getElementById('detail').textContent = state.detail || ''
@@ -117,13 +128,49 @@
       const failed = state.failed === true
       document.body.dataset.failed = String(failed)
       stoppedAt = failed ? Date.now() : undefined
-      document.getElementById('percentage').textContent = failed ? (zh ? '启动未完成' : 'Startup incomplete')
-        : measured ? `${zh ? '当前步骤' : 'Current step'} ${Math.floor(state.completed / state.total * 100)}%`
-        : (zh ? '正在处理' : 'Working')
+      const stepPrefix = pickLocale({
+        zh: '当前步骤',
+        en: 'Current step',
+        ja: '現在のステップ',
+        es: 'Paso actual',
+        fr: 'Étape actuelle',
+        de: 'Aktueller Schritt',
+        ru: 'Текущий шаг',
+        pt: 'Etapa atual',
+      })
+      document.getElementById('percentage').textContent = failed ? pickLocale({
+        zh: '启动未完成',
+        en: 'Startup incomplete',
+        ja: '起動が未完了です',
+        es: 'Inicio incompleto',
+        fr: 'Démarrage incomplet',
+        de: 'Start unvollständig',
+        ru: 'Запуск не завершен',
+        pt: 'Inicialização incompleta',
+      }) : measured ? `${stepPrefix} ${Math.floor(state.completed / state.total * 100)}%`
+        : pickLocale({
+          zh: '正在处理',
+          en: 'Working',
+          ja: '処理中',
+          es: 'Procesando',
+          fr: 'Traitement en cours',
+          de: 'In Bearbeitung',
+          ru: 'Обработка',
+          pt: 'Processando',
+        })
     }
     const updateElapsed = () => {
       const seconds = Math.floor(((stoppedAt || Date.now()) - started) / 1000)
-      document.getElementById('elapsed').textContent = zh ? `已用时 ${seconds} 秒` : `${seconds}s elapsed`
+      document.getElementById('elapsed').textContent = pickLocale({
+        zh: `已用时 ${seconds} 秒`,
+        en: `${seconds}s elapsed`,
+        ja: `経過時間: ${seconds}秒`,
+        es: `${seconds}s transcurridos`,
+        fr: `${seconds} s écoulées`,
+        de: `${seconds}s vergangen`,
+        ru: `Прошло ${seconds} с`,
+        pt: `${seconds}s decorridos`,
+      })
     }
     setInterval(updateElapsed, 1000)
     updateElapsed()

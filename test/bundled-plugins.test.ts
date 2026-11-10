@@ -50,7 +50,7 @@ test('每个内置插件都钉死精确版本', () => {
     )
   }
   assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dshmarket')?.version, '1.73.17')
-  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dsh-context')?.version, '0.83.0')
+  assert.equal(BUNDLED_PLUGINS.find(plugin => plugin.packageName === 'dsh-context')?.version, '0.83.1')
   assert.deepEqual(Object.fromEntries(BUNDLED_PLUGINS.map(plugin => [plugin.packageName, plugin.version])), {
     '@michengai/dsh-codex-ui': '2.0.21',
     '@michengai/dsh-im-connect': '1.0.34',
@@ -65,7 +65,7 @@ test('每个内置插件都钉死精确版本', () => {
     '@michengai/dsh-pua': '1.0.10',
     'dsh-better-sidebar': '0.30.1',
     dshmarket: '1.73.17',
-    'dsh-context': '0.83.0',
+    'dsh-context': '0.83.1',
   })
 })
 

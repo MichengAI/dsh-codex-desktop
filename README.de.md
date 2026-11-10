@@ -53,7 +53,80 @@ Laden Sie das aktuelle Installationspaket von den [GitHub Releases](https://gith
 | **Automatisierung** | Wiederkehrende Aufgaben mit integriertem Scheduler steuern. |
 | **Sichere Laufzeit** | Lokale Loopback-Bindung mit geschützter App-Hülle. |
 
+## Produktvorschau
+
+Erkunden Sie den Desktop-Arbeitsbereich, die Einstellungen im hellen Design und die Plugin-Verwaltung. Klicken Sie auf ein Bild, um es in voller Auflösung anzuzeigen.
+
+<p align="center"><em>Startseite: Projektnavigation, Aufgabeneinstieg und Composer.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-home.webp"><img src="assets/screenshots/preview-home.webp" alt="Startseite: Projektnavigation, Aufgabeneinstieg und Composer." width="960"></a></p>
+
+<p align="center"><em>Konversation: Nachrichten, Ausführungspfad, Kontext und Aufgabeneingabe.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-conversation.webp"><img src="assets/screenshots/preview-conversation.webp" alt="Konversation: Nachrichten, Ausführungspfad, Kontext und Aufgabeneingabe." width="960"></a></p>
+
+<details>
+<summary>Erscheinungsbild und Desktop-Begleiter (2 Screenshots)</summary>
+
+<p align="center"><em>Helle Einstellungen: Berechtigungen, Sprache, Design und Editor.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-general-light.webp"><img src="assets/screenshots/preview-general-light.webp" alt="Helle Einstellungen: Berechtigungen, Sprache, Design und Editor." width="960"></a></p>
+
+<p align="center"><em>Begleiter-Einstellungen: Auswahl, eigene Begleiter und Größenanpassung.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-pets.webp"><img src="assets/screenshots/preview-pets.webp" alt="Begleiter-Einstellungen: Auswahl, eigene Begleiter und Größenanpassung." width="960"></a></p>
+
+</details>
+
+<details>
+<summary>Unsere Plugins (6 Screenshots)</summary>
+
+<p align="center"><em>Experten-Profile: Filtern, Durchsuchen und Aktivieren von Rollen.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-experts.webp"><img src="assets/screenshots/preview-experts.webp" alt="Experten-Profile: Filtern, Durchsuchen und Aktivieren von Rollen." width="960"></a></p>
+
+<p align="center"><em>Skill-Verwaltung: Lokale Agent Skills aller Quellen verwalten.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-skills.webp"><img src="assets/screenshots/preview-skills.webp" alt="Skill-Verwaltung: Lokale Agent Skills aller Quellen verwalten." width="960"></a></p>
+
+<p align="center"><em>Aufgabenplanung: Zeitpläne und Ausführungshistorie.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-automation.webp"><img src="assets/screenshots/preview-automation.webp" alt="Aufgabenplanung: Zeitpläne und Ausführungshistorie." width="960"></a></p>
+
+<p align="center"><em>IM-Assistent: Messaging-Kanäle, Konten und eingehende Nachrichten.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-im-connect.webp"><img src="assets/screenshots/preview-im-connect.webp" alt="IM-Assistent: Messaging-Kanäle, Konten und eingehende Nachrichten." width="960"></a></p>
+
+<p align="center"><em>Archivierte Konversationen: Projektfilterung, Suche und Wiederherstellung.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-archive.webp"><img src="assets/screenshots/preview-archive.webp" alt="Archivierte Konversationen: Projektfilterung, Suche und Wiederherstellung." width="960"></a></p>
+
+<p align="center"><em>Codex UI Einstellungen: Funktionsübersicht und Installationsstatus.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-codex-ui.webp"><img src="assets/screenshots/preview-codex-ui.webp" alt="Codex UI Einstellungen: Funktionsübersicht und Installationsstatus." width="960"></a></p>
+
+</details>
+
+<details>
+<summary>Community-Plugins (4 Screenshots)</summary>
+
+<p align="center"><em>Kontext-Einstellungen</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-context.webp"><img src="assets/screenshots/preview-context.webp" alt="Kontext-Einstellungen" width="960"></a></p>
+
+<p align="center"><em>Seitenleisten-Einstellungen</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-sidebar.webp"><img src="assets/screenshots/preview-sidebar.webp" alt="Seitenleisten-Einstellungen" width="960"></a></p>
+
+<p align="center"><em>Plugin-Marktplatz: Community-Plugins entdecken und Updates verwalten.</em></p>
+
+<p align="center"><a href="assets/screenshots/preview-plugin-market.webp"><img src="assets/screenshots/preview-plugin-market.webp" alt="Plugin-Marktplatz: Community-Plugins entdecken und Updates verwalten." width="960"></a></p>
+
+</details>
+
 ## Vorinstallierte Plugins
+
+Das Installationsprogramm liefert die erforderliche lokale Laufzeitumgebung für DSH mit. Beim ersten Start richtet es die folgenden Plugins im Web-Profil ein:
 
 | Funktion | Paket |
 | --- | --- |
@@ -71,6 +144,67 @@ Laden Sie das aktuelle Installationspaket von den [GitHub Releases](https://gith
 | Unabhängiges Code-Review | [`@michengai/dsh-code-review`](https://github.com/MichengAI/dsh-code-review) |
 | Plugin-Marktplatz | [`dshmarket`](https://www.npmjs.com/package/dshmarket) |
 
-## Lizenz
+Weitere Plugins können über den Marktplatz nachinstalliert werden. Die Desktop-App trennt ihre eigene Laufzeitumgebung strikt von den Community-Plugins des Profils.
+
+Die Desktop-Bridge wird mitgeliefert und nur injiziert, wenn Desktop den DSH-Dienst startet.
+
+## DSH Produkt-Ökosystem
+
+Für eine vollständige Desktop-Arbeitsumgebung laden Sie [DSH Codex Desktop](https://github.com/MichengAI/dsh-codex-desktop/releases) herunter. Bestehende [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)-Installationen können Plugins anhand der jeweiligen README hinzufügen:
+
+| Plugin | Beschreibung |
+| --- | --- |
+| [Codex UI](https://github.com/MichengAI/dsh-codex-ui) | Projekte und Chats strukturieren, Aufgaben suchen und Chat-Verlauf navigieren |
+| [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | Spezialisierte Rollen für Ihre Aufgabe auswählen |
+| [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) | Lokale Skills finden, aktivieren, erstellen und importieren |
+| [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) | Archivierte Chats durchsuchen, wiederherstellen oder bereinigen |
+| [IM Connect](https://github.com/MichengAI/dsh-im-connect) | Aufgaben per Messaging senden und Antworten empfangen |
+| [Automation](https://github.com/MichengAI/dsh-automation) | Aufgaben planen und Ausführungen überwachen |
+| [BTW](https://github.com/MichengAI/dsh-btw) | Nebenfragen stellen, ohne den Hauptlauf zu unterbrechen |
+| [Simplify](https://github.com/MichengAI/dsh-simplify) | Code innerhalb Ihrer Git-Änderungen optimieren |
+| [PUA](https://github.com/MichengAI/dsh-pua) | Den Agenten nach Fehlern zu neuen Lösungsansätzen anleiten |
+| [Code Review](https://github.com/MichengAI/dsh-code-review) | Unabhängiges Agenten-Review über `/review` anfordern |
+| [Codex Pet](https://github.com/MichengAI/dsh-codex-pet) | Benachrichtigungen und Bestätigungen über Desktop-Begleiter steuern |
+
+Die Anwendung bindet zudem [DSH Better Sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) und [App Market](https://www.npmjs.com/package/dshmarket) ein.
+
+## Updates und Wiederherstellung
+
+- **Desktop-Updates**: Werden automatisch beim Start geprüft und benachrichtigen Sie bei neuen Versionen. In Einstellungen → Updates kann der automatische Download gewählt werden.
+- **DSH neu laden**: Ermöglicht einen schnellen Neustart des DSH-Dienstes über das Tray-Menü.
+- **Wiederherstellungsmodus**: Isoliert fehlerhafte Plugins beim Start, sodass der Arbeitsbereich sicher gerettet werden kann.
+
+## Systemanforderungen (System requirements)
+
+| Element | Anforderung |
+| --- | --- |
+| Betriebssystem | Windows 10/11, macOS oder Linux |
+| Architektur | Windows x64, macOS arm64/x64 oder Linux x64/arm64 |
+| Node.js | Für Endbenutzer nicht erforderlich (in App enthalten) |
+| Netzwerk | Nur für Modellanbieter und Plugin-Downloads erforderlich |
+
+## Datenschutz und Sicherheit (Privacy and security)
+
+- DSH-Konfiguration, Sitzungen und Zugangsdaten verbleiben im Benutzerverzeichnis. Eine Deinstallation löscht diese Daten nicht.
+- Der Launcher akzeptiert ausschließlich validierte lokale Loopback-Adressen `127.0.0.1`.
+- Externe Links öffnen im Standard-Webbrowser des Systems.
+- Electron nutzt strikte Kontextisolation und Sandboxing ohne Node.js-Integration in der DSH-Webseite.
+- Ihre konfigurierten Modelle und DSH-Tools können eigene Netzwerkanfragen ausführen. Bitte prüfen Sie deren Datenschutzrichtlinien.
+
+## Entwicklung (Development)
+
+Übergabedokumentation: [Zusammenfassung Architektur-Baseline](docs/00-交接入口/05-技术架构基线.md) · [Desktop-Launcher Architektur-Baseline](docs/03-技术架构/00-桌面启动器架构基线.md).
+
+Entwicklung erfordert Windows, Node.js `24.21.0` und pnpm `11.26.0`.
+
+```powershell
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+pnpm install --frozen-lockfile
+pnpm test
+pnpm run dist
+```
+
+## Lizenz (License)
 
 Dieses Projekt ist unter der [Apache-2.0-Lizenz](LICENSE) lizenziert.
