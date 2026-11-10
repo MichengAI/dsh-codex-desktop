@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { writeTextFileAtomic } from './atomic-file.js'
+import { normalizeShellLocale, type SupportedShellLocale } from './shell-actions.js'
 
 export type DesktopUpdateStatus =
   | { kind: 'idle' }
@@ -154,6 +155,11 @@ export function formatDesktopReleaseNotes(notes: string | Array<{ note?: string 
   return text === '' ? undefined : text
 }
 
+function trayText(locale: string | undefined, map: Record<SupportedShellLocale, string>): string {
+  const norm = normalizeShellLocale(locale) ?? ((locale ?? 'zh').toLowerCase().startsWith('zh') ? 'zh' : 'en')
+  return map[norm] ?? map.en
+}
+
 export function buildDesktopTrayItems(input: {
   status: DesktopUpdateStatus
   currentVersion: string
@@ -161,34 +167,187 @@ export function buildDesktopTrayItems(input: {
   installable?: boolean
   locale?: string
 }): DesktopTrayItem[] {
-  const zh = (input.locale ?? 'zh').toLowerCase().startsWith('zh')
+  const l = input.locale
   const items: DesktopTrayItem[] = [
-    { id: 'show', label: zh ? '显示窗口' : 'Show Window', enabled: true, type: 'normal' },
-    { id: 'reload', label: zh ? '重新加载' : 'Reload', enabled: true, type: 'normal' },
+    {
+      id: 'show',
+      label: trayText(l, {
+        zh: '显示窗口',
+        en: 'Show Window',
+        ja: 'ウィンドウを表示',
+        es: 'Mostrar ventana',
+        fr: 'Afficher la fenêtre',
+        de: 'Fenster anzeigen',
+        ru: 'Показать окно',
+        pt: 'Mostrar janela',
+      }),
+      enabled: true,
+      type: 'normal',
+    },
+    {
+      id: 'reload',
+      label: trayText(l, {
+        zh: '重新加载',
+        en: 'Reload',
+        ja: '再読み込み',
+        es: 'Recargar',
+        fr: 'Recharger',
+        de: 'Neu laden',
+        ru: 'Перезагрузить',
+        pt: 'Recarregar',
+      }),
+      enabled: true,
+      type: 'normal',
+    },
     { id: 'sep-1', label: '', enabled: false, type: 'separator' },
-    { id: 'version', label: zh ? `当前版本 ${input.currentVersion}` : `Current version ${input.currentVersion}`, enabled: false, type: 'normal' },
+    {
+      id: 'version',
+      label: trayText(l, {
+        zh: `当前版本 ${input.currentVersion}`,
+        en: `Current version ${input.currentVersion}`,
+        ja: `現在のバージョン ${input.currentVersion}`,
+        es: `Versión actual ${input.currentVersion}`,
+        fr: `Version actuelle ${input.currentVersion}`,
+        de: `Aktuelle Version ${input.currentVersion}`,
+        ru: `Текущая версия ${input.currentVersion}`,
+        pt: `Versão atual ${input.currentVersion}`,
+      }),
+      enabled: false,
+      type: 'normal',
+    },
   ]
 
+  const checkLabel = trayText(l, {
+    zh: '检查更新…',
+    en: 'Check for Updates…',
+    ja: 'アップデートを確認…',
+    es: 'Buscar actualizaciones…',
+    fr: 'Rechercher des mises à jour…',
+    de: 'Nach Updates suchen…',
+    ru: 'Проверить обновления…',
+    pt: 'Verificar atualizações…',
+  })
+
   if (!input.packaged) {
-    items.push({ id: 'check', label: zh ? '检查更新…' : 'Check for Updates…', enabled: true, type: 'normal' })
+    items.push({ id: 'check', label: checkLabel, enabled: true, type: 'normal' })
   } else if (input.status.kind === 'checking') {
-    items.push({ id: 'check', label: zh ? '正在检查更新…' : 'Checking for Updates…', enabled: false, type: 'normal' })
+    items.push({
+      id: 'check',
+      label: trayText(l, {
+        zh: '正在检查更新…',
+        en: 'Checking for Updates…',
+        ja: 'アップデートを確認中…',
+        es: 'Buscando actualizaciones…',
+        fr: 'Recherche de mises à jour…',
+        de: 'Suche nach Updates…',
+        ru: 'Проверка обновлений…',
+        pt: 'Verificando atualizações…',
+      }),
+      enabled: false,
+      type: 'normal',
+    })
   } else if (input.status.kind === 'downloading') {
     const percent = Math.max(0, Math.min(100, Math.round(input.status.percent)))
-    items.push({ id: 'download', label: zh ? `正在下载 ${percent}%` : `Downloading ${percent}%`, enabled: false, type: 'normal' })
+    items.push({
+      id: 'download',
+      label: trayText(l, {
+        zh: `正在下载 ${percent}%`,
+        en: `Downloading ${percent}%`,
+        ja: `ダウンロード中 ${percent}%`,
+        es: `Descargando ${percent}%`,
+        fr: `Téléchargement ${percent}%`,
+        de: `Wird heruntergeladen ${percent}%`,
+        ru: `Загрузка ${percent}%`,
+        pt: `Baixando ${percent}%`,
+      }),
+      enabled: false,
+      type: 'normal',
+    })
   } else if (input.status.kind === 'available' && input.installable === false) {
-    items.push({ id: 'open-archive', label: zh ? `下载压缩包 ${input.status.version}` : `Download Zip ${input.status.version}`, enabled: true, type: 'normal' })
+    items.push({
+      id: 'open-archive',
+      label: trayText(l, {
+        zh: `下载压缩包 ${input.status.version}`,
+        en: `Download Zip ${input.status.version}`,
+        ja: `Zip をダウンロード ${input.status.version}`,
+        es: `Descargar zip ${input.status.version}`,
+        fr: `Télécharger le zip ${input.status.version}`,
+        de: `Zip herunterladen ${input.status.version}`,
+        ru: `Скачать zip ${input.status.version}`,
+        pt: `Baixar zip ${input.status.version}`,
+      }),
+      enabled: true,
+      type: 'normal',
+    })
   } else if (input.status.kind === 'available') {
-    items.push({ id: 'download', label: zh ? `下载并安装 ${input.status.version}` : `Download and Install ${input.status.version}`, enabled: true, type: 'normal' })
+    items.push({
+      id: 'download',
+      label: trayText(l, {
+        zh: `下载并安装 ${input.status.version}`,
+        en: `Download and Install ${input.status.version}`,
+        ja: `ダウンロードしてインストール ${input.status.version}`,
+        es: `Descargar e instalar ${input.status.version}`,
+        fr: `Télécharger et installer ${input.status.version}`,
+        de: `Herunterladen und installieren ${input.status.version}`,
+        ru: `Скачать и установить ${input.status.version}`,
+        pt: `Baixar e instalar ${input.status.version}`,
+      }),
+      enabled: true,
+      type: 'normal',
+    })
   } else if (input.status.kind === 'ready' && input.installable === false) {
-    items.push({ id: 'open-archive', label: zh ? `下载压缩包 ${input.status.version}` : `Download Zip ${input.status.version}`, enabled: true, type: 'normal' })
+    items.push({
+      id: 'open-archive',
+      label: trayText(l, {
+        zh: `下载压缩包 ${input.status.version}`,
+        en: `Download Zip ${input.status.version}`,
+        ja: `Zip をダウンロード ${input.status.version}`,
+        es: `Descargar zip ${input.status.version}`,
+        fr: `Télécharger le zip ${input.status.version}`,
+        de: `Zip herunterladen ${input.status.version}`,
+        ru: `Скачать zip ${input.status.version}`,
+        pt: `Baixar zip ${input.status.version}`,
+      }),
+      enabled: true,
+      type: 'normal',
+    })
   } else if (input.status.kind === 'ready') {
-    items.push({ id: 'install', label: zh ? `安装并重启 ${input.status.version}` : `Install and Restart ${input.status.version}`, enabled: true, type: 'normal' })
+    items.push({
+      id: 'install',
+      label: trayText(l, {
+        zh: `安装并重启 ${input.status.version}`,
+        en: `Install and Restart ${input.status.version}`,
+        ja: `インストールして再起動 ${input.status.version}`,
+        es: `Instalar y reiniciar ${input.status.version}`,
+        fr: `Installer et redémarrer ${input.status.version}`,
+        de: `Installieren und neu starten ${input.status.version}`,
+        ru: `Установить и перезапустить ${input.status.version}`,
+        pt: `Instalar e reiniciar ${input.status.version}`,
+      }),
+      enabled: true,
+      type: 'normal',
+    })
   } else {
-    items.push({ id: 'check', label: zh ? '检查更新…' : 'Check for Updates…', enabled: true, type: 'normal' })
+    items.push({ id: 'check', label: checkLabel, enabled: true, type: 'normal' })
   }
 
   items.push({ id: 'sep-2', label: '', enabled: false, type: 'separator' })
-  items.push({ id: 'quit', label: zh ? '退出' : 'Quit', enabled: true, type: 'normal' })
+  items.push({
+    id: 'quit',
+    label: trayText(l, {
+      zh: '退出',
+      en: 'Quit',
+      ja: '終了',
+      es: 'Salir',
+      fr: 'Quitter',
+      de: 'Beenden',
+      ru: 'Выход',
+      pt: 'Sair',
+    }),
+    enabled: true,
+    type: 'normal',
+  })
   return items
 }
+
+

@@ -171,8 +171,10 @@
     const turnSelect=createListbox('turnModeButton','turnModeList','turnModeValue','unfocused',value=>{currentTurnMode=value;void saveNotifications()});
     const policySelect=createListbox('policyButton','policyList','policyValue','notify',value=>{currentPolicy=value;void saveUpdatePolicy()});
 
+    function pickLocale(loc, map){const norm=(loc||'').toLowerCase().split('-')[0];return map[norm]||(norm.startsWith('zh')?map.zh:map.en)}
+    function t(map){return pickLocale(locale, map)}
+    function text(zh,en,others){if(others){const norm=(locale||'').toLowerCase().split('-')[0];if(others[norm])return others[norm]}return isZh()?zh:en}
     function isZh(){return locale.toLowerCase().startsWith('zh')}
-    function text(zh,en){return isZh()?zh:en}
     function setPage(section){
       const updates=section==='updates';
       notificationsPage.hidden=updates;updatesPage.hidden=!updates;
@@ -181,15 +183,48 @@
     }
     function localize(nextLocale){
       locale=typeof nextLocale==='string'?nextLocale:'zh-CN';document.documentElement.lang=locale;
-      document.title=text('桌面端设置','Desktop Settings');document.querySelector('aside').setAttribute('aria-label',text('设置分类','Settings categories'));
-      byId('desktopLabel').textContent=text('桌面端','Desktop');notificationsNav.textContent=text('通知','Notifications');updatesNav.textContent=text('更新','Updates');
-      byId('notificationsTitle').textContent=text('通知','Notifications');byId('turnLabel').textContent=text('任务完成通知','Task completion notifications');byId('turnDescription').textContent=text('设置 DeepSeek Harness 完成任务时何时提醒你',"Set when DeepSeek Harness alerts you that it's finished");
-      const turnLabels=isZh()?['从不','仅在窗口未聚焦时','始终']:['Never','Only when unfocused','Always'];turnSelect.options.forEach((option,index)=>option.textContent=turnLabels[index]);
-      byId('approvalLabel').textContent=text('审批通知','Approval notifications');byId('approvalDescription').textContent=text('需要你审批权限或计划时显示提醒','Show alerts when permissions or plans require your approval');
-      byId('questionLabel').textContent=text('问题通知','Question notifications');byId('questionDescription').textContent=text('任务需要你的输入才能继续时显示提醒','Show alerts when input is needed to continue');saved.textContent=text('已保存','Saved');
-      byId('updatesTitle').textContent=text('更新','Updates');byId('policyLabel').textContent=text('自动更新','Automatic updates');byId('policyDescription').textContent=text('选择桌面端如何检查和下载新版本。安装前始终由你确认。','Choose how the desktop app checks for and downloads new versions. Installation always requires your confirmation.');
-      const policyLabels=isZh()?['自动检查并提醒','自动下载，安装前提醒','仅手动检查']:['Check automatically and notify','Download automatically, ask before install','Check manually only'];policySelect.options.forEach((option,index)=>option.textContent=policyLabels[index]);
-      byId('currentVersionLabel').textContent=text('当前版本','Current version');byId('checkLabel').textContent=text('桌面端更新','Desktop updates');byId('checkDescription').textContent=text('检查 GitHub Releases 中适用于当前系统的新版本。','Check GitHub Releases for a new version compatible with this system.');byId('releaseNotesTitle').textContent=text('版本说明','Release notes');
+      document.title=t({zh:'桌面端设置',en:'Desktop Settings',ja:'デスクトップ設定',es:'Configuración de escritorio',fr:'Paramètres du bureau',de:'Desktop-Einstellungen',ru:'Настройки приложения',pt:'Configurações do aplicativo'});
+      document.querySelector('aside').setAttribute('aria-label',t({zh:'设置分类',en:'Settings categories',ja:'設定カテゴリ',es:'Categorías de configuración',fr:'Catégories de paramètres',de:'Einstellungskategorien',ru:'Категории настроек',pt:'Categorias de configurações'}));
+      byId('desktopLabel').textContent=t({zh:'桌面端',en:'Desktop',ja:'デスクトップ',es:'Escritorio',fr:'Bureau',de:'Desktop',ru:'Приложение',pt:'Aplicativo'});
+      notificationsNav.textContent=t({zh:'通知',en:'Notifications',ja:'通知',es:'Notificaciones',fr:'Notifications',de:'Benachrichtigungen',ru:'Уведомления',pt:'Notificações'});
+      updatesNav.textContent=t({zh:'更新',en:'Updates',ja:'アップデート',es:'Actualizaciones',fr:'Mises à jour',de:'Updates',ru:'Обновления',pt:'Atualizações'});
+      byId('notificationsTitle').textContent=t({zh:'通知',en:'Notifications',ja:'通知',es:'Notificaciones',fr:'Notifications',de:'Benachrichtigungen',ru:'Уведомления',pt:'Notificações'});
+      byId('turnLabel').textContent=t({zh:'任务完成通知',en:'Task completion notifications',ja:'タスク完了通知',es:'Notificaciones de finalización de tareas',fr:'Notifications de fin de tâche',de:'Benachrichtigungen über Aufgabenabschluss',ru:'Уведомления о завершении задач',pt:'Notificações de conclusão de tarefas'});
+      byId('turnDescription').textContent=t({zh:'设置 DeepSeek Harness 完成任务时何时提醒你',en:"Set when DeepSeek Harness alerts you that it's finished",ja:'DeepSeek Harness がタスクを完了したときの通知タイミングを設定します',es:'Elige cuándo te avisa DeepSeek Harness al finalizar una tarea',fr:"Choisissez quand DeepSeek Harness vous alerte lorsqu'une tâche est terminée",de:'Legen Sie fest, wann DeepSeek Harness Sie bei Fertigstellung benachrichtigt',ru:'Настройте, когда DeepSeek Harness сообщает о завершении задачи',pt:'Escolha quando o DeepSeek Harness deve avisar sobre a conclusão de tarefas'});
+      const turnLabelMap={
+        zh:['从不','仅在窗口未聚焦时','始终'],
+        en:['Never','Only when unfocused','Always'],
+        ja:['通知しない','非フォーカス時のみ','常に通知'],
+        es:['Nunca','Solo desenfocado','Siempre'],
+        fr:['Jamais','Uniquement si non actif','Toujours'],
+        de:['Nie','Nur wenn im Hintergrund','Immer'],
+        ru:['Никогда','Только не в фокусе','Всегда'],
+        pt:['Nunca','Apenas em segundo plano','Sempre']
+      };
+      const turnLabels=pickLocale(locale, turnLabelMap);turnSelect.options.forEach((option,index)=>option.textContent=turnLabels[index]);
+      byId('approvalLabel').textContent=t({zh:'审批通知',en:'Approval notifications',ja:'承認通知',es:'Notificaciones de aprobación',fr:"Notifications d'approbation",de:'Genehmigungsbenachrichtigungen',ru:'Уведомления об одобрении',pt:'Notificações de aprovação'});
+      byId('approvalDescription').textContent=t({zh:'需要你审批权限或计划时显示提醒',en:'Show alerts when permissions or plans require your approval',ja:'権限や計画の承認が必要なときに通知を表示します',es:'Mostrar avisos cuando los permisos o planes requieran tu aprobación',fr:'Afficher des alertes lorsque des autorisations ou des plans nécessitent votre approbation',de:'Benachrichtigungen anzeigen, wenn Berechtigungen oder Pläne Ihre Genehmigung erfordern',ru:'Показывать оповещения, когда разрешения или планы требуют вашего одобрения',pt:'Exibir alertas quando permissões ou planos precisarem de sua aprovação'});
+      byId('questionLabel').textContent=t({zh:'问题通知',en:'Question notifications',ja:'質問通知',es:'Notificaciones de preguntas',fr:'Notifications de questions',de:'Fragen-Benachrichtigungen',ru:'Уведомления о вопросах',pt:'Notificações de perguntas'});
+      byId('questionDescription').textContent=t({zh:'任务需要你的输入才能继续时显示提醒',en:'Show alerts when input is needed to continue',ja:'続行するために入力が必要なときに通知を表示します',es:'Mostrar avisos cuando se necesite tu respuesta para continuar',fr:"Afficher des alertes lorsqu'une saisie est requise pour continuer",de:'Benachrichtigungen anzeigen, wenn Eingaben zum Fortfahren erforderlich sind',ru:'Показывать оповещения, когда для продолжения требуется ваш ввод',pt:'Exibir alertas quando uma resposta for necessária para continuar'});
+      saved.textContent=t({zh:'已保存',en:'Saved',ja:'保存しました',es:'Guardado',fr:'Enregistré',de:'Gespeichert',ru:'Сохранено',pt:'Salvo'});
+      byId('updatesTitle').textContent=t({zh:'更新',en:'Updates',ja:'アップデート',es:'Actualizaciones',fr:'Mises à jour',de:'Updates',ru:'Обновления',pt:'Atualizações'});
+      byId('policyLabel').textContent=t({zh:'自动更新',en:'Automatic updates',ja:'自動アップデート',es:'Actualizaciones automáticas',fr:'Mises à jour automatiques',de:'Automatische Updates',ru:'Автоматические обновления',pt:'Atualizações automáticas'});
+      byId('policyDescription').textContent=t({zh:'选择桌面端如何检查和下载新版本。安装前始终由你确认。',en:'Choose how the desktop app checks for and downloads new versions. Installation always requires your confirmation.',ja:'デスクトップアプリが新しいバージョンを確認・ダウンロードする方法を選択します。インストール前には必ず確認を求めます。',es:'Elige cómo la aplicación comprueba y descarga nuevas versiones. La instalación siempre requiere tu confirmación.',fr:"Choisissez comment l'application vérifie et télécharge les nouvelles versions. L'installation nécessite toujours votre confirmation.",de:'Wählen Sie, wie die Desktop-App nach neuen Versionen sucht und diese herunterlädt. Die Installation erfordert stets Ihre Bestätigung.',ru:'Выберите способ проверки и загрузки новых версий. Установка всегда требует вашего подтверждения.',pt:'Escolha como o aplicativo busca e baixa novas versões. A instalação sempre requer sua confirmação.'});
+      const policyLabelMap={
+        zh:['自动检查并提醒','自动下载，安装前提醒','仅手动检查'],
+        en:['Check automatically and notify','Download automatically, ask before install','Check manually only'],
+        ja:['自動確認して通知','自動ダウンロード（インストール前に確認）','手動確認のみ'],
+        es:['Buscar automáticamente y notificar','Descargar automáticamente, avisar antes de instalar','Solo manual'],
+        fr:['Vérifier auto et notifier','Télécharger auto, demander avant installation','Manuel uniquement'],
+        de:['Automatisch prüfen und benachrichtigen','Automatisch herunterladen, vor Installation fragen','Nur manuell'],
+        ru:['Автопроверка и уведомление','Автозагрузка, запрос перед установкой','Только вручную'],
+        pt:['Verificar e notificar auto','Baixar auto, confirmar antes de instalar','Apenas manual']
+      };
+      const policyLabels=pickLocale(locale, policyLabelMap);policySelect.options.forEach((option,index)=>option.textContent=policyLabels[index]);
+      byId('currentVersionLabel').textContent=t({zh:'当前版本',en:'Current version',ja:'現在のバージョン',es:'Versión actual',fr:'Version actuelle',de:'Aktuelle Version',ru:'Текущая версия',pt:'Versão atual'});
+      byId('checkLabel').textContent=t({zh:'桌面端更新',en:'Desktop updates',ja:'デスクトップアップデート',es:'Actualizaciones de escritorio',fr:'Mises à jour du bureau',de:'Desktop-Updates',ru:'Обновления приложения',pt:'Atualizações do aplicativo'});
+      byId('checkDescription').textContent=t({zh:'检查 GitHub Releases 中适用于当前系统的新版本。',en:'Check GitHub Releases for a new version compatible with this system.',ja:'現在のシステムと互換性のある新しいバージョンを GitHub Releases で確認します。',es:'Comprueba en GitHub Releases si hay una nueva versión compatible con este sistema.',fr:'Vérifiez sur GitHub Releases si une nouvelle version est compatible avec ce système.',de:'Überprüfen Sie GitHub Releases auf eine mit diesem System kompatible Version.',ru:'Проверка наличия новой совместимой версии в GitHub Releases.',pt:'Verifique no GitHub Releases se há uma nova versão compatível com este sistema.'});
+      byId('releaseNotesTitle').textContent=t({zh:'版本说明',en:'Release notes',ja:'リリースノート',es:'Notas de la versión',fr:'Notes de version',de:'Versionshinweise',ru:'Примечания к выпуску',pt:'Notas de versão'});
       turnSelect.set(currentTurnMode);policySelect.set(currentPolicy);renderUpdateState(updateState);
     }
     function showSaved(){saved.classList.add('visible');clearTimeout(savedTimer);savedTimer=setTimeout(()=>saved.classList.remove('visible'),1200)}

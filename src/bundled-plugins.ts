@@ -25,20 +25,20 @@ export const OFFICIAL_LAUNCH_PEERS: readonly BundledPlugin[] = [
 ]
 /** 随桌面端离线仓库分发的社区插件和插件市场组件。 */
 export const BUNDLED_PLUGINS: readonly BundledPlugin[] = [
-  { packageName: '@michengai/dsh-codex-ui', version: '2.0.19' },
-  { packageName: '@michengai/dsh-im-connect', version: '1.0.27' },
-  { packageName: '@michengai/dsh-automation', version: '1.0.18' },
-  { packageName: '@michengai/dsh-skills-manager', version: '1.2.33' },
-  { packageName: '@michengai/dsh-archive-manager', version: '1.2.8' },
-  { packageName: '@michengai/dsh-agency-agents', version: '1.2.26' },
-  { packageName: '@michengai/dsh-codex-pet', version: '1.0.13' },
-  { packageName: '@michengai/dsh-btw', version: '1.3.3' },
-  { packageName: '@michengai/dsh-simplify', version: '1.0.7' },
-  { packageName: '@michengai/dsh-code-review', version: '1.0.8' },
-  { packageName: '@michengai/dsh-pua', version: '1.0.8' },
+  { packageName: '@michengai/dsh-codex-ui', version: '2.0.21' },
+  { packageName: '@michengai/dsh-im-connect', version: '1.0.34' },
+  { packageName: '@michengai/dsh-automation', version: '1.0.22' },
+  { packageName: '@michengai/dsh-skills-manager', version: '1.4.0' },
+  { packageName: '@michengai/dsh-archive-manager', version: '1.3.1' },
+  { packageName: '@michengai/dsh-agency-agents', version: '1.2.27' },
+  { packageName: '@michengai/dsh-codex-pet', version: '1.0.14' },
+  { packageName: '@michengai/dsh-btw', version: '1.3.7' },
+  { packageName: '@michengai/dsh-simplify', version: '1.0.8' },
+  { packageName: '@michengai/dsh-code-review', version: '1.0.9' },
+  { packageName: '@michengai/dsh-pua', version: '1.0.10' },
   { packageName: 'dsh-better-sidebar', version: '0.30.1' },
-  { packageName: 'dshmarket', version: '1.73.11' },
-  { packageName: 'dsh-context', version: '0.82.0' },
+  { packageName: 'dshmarket', version: '1.73.17' },
+  { packageName: 'dsh-context', version: '0.83.0' },
 ]
 
 /** 离线 store 只放仍随包的社区插件，官方运行时单独预装。 */

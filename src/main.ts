@@ -32,7 +32,7 @@ import { WindowNavigationCoordinator } from './window-navigation.js'
 import { escapeRoute } from './escape-routing.js'
 import { prepareDesktopBridge, resolveDesktopBridgeDir } from './desktop-host.js'
 import { migrateDesktopBridgeProfile } from './desktop-bridge-migration.js'
-import { isChineseLocale, localizedShellActions, localizedShellMenus, normalizeShellLocale, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId } from './shell-actions.js'
+import { isChineseLocale, localizedShellActions, localizedShellMenus, normalizeShellLocale, shellActionForShortcut, SHELL_ACTIONS, type ShellActionId, type ShellMenuId, type SupportedShellLocale } from './shell-actions.js'
 import { SHELL_BAR_HEIGHT, SHELL_IPC, type DshNavigationState, type DshShellActionId, type ShellBootstrap, type ShellMenuPopupRequest, type ShellState } from './shell-contract.js'
 import { mayAccessDesktopUpdates, mayAccessNotificationPreferences, mayCloseDesktopSettings, mayGetShellBootstrap, mayInvokeShellAction, mayPopupShellMenu, mayReportDshBoot, mayReportDshLocale, mayReportDshNotification, mayReportDshState, mayReportDshTheme, mayReportDshSettingsVisibility, type ShellRendererKind } from './shell-ipc-policy.js'
 import { DESKTOP_THEME_PALETTES, normalizeDesktopThemeSnapshot, supportsNativeBackdrop, type DesktopColorScheme, type DesktopThemePreference } from './desktop-theme.js'
@@ -84,7 +84,7 @@ let dshNavigationState: DshNavigationState = { canBack: false, canForward: false
 let notificationPreferences: DesktopNotificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES
 const activeNotifications = new Map<string, Notification>()
 let unreadCompletionCount = 0
-let activeDshLocale: 'zh' | 'en' | undefined
+let activeDshLocale: SupportedShellLocale | undefined
 let activeDshColorScheme: DesktopColorScheme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
 let activeDshThemePreference: DesktopThemePreference = 'system'
 let dshSettingsDialogVisible = false
@@ -1588,22 +1588,33 @@ function installWindowsNotificationActivationHandler(): void {
 }
 
 function notificationCopy(event: DesktopNotificationEvent): { title: string; body: string } {
-  const zh = isChineseLocale(desktopLocale())
+  const norm = normalizeShellLocale(desktopLocale()) ?? (isChineseLocale(desktopLocale()) ? 'zh' : 'en')
+  const statusMap: Record<SupportedShellLocale, { approval: string; question: string; complete: string; taskDefault: string; approvalSuffix: string; questionSuffix: string; completeSuffix: string }> = {
+    zh: { approval: '需要审批', question: '需要你的输入', complete: '任务已完成', taskDefault: 'DeepSeek Harness 任务', approvalSuffix: '正在等待审批', questionSuffix: '正在等待你的回答', completeSuffix: '已完成' },
+    en: { approval: 'Approval required', question: 'Your input is needed', complete: 'Task completed', taskDefault: 'DeepSeek Harness task', approvalSuffix: 'is waiting for approval', questionSuffix: 'is waiting for your answer', completeSuffix: 'is complete' },
+    ja: { approval: '承認が必要です', question: '入力が必要です', complete: 'タスク完了', taskDefault: 'DeepSeek Harness タスク', approvalSuffix: '承認待ちです', questionSuffix: '回答を待っています', completeSuffix: '完了しました' },
+    es: { approval: 'Aprobación requerida', question: 'Se necesita tu respuesta', complete: 'Tarea completada', taskDefault: 'Tarea de DeepSeek Harness', approvalSuffix: 'está esperando aprobación', questionSuffix: 'está esperando tu respuesta', completeSuffix: 'ha finalizado' },
+    fr: { approval: 'Approbation requise', question: 'Votre saisie est requise', complete: 'Tâche terminée', taskDefault: 'Tâche DeepSeek Harness', approvalSuffix: "est en attente d'approbation", questionSuffix: 'attend votre réponse', completeSuffix: 'est terminée' },
+    de: { approval: 'Genehmigung erforderlich', question: 'Ihre Eingabe wird benötigt', complete: 'Aufgabe abgeschlossen', taskDefault: 'DeepSeek Harness Aufgabe', approvalSuffix: 'wartet auf Genehmigung', questionSuffix: 'wartet auf Ihre Antwort', completeSuffix: 'ist abgeschlossen' },
+    ru: { approval: 'Требуется одобрение', question: 'Требуется ваш ввод', complete: 'Задача выполнена', taskDefault: 'Задача DeepSeek Harness', approvalSuffix: 'ожидает одобрения', questionSuffix: 'ожидает вашего ответа', completeSuffix: 'выполнена' },
+    pt: { approval: 'Aprovação necessária', question: 'Sua entrada é necessária', complete: 'Tarefa concluída', taskDefault: 'Tarefa do DeepSeek Harness', approvalSuffix: 'está aguardando aprovação', questionSuffix: 'está aguardando sua resposta', completeSuffix: 'foi concluída' },
+  }
+  const t = statusMap[norm] ?? statusMap.en
   const status = event.kind === 'approval'
-    ? (zh ? '需要审批' : 'Approval required')
+    ? t.approval
     : event.kind === 'question'
-      ? (zh ? '需要你的输入' : 'Your input is needed')
-      : (zh ? '任务已完成' : 'Task completed')
+      ? t.question
+      : t.complete
   const title = event.title === undefined ? status : `${status} · ${event.title}`
   if (event.body !== undefined) {
     return { title, body: event.body }
   }
   const task = event.title === undefined
-    ? (zh ? 'DeepSeek Harness 任务' : 'DeepSeek Harness task')
-    : `“${event.title}”`
-  if (event.kind === 'approval') return { title, body: zh ? `${task}正在等待审批` : `${task} is waiting for approval` }
-  if (event.kind === 'question') return { title, body: zh ? `${task}正在等待你的回答` : `${task} is waiting for your answer` }
-  return { title, body: zh ? `${task}已完成` : `${task} is complete` }
+    ? t.taskDefault
+    : (norm === 'zh' ? `“${event.title}”` : `"${event.title}"`)
+  if (event.kind === 'approval') return { title, body: `${task} ${t.approvalSuffix}` }
+  if (event.kind === 'question') return { title, body: `${task} ${t.questionSuffix}` }
+  return { title, body: `${task} ${t.completeSuffix}` }
 }
 
 function updateUnreadCompletionBadge(count: number): void {
@@ -1615,7 +1626,18 @@ function updateUnreadCompletionBadge(count: number): void {
       const iconPath = resolveTaskBadgeIconPath({ appPath: app.getAppPath(), isPackaged: app.isPackaged, resourcesPath: process.resourcesPath }, count)
       const overlay = nativeImage.createFromPath(iconPath)
       if (!overlay.isEmpty()) {
-        const description = isChineseLocale(desktopLocale()) ? `${count} 个已完成任务` : `${count} completed tasks`
+        const norm = normalizeShellLocale(desktopLocale()) ?? (isChineseLocale(desktopLocale()) ? 'zh' : 'en')
+        const descMap: Record<SupportedShellLocale, string> = {
+          zh: `${count} 个已完成任务`,
+          en: `${count} completed tasks`,
+          ja: `完了したタスク: ${count}件`,
+          es: `${count} tareas completadas`,
+          fr: `${count} tâches terminées`,
+          de: `${count} abgeschlossene Aufgaben`,
+          ru: `Выполненных задач: ${count}`,
+          pt: `${count} tarefas concluídas`,
+        }
+        const description = descMap[norm] ?? descMap.en
         mainWindow.setOverlayIcon(overlay, description)
       }
     }
