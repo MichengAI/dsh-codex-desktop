@@ -93,7 +93,7 @@ test("startup.html 在 8 种语言下精确渲染首帧文本且未支持语言�
       clearInterval: () => {},
     }
     sandbox.window = sandbox
-    vm.runInNewContext(scriptCode, sandbox)
+    vm.runInNewContext(scriptCode, sandbox, { timeout: 1000 })
     return { sandbox, elements }
   }
 
@@ -155,7 +155,7 @@ test("recovery.html 在 8 种语言下精确渲染对应标题且未支持语言
       String,
     }
     sandbox.window.matchMedia = sandbox.matchMedia
-    vm.runInNewContext(scriptCode, sandbox)
+    vm.runInNewContext(scriptCode, sandbox, { timeout: 1000 })
     return sandbox
   }
 
