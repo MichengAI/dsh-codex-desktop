@@ -730,20 +730,23 @@ export function legacyPnpmCacheDirs(env: NodeJS.ProcessEnv): string[] {
   })
 }
 
-/** 把旧缓存的缩写元数据并进离线仓库缓存，并补出校验只认的 metadata-full 同名文件。 */
+/** 把旧缓存的完整和缩写元数据并进离线仓库缓存，并补出校验只认的 metadata-full 同名文件。 */
 export async function mergeLegacyPnpmCacheMetadata(cacheDir: string, env: NodeJS.ProcessEnv = process.env): Promise<number> {
   const metadataRoot = join(cacheDir, 'v11', 'metadata')
   const fullRoot = join(cacheDir, 'v11', 'metadata-full')
   let merged = 0
   for (const cacheRoot of legacyPnpmCacheDirs(env)) {
-    const source = join(cacheRoot, 'v11', 'metadata')
-    // 更新已有文件会覆盖随包元数据，只补仓库里没有的包。
-    if (!existsSync(source) || resolve(source) === resolve(metadataRoot)) continue
-    try {
-      merged += await mergeMissingMetadataTree(source, metadataRoot)
-      merged += await mergeMissingMetadataTree(source, fullRoot)
-    } catch (error) {
-      console.warn('并入本机旧 pnpm 元数据缓存失败，离线校验可能仍缺部分包元数据。', error)
+    for (const source of [join(cacheRoot, 'v11', 'metadata-full'), join(cacheRoot, 'v11', 'metadata')]) {
+      if (!existsSync(source)) continue
+      for (const destination of [fullRoot, metadataRoot]) {
+        // 更新已有文件会覆盖随包元数据，只补仓库里没有的包；优先保留完整元数据。
+        if (resolve(source) === resolve(destination)) continue
+        try {
+          merged += await mergeMissingMetadataTree(source, destination)
+        } catch (error) {
+          console.warn('并入本机旧 pnpm 元数据缓存失败，离线校验可能仍缺部分包元数据。', error)
+        }
+      }
     }
   }
   return merged
