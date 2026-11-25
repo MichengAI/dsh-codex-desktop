@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
-import { assertNoStartupErrors } from './smoke-startup-errors.mjs'
+import { assertNoStartupErrors, isDshAuthChallenge } from './smoke-startup-errors.mjs'
 
 import { verifyBundledPluginsInstalled } from './smoke-packaged-plugins.mjs'
 
@@ -53,7 +53,7 @@ async function main(): Promise<void> {
     const page = await fetchRootPage(baseUrl, bootstrapProcessId, readyDeadline)
     const content = await page.text()
     if (page.status === 401) {
-      if (!content.includes('dsh web authentication required')) throw new Error('根页面返回了未知的 HTTP 401 响应。')
+      if (!isDshAuthChallenge(content)) throw new Error('根页面返回了未知的 HTTP 401 响应。')
       await waitForApplicationReady(application, smokeReadyFile, startupErrorFile, readyDeadline, () => applicationOutput)
     } else {
       if (page.status !== 200) throw new Error(`根页面返回 HTTP ${page.status}。`)
@@ -158,7 +158,7 @@ async function findHealthyBaseUrl(processId: number): Promise<string | undefined
     try {
       const response = await fetch(`${baseUrl}/`, { redirect: 'manual', signal: AbortSignal.timeout(1_000) })
       const content = await response.text()
-      if (response.status === 200 || (response.status === 401 && content.includes('dsh web authentication required'))) {
+      if (response.status === 200 || (response.status === 401 && isDshAuthChallenge(content))) {
         return baseUrl
       }
     } catch {

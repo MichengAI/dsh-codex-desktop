@@ -310,6 +310,8 @@ test('Windows 冒烟兼容 alpha.2+ 启动 token 鉴权', async () => {
   const script = await readFile(new URL('../../scripts/smoke-package.ps1', import.meta.url), 'utf8')
   assert.match(script, /SkipHttpErrorCheck/)
   assert.match(script, /dsh web authentication required/)
+  assert.match(script, /Connect to this Host/)
+  assert.match(script, /id="token-form"/)
   assert.match(script, /startup-error\.log/)
   assert.match(script, /DSH_DESKTOP_SMOKE_READY_FILE/)
   assert.match(script, /startup-ready/)
@@ -319,7 +321,7 @@ test('Windows 冒烟兼容 alpha.2+ 启动 token 鉴权', async () => {
   assert.ok(httpSuccessBranch >= 0 && readyWait > httpSuccessBranch && pluginVerification > readyWait)
   assert.match(script, /foreach \(\$listener in \$listeners\)/)
   assert.match(script, /\$candidate\.StatusCode -eq 200 -or \(\$candidate\.StatusCode -eq 401/)
-  assert.doesNotMatch(script, /Select-Object -First 1\s*\r?\n\s*if \(\$null -ne \$listener\)/)
+  assert.doesNotMatch(script, /Select-Object -First 1\s*\u005cr?\n\s*if \(\$null -ne \$listener\)/)
 })
 
 test('正式标签缺少签名凭据时仍允许生成带 ad-hoc 签名的多平台测试版', async () => {

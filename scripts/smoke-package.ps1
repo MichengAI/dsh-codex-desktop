@@ -50,6 +50,10 @@ function Assert-NoStartupErrors {
   }
 }
 
+function Test-DshAuthChallenge([string]$Content) {
+  return $Content -match 'dsh web authentication required' -or ($Content -match '<title>Connect to this Host</title>' -and $Content -match 'id="token-form"')
+}
+
 try {
   $application = Start-Process -FilePath $resolvedApplication -ArgumentList "--user-data-dir=$userDataDir" -WindowStyle Hidden -PassThru
   $deadline = (Get-Date).AddSeconds($startupTimeoutSeconds)
@@ -76,7 +80,7 @@ try {
       foreach ($listener in $listeners) {
         try {
           $candidate = Invoke-WebRequest -Uri "http://127.0.0.1:$($listener.LocalPort)/" -UseBasicParsing -SkipHttpErrorCheck -TimeoutSec 2
-          if ($candidate.StatusCode -eq 200 -or ($candidate.StatusCode -eq 401 -and $candidate.Content -match 'dsh web authentication required')) {
+          if ($candidate.StatusCode -eq 200 -or ($candidate.StatusCode -eq 401 -and (Test-DshAuthChallenge $candidate.Content))) {
             $port = $listener.LocalPort
             break
           }
@@ -92,7 +96,7 @@ try {
   $baseUrl = "http://127.0.0.1:$port"
   $page = Invoke-WebRequest -Uri "$baseUrl/" -UseBasicParsing -SkipHttpErrorCheck
   if ($page.StatusCode -eq 401) {
-    if ($page.Content -notmatch 'dsh web authentication required') {
+    if (-not (Test-DshAuthChallenge $page.Content)) {
       throw '根页面返回了未知的 HTTP 401 响应。'
     }
     # DSH 0.1.2-alpha.2+ 会把随机启动 token 只交给桌面 WebContents；

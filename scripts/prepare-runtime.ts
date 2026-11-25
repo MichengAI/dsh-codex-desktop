@@ -385,7 +385,8 @@ async function materializePnpmPackage(destinationRoot: string): Promise<string> 
 function resolvePnpmEntry(packageRoot: string): string {
   const manifest = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as { bin?: string | Record<string, string> }
   const declared = typeof manifest.bin === 'string' ? manifest.bin : manifest.bin?.pnpm
-  const candidates = [declared, 'bin/pnpm.cjs', 'dist/pnpm.cjs', 'bin/pnpm.js'].filter((item): item is string => Boolean(item))
+  const candidates = [declared, 'bin/pnpm.cjs', 'dist/pnpm.cjs', 'bin/pnpm.js']
+    .filter((item): item is string => typeof item === 'string' && /\.(?:c|m)?js$/i.test(item))
   for (const candidate of candidates) {
     const entry = join(packageRoot, candidate)
     if (existsSync(entry)) return entry
